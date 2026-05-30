@@ -1,0 +1,4 @@
+nombre_completo,email,rol
+"Carlos Alberto Mendoza","carlos.mendoza+profesor@gmail.com",DOCENTE
+"María Camila Restrepo","mrestrepo@colegiofalso.edu.co",DOCENTE
+"Jorge Eliecer Cerquera","jorge.cerquera@sophostest.com",DOCENTE

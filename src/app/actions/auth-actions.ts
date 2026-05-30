@@ -59,8 +59,8 @@ export async function registerInstitution(
     const supabase = await createClient();
     const adminClient = createAdminClient();
 
-    // ── PASO 1: Crear la institución ──────────────────────────────────────────
-    const { data: inst, error: instError } = await supabase
+    // ── PASO 1: Crear la institución (adminClient bypasa RLS — no hay sesión aún) ─────
+    const { data: inst, error: instError } = await adminClient
       .from('instituciones')
       .insert({
         nombre_legal: nombreLegal,
@@ -96,8 +96,8 @@ export async function registerInstitution(
     });
 
     if (authError || !authData.user) {
-      // Rollback de la institución
-      await supabase
+      // Rollback de la institución (adminClient para bypass RLS)
+      await adminClient
         .from('instituciones')
         .delete()
         .eq('id_institucion', idInstitucion);
@@ -110,8 +110,8 @@ export async function registerInstitution(
 
     const newUserId = authData.user.id;
 
-    // ── PASO 3: Insertar perfil público ───────────────────────────────────────
-    const { error: userError } = await supabase.from('usuarios').insert({
+    // ── PASO 3: Insertar perfil público (adminClient bypasa RLS — no hay sesión aún) ─
+    const { error: userError } = await adminClient.from('usuarios').insert({
       id_usuario: newUserId,
       email: emailAdmin,
       nombre_completo: nombreAdmin,
@@ -120,9 +120,9 @@ export async function registerInstitution(
     });
 
     if (userError) {
-      // Rollback del usuario en auth y de la institución
+      // Rollback del usuario en auth y de la institución (adminClient)
       await adminClient.auth.admin.deleteUser(newUserId);
-      await supabase
+      await adminClient
         .from('instituciones')
         .delete()
         .eq('id_institucion', idInstitucion);
