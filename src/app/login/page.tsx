@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
@@ -43,16 +43,17 @@ function Spinner() {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { message?: string; error?: string; next?: string };
+  searchParams: Promise<{ message?: string; error?: string; next?: string }>;
 }) {
+  const resolvedSearchParams = use(searchParams);
   const router = useRouter();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(searchParams.error ?? '');
+  const [error, setError]       = useState(resolvedSearchParams.error ?? '');
 
-  const isExpired = searchParams.message === 'session_expired';
+  const isExpired = resolvedSearchParams.message === 'session_expired';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +69,7 @@ export default function LoginPage({
       return;
     }
 
-    router.push(searchParams.next ?? '/dashboard');
+    router.push(resolvedSearchParams.next ?? '/dashboard');
     router.refresh();
   };
 
