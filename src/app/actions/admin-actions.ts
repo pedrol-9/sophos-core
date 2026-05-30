@@ -56,6 +56,13 @@ export async function bulkImportUsers(formData: FormData): Promise<BulkImportRes
   const adminRol = adminUser.app_metadata?.rol;
   const idInstitucion = adminUser.app_metadata?.id_institucion;
 
+  console.log('--- DEBUG BULK IMPORT ---');
+  console.log('User ID:', adminUser.id);
+  console.log('app_metadata:', adminUser.app_metadata);
+  console.log('adminRol:', adminRol);
+  console.log('idInstitucion:', idInstitucion);
+  console.log('-------------------------');
+
   if (adminRol !== 'ADMIN' || !idInstitucion) {
     return {
       error: 'Acceso denegado. Solo los Administradores pueden realizar cargas masivas.',
@@ -159,7 +166,7 @@ export async function bulkImportUsers(formData: FormData): Promise<BulkImportRes
     const newUserId = newAuthData.user.id;
 
     // ── Insertar perfil público ────────────────────────────────────────────
-    const { error: userErr } = await supabase.from('usuarios').insert({
+    const { error: userErr } = await adminClient.from('usuarios').insert({
       id_usuario: newUserId,
       email,
       nombre_completo: nombreCompleto,
@@ -177,7 +184,7 @@ export async function bulkImportUsers(formData: FormData): Promise<BulkImportRes
 
     // ── Matricular estudiante en curso si se suministra ───────────────────
     if (rawRol === 'ESTUDIANTE' && cursoNombre) {
-      const { data: curso } = await supabase
+      const { data: curso } = await adminClient
         .from('cursos')
         .select('id_curso')
         .eq('id_institucion', idInstitucion)
@@ -185,7 +192,7 @@ export async function bulkImportUsers(formData: FormData): Promise<BulkImportRes
         .maybeSingle();
 
       if (curso) {
-        const { error: matriculaErr } = await supabase.from('estudiantes_matriculados').insert({
+        const { error: matriculaErr } = await adminClient.from('estudiantes_matriculados').insert({
           id_estudiante: newUserId,
           id_curso: curso.id_curso,
           id_institucion: idInstitucion,
