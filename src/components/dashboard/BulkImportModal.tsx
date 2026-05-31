@@ -94,14 +94,19 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
           </ul>
         </div>
 
-        <form action={async (formData) => {
-          if (processingRef.current) return;
-          
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          if (isGenerating || processingRef.current) return;
+
+          const formData = new FormData(e.currentTarget);
           if (droppedFile) {
             formData.set('file', droppedFile);
-          } else if (!formData.get('file') || (formData.get('file') as File).size === 0) {
-            alert('Por favor selecciona un archivo CSV.');
-            return;
+          } else {
+            const file = fileInputRef.current?.files?.[0];
+            if (!file || file.size === 0) {
+              alert('Por favor selecciona un archivo CSV.');
+              return;
+            }
           }
 
           processingRef.current = true;

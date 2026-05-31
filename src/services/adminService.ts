@@ -176,9 +176,8 @@ export async function processBulkImport(
 
       const { data: matriculaExistente } = await adminClient
         .from('estudiantes_matriculados')
-        .select('id_matricula')
+        .select('id_matricula, id_curso')
         .eq('id_estudiante', userId)
-        .eq('id_curso', curso.id_curso)
         .eq('ano_lectivo', currentYear)
         .maybeSingle();
 
@@ -193,6 +192,17 @@ export async function processBulkImport(
         if (matriculaErr) {
           errors.push(
             `Fila ${lineNum} (${email}): Perfil listo, pero no se pudo matricular en '${cursoNombre}': ${matriculaErr.message}`
+          );
+        }
+      } else if (matriculaExistente.id_curso !== curso.id_curso) {
+        const { error: updateErr } = await adminClient
+          .from('estudiantes_matriculados')
+          .update({ id_curso: curso.id_curso })
+          .eq('id_matricula', matriculaExistente.id_matricula);
+
+        if (updateErr) {
+          errors.push(
+            `Fila ${lineNum} (${email}): Error al cambiar de curso a '${cursoNombre}': ${updateErr.message}`
           );
         }
       }

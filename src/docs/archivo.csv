@@ -17,3 +17,8 @@ nombre_completo,email,rol,curso
 "Valentina Silva Hoyos","valentina.silva+estudiante@gmail.com",ESTUDIANTE,"11-B"
 "Santiago José Giraldo","santiago.giraldo+estudiante@gmail.com",ESTUDIANTE,"9-B"
 "Daniela Mora Restrepo","daniela.mora+estudiante@gmail.com",ESTUDIANTE,"10-A"
+"Marta Lucía Gómez","marta.gomez+acudiente@gmail.com",ACUDIENTE,""
+"José Ignacio Pérez","jose.perez+acudiente@gmail.com",ACUDIENTE,""
+"Claudia Patricia Ruiz","claudia.ruiz+acudiente@gmail.com",ACUDIENTE,""
+"Fernando Antonio Díaz","fernando.diaz+acudiente@gmail.com",ACUDIENTE,""
+"Liliana María Muñoz","liliana.munoz+acudiente@gmail.com",ACUDIENTE,""

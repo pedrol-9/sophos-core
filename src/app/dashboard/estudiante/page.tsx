@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -340,8 +340,8 @@ export default function EstudianteDashboard() {
                         const isExpanded = expandedSubject === sub.id_asignacion;
 
                         return (
-                          <>
-                            <tr key={sub.id_asignacion} className="hover:bg-white/[0.01] transition-colors">
+                          <React.Fragment key={sub.id_asignacion}>
+                            <tr className="hover:bg-white/[0.01] transition-colors">
                               <td className="py-4 px-6">
                                 <span className="text-xs font-semibold bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase">
                                   {sub.materiaArea}
@@ -470,7 +470,7 @@ export default function EstudianteDashboard() {
                                 </td>
                               </tr>
                             )}
-                          </>
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
