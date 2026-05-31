@@ -3,16 +3,11 @@
 /**
  * @file src/app/actions/auth-actions.ts
  * @description Server Actions para el flujo de autenticación y registro de Sophos Core.
- *
- * registerInstitution: Registra una nueva institución educativa (tenant) en estado PRUEBA,
- * crea el usuario administrador en Supabase Auth con los metadatos de rol e id_institucion
- * inyectados en app_metadata (disponibles en el JWT), inserta el perfil público y
- * autentica al usuario inmediatamente en la sesión actual.
  */
 
 import { createClient } from '@/utils/supabase/server';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { redirect } from 'next/navigation';
+import { createInstitutionAndAdmin, removeMustChangePasswordFlag } from '@/services/authService';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -23,18 +18,6 @@ export type RegisterState = {
 
 // ─── ACTION ──────────────────────────────────────────────────────────────────
 
-/**
- * Registra una nueva institución educativa y su administrador inicial.
- *
- * Flujo:
- * 1. Inserta la institución en estado 'PRUEBA' → obtiene id_institucion.
- * 2. Crea el usuario en auth.users con app_metadata {id_institucion, rol: 'ADMIN'}.
- * 3. Inserta el perfil en la tabla pública 'usuarios'.
- * 4. Autentica al administrador en la sesión cookie actual.
- * 5. Redirige al workspace del administrador.
- *
- * Si cualquier paso falla, ejecuta rollback manual de los pasos anteriores.
- */
 export async function registerInstitution(
   prevState: RegisterState,
   formData: FormData
@@ -46,7 +29,6 @@ export async function registerInstitution(
   const emailAdmin = (formData.get('email_admin') as string)?.trim();
   const password = (formData.get('contrasena') as string)?.trim();
 
-  // Validación básica de campos requeridos
   if (!nombreLegal || !nit || !emailAdmin || !password || !nombreAdmin) {
     return { error: 'Todos los campos marcados como obligatorios deben completarse.' };
   }
@@ -56,106 +38,17 @@ export async function registerInstitution(
   }
 
   try {
-    const supabase = await createClient();
-    const adminClient = createAdminClient();
-
-    // ── PASO 1: Crear la institución (adminClient bypasa RLS — no hay sesión aún) ─────
-    const { data: inst, error: instError } = await adminClient
-      .from('instituciones')
-      .insert({
-        nombre_legal: nombreLegal,
-        nit: nit,
-        dominio_personalizado: dominio,
-        estado_suscripcion: 'PRUEBA',
-      })
-      .select('id_institucion')
-      .single();
-
-    if (instError || !inst) {
-      // NIT duplicado es el error más probable (unique constraint)
-      if (instError?.code === '23505') {
-        return { error: 'Ya existe una institución registrada con ese NIT.' };
-      }
-      return { error: `Error al crear la institución: ${instError?.message}` };
-    }
-
-    const idInstitucion = inst.id_institucion;
-
-    // ── PASO 2: Crear usuario en Supabase Auth con metadatos de rol ───────────
-    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
-      email: emailAdmin,
-      password: password,
-      email_confirm: true, // Supabase Auth tiene "Confirm email" desactivado en el proyecto
-      app_metadata: {
-        id_institucion: idInstitucion,
-        rol: 'ADMIN',
-      },
-      user_metadata: {
-        nombre_completo: nombreAdmin,
-      },
-    });
-
-    if (authError || !authData.user) {
-      // Rollback de la institución (adminClient para bypass RLS)
-      await adminClient
-        .from('instituciones')
-        .delete()
-        .eq('id_institucion', idInstitucion);
-
-      if (authError?.message?.includes('already registered')) {
-        return { error: 'Este correo electrónico ya está registrado en el sistema.' };
-      }
-      return { error: `Error al crear las credenciales de acceso: ${authError?.message}` };
-    }
-
-    const newUserId = authData.user.id;
-
-    // ── PASO 3: Insertar perfil público (adminClient bypasa RLS — no hay sesión aún) ─
-    const { error: userError } = await adminClient.from('usuarios').insert({
-      id_usuario: newUserId,
-      email: emailAdmin,
-      nombre_completo: nombreAdmin,
-      rol: 'ADMIN',
-      id_institucion: idInstitucion,
-    });
-
-    if (userError) {
-      // Rollback del usuario en auth y de la institución (adminClient)
-      await adminClient.auth.admin.deleteUser(newUserId);
-      await adminClient
-        .from('instituciones')
-        .delete()
-        .eq('id_institucion', idInstitucion);
-      return { error: `Error al crear el perfil de usuario: ${userError.message}` };
-    }
-
-    // ── PASO 4: Autenticar la sesión del nuevo administrador ──────────────────
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: emailAdmin,
-      password: password,
-    });
-
-    if (loginError) {
-      // La cuenta fue creada, pero el login falló — informar al usuario
-      return {
-        error:
-          'La institución fue registrada correctamente, pero ocurrió un error al iniciar sesión automáticamente. Por favor, ingresa en /login manualmente.',
-      };
-    }
+    // ── Delegar a la capa de servicios ───────────────────────────────────────
+    await createInstitutionAndAdmin(nombreLegal, nit, dominio, nombreAdmin, emailAdmin, password);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
     return { error: message };
   }
 
-  // ── PASO 5: Redirigir al workspace de Admin ───────────────────────────────
-  // redirect() debe invocarse fuera del bloque try/catch ya que lanza internamente
+  // ── Redirigir al workspace de Admin ───────────────────────────────────────
   redirect('/dashboard/admin');
 }
 
-/**
- * Cambia la contraseña del usuario actualmente autenticado
- * y elimina la bandera 'must_change_password' de sus metadatos.
- */
 export async function changeUserPassword(
   prevState: any,
   formData: FormData
@@ -183,7 +76,6 @@ export async function changeUserPassword(
       return { error: 'Sesión no válida. Por favor, inicia sesión nuevamente.' };
     }
 
-    // 1. Actualizar contraseña del usuario en Supabase Auth
     const { error: updateError } = await supabase.auth.updateUser({
       password: password,
     });
@@ -192,27 +84,13 @@ export async function changeUserPassword(
       return { error: `Error al actualizar la contraseña: ${updateError.message}` };
     }
 
-    // 2. Modificar app_metadata para remover must_change_password usando adminClient
-    const adminClient = createAdminClient();
-    const currentMetadata = user.app_metadata || {};
-    
-    const { error: adminError } = await adminClient.auth.admin.updateUserById(user.id, {
-      app_metadata: {
-        ...currentMetadata,
-        must_change_password: false,
-      },
-    });
+    // ── Delegar actualización de metadatos administrativos ────────────────────
+    await removeMustChangePasswordFlag(user.id);
 
-    if (adminError) {
-      return {
-        error: `Contraseña cambiada, pero falló la actualización del perfil administrativo: ${adminError.message}`,
-      };
-    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
     return { error: message };
   }
 
-  // Redirigir al dashboard raíz, el cual derivará al rol correspondiente mediante el middleware
   redirect('/dashboard');
 }
