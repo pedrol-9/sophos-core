@@ -111,7 +111,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
           </div>
           <div className="overflow-hidden">
             <p className="text-sm font-semibold text-white/95 truncate">
-              {user?.email?.split('@')[0] ?? 'Administrador'}
+              {user?.user_metadata?.nombre_completo ?? 'Administrador'}
             </p>
             <p className="text-xs text-white/40 truncate">{user?.email ?? 'conectando...'}</p>
           </div>

@@ -151,3 +151,68 @@ export async function registerInstitution(
   // redirect() debe invocarse fuera del bloque try/catch ya que lanza internamente
   redirect('/dashboard/admin');
 }
+
+/**
+ * Cambia la contraseña del usuario actualmente autenticado
+ * y elimina la bandera 'must_change_password' de sus metadatos.
+ */
+export async function changeUserPassword(
+  prevState: any,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const password = (formData.get('password') as string)?.trim();
+  const confirmPassword = (formData.get('confirm_password') as string)?.trim();
+
+  if (!password || !confirmPassword) {
+    return { error: 'Ambas contraseñas son obligatorias.' };
+  }
+
+  if (password.length < 8) {
+    return { error: 'La contraseña debe tener al menos 8 caracteres.' };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: 'Las contraseñas ingresadas no coinciden.' };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: 'Sesión no válida. Por favor, inicia sesión nuevamente.' };
+    }
+
+    // 1. Actualizar contraseña del usuario en Supabase Auth
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password,
+    });
+
+    if (updateError) {
+      return { error: `Error al actualizar la contraseña: ${updateError.message}` };
+    }
+
+    // 2. Modificar app_metadata para remover must_change_password usando adminClient
+    const adminClient = createAdminClient();
+    const currentMetadata = user.app_metadata || {};
+    
+    const { error: adminError } = await adminClient.auth.admin.updateUserById(user.id, {
+      app_metadata: {
+        ...currentMetadata,
+        must_change_password: false,
+      },
+    });
+
+    if (adminError) {
+      return {
+        error: `Contraseña cambiada, pero falló la actualización del perfil administrativo: ${adminError.message}`,
+      };
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
+    return { error: message };
+  }
+
+  // Redirigir al dashboard raíz, el cual derivará al rol correspondiente mediante el middleware
+  redirect('/dashboard');
+}

@@ -1,6 +1,6 @@
 /**
- * @file src/utils/supabase/middleware.ts
- * @description Middleware de Supabase para refrescar la sesión del usuario en Next.js (App Router).
+ * @file src/utils/supabase/sessionGuard.ts
+ * @description Guardia de sesión y enrutador por roles de Supabase para Next.js.
  *
  * Implementa la lógica recomendada por @supabase/ssr para interceptar solicitudes,
  * renovar tokens expirados mediante cookies y manejar la redirección de rutas protegidas/públicas.
@@ -57,16 +57,63 @@ export async function updateSession(request: NextRequest) {
   );
 
   // 3. Obtener el usuario actual (refresca la sesión/token si es necesario).
-  // IMPORTANTE: Usar getUser() en lugar de getSession() por seguridad y validación real.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // ─── CONTROL DE INACTIVIDAD (30 MINUTOS) ───────────────────────────────────
+  const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+  const lastActiveCookie = request.cookies.get('sophos_last_active')?.value;
+  const now = Date.now();
+
+  if (user) {
+    if (lastActiveCookie && now - parseInt(lastActiveCookie, 10) > INACTIVITY_TIMEOUT_MS) {
+      // Sesión expirada por inactividad
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('message', 'session_expired');
+      
+      const redirectResponse = NextResponse.redirect(url);
+      // Limpiar la cookie de inactividad
+      redirectResponse.cookies.delete('sophos_last_active');
+      return redirectResponse;
+    } else {
+      // Actualizar la marca de tiempo de actividad
+      supabaseResponse.cookies.set('sophos_last_active', now.toString(), {
+        path: '/',
+        maxAge: 60 * 60 * 24, // 1 día (suficiente para evaluar inactividad)
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+      });
+    }
+  }
+
   const pathname = request.nextUrl.pathname;
+
+  // ─── CONTROL DE CAMBIO DE CONTRASEÑA OBLIGATORIO ─────────────────────────
+  const mustChangePassword = user?.app_metadata?.must_change_password === true;
+  const isChangePasswordRoute = pathname === '/change-password';
+
+  if (!user && isChangePasswordRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  if (user && mustChangePassword && !isChangePasswordRoute) {
+    const isNextAsset = pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname === '/favicon.ico';
+    if (!isNextAsset) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/change-password';
+      return NextResponse.redirect(url);
+    }
+  }
 
   // Extraer metadatos de rol del JWT (sin consulta adicional a DB)
   const rol = (user?.app_metadata?.rol as string | undefined)?.toUpperCase();
-  const targetWorkspace = rol ? (ROL_WORKSPACE[rol] ?? '/dashboard/admin') : null;
+  const targetWorkspace = rol ? (ROL_WORKSPACE[rol] ?? '/dashboard/admin') : '/dashboard/admin';
 
   // Clasificar la ruta actual
   const isProtectedRoute = pathname.startsWith('/dashboard');

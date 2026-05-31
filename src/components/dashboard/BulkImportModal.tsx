@@ -13,6 +13,7 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -70,7 +71,8 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+            disabled={isGenerating}
+            className="p-1 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -93,6 +95,8 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
         </div>
 
         <form action={async (formData) => {
+          if (processingRef.current) return;
+          
           if (droppedFile) {
             formData.set('file', droppedFile);
           } else if (!formData.get('file') || (formData.get('file') as File).size === 0) {
@@ -100,22 +104,30 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
             return;
           }
 
+          processingRef.current = true;
           setIsGenerating(true);
-          const { bulkImportUsers } = await import('@/app/actions/admin-actions');
-          const result = await bulkImportUsers(formData);
-          setIsGenerating(false);
-          
-          if (result.error) {
-            alert(`Error: ${result.error}`);
-          } else {
-            alert(`¡Importación finalizada!\nÉxitos: ${result.successCount}\nErrores: ${result.errorCount}`);
-            if (result.errors && result.errors.length > 0) {
-                console.error("Errores de importación:", result.errors);
+          try {
+            const { bulkImportUsers } = await import('@/app/actions/admin-actions');
+            const result = await bulkImportUsers(formData);
+            
+            if (result.error) {
+              alert(`Error: ${result.error}`);
+            } else {
+              alert(`¡Importación finalizada!\nÉxitos: ${result.successCount}\nErrores: ${result.errorCount}`);
+              if (result.errors && result.errors.length > 0) {
+                  console.error("Errores de importación:", result.errors);
+              }
+              if (result.successCount && result.successCount > 0) {
+                onSuccess?.();
+                onClose();
+              }
             }
-            if (result.successCount && result.successCount > 0) {
-              onSuccess?.();
-              onClose();
-            }
+          } catch (err) {
+            alert('Ocurrió un error inesperado al procesar la importación.');
+            console.error(err);
+          } finally {
+            setIsGenerating(false);
+            processingRef.current = false;
           }
         }} className="space-y-5 flex-1 flex flex-col justify-between relative z-0">
           
@@ -129,12 +141,13 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
                 type="file"
                 name="file"
                 accept=".csv,.txt"
+                disabled={isGenerating}
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     setDroppedFile(null); // Clear drop file if they use standard browser picker
                   }
                 }}
-                className={`block w-full text-sm text-white/50 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer ${droppedFile ? 'opacity-50' : ''}`}
+                className={`block w-full text-sm text-white/50 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${droppedFile ? 'opacity-50' : ''}`}
               />
               {droppedFile && (
                 <div className="absolute inset-0 flex items-center justify-between px-4 bg-[#0c1220]/90 backdrop-blur-md rounded-xl border border-emerald-500/30">

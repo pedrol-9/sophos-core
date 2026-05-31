@@ -22,64 +22,7 @@ interface Student {
   institution: string;
 }
 
-// ─── MOCK DATA ───────────────────────────────────────────────────────────────
-const INITIAL_STUDENTS: Student[] = [
-  {
-    id: '1',
-    name: 'Sofía Valentina Ortega',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    subject: 'Matemáticas Avanzadas',
-    grade: 4.8,
-    attendance: 98,
-    aiComment: 'Muestra un dominio excepcional en álgebra y trigonometría. Su participación es activa y propone soluciones creativas a problemas complejos. Se recomienda incentivarla con olimpiadas matemáticas.',
-    status: 'excellent',
-    institution: 'Colegio Metropolitano Central'
-  },
-  {
-    id: '2',
-    name: 'Mateo Alejandro Ríos',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    subject: 'Ciencias Naturales',
-    grade: 3.2,
-    attendance: 84,
-    aiComment: 'Comprensión básica de conceptos químicos, pero con bajo rendimiento en reportes de laboratorio. Se observa distracción frecuente. Recomiendo reforzar actividades prácticas y guías estructuradas.',
-    status: 'warning',
-    institution: 'Colegio Metropolitano Central'
-  },
-  {
-    id: '3',
-    name: 'Camila Isabella Duarte',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-    subject: 'Comprensión Lectora',
-    grade: 4.2,
-    attendance: 95,
-    aiComment: 'Excelente capacidad de síntesis y redacción. Identifica con facilidad ideas principales y subtextos. Para mantener el ritmo, se sugiere lecturas complementarias de nivel universitario.',
-    status: 'good',
-    institution: 'Colegio Metropolitano Central'
-  },
-  {
-    id: '4',
-    name: 'Santiago Andrés Castro',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    subject: 'Física Clásica',
-    grade: 2.7,
-    attendance: 72,
-    aiComment: 'Alerta crítica. El estudiante presenta dificultades severas con las leyes de Newton. La baja asistencia del 72% impacta directamente en su rendimiento. Requiere tutorías urgentes y comunicación con acudientes.',
-    status: 'critical',
-    institution: 'Colegio Metropolitano Central'
-  },
-  {
-    id: '5',
-    name: 'Valeria Sofía Mendoza',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    subject: 'Historia Universal',
-    grade: 4.5,
-    attendance: 100,
-    aiComment: 'Pensamiento crítico sobresaliente. Vincula eventos del pasado con contextos modernos de manera muy fluida. Asistencia perfecta de 100%. Continúa así.',
-    status: 'excellent',
-    institution: 'Sede Norte Académica'
-  }
-];
+// ─── MOCK DATA REMOVED (Fetched from Supabase) ─────────────────────────────────
 
 // ─── ICONS IMPORTED FROM @/components/icons ──────────────────────────────────
 
@@ -87,7 +30,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [search, setSearch] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -98,6 +41,45 @@ export default function DashboardPage() {
   // New Student Form State
   const [newName, setNewName] = useState('');
   const [newSubject, setNewSubject] = useState('Matemáticas Avanzadas');
+
+  useEffect(() => {
+    async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user?.app_metadata?.id_institucion) {
+        // Fetch real students from this institution
+        const { data: dbStudents, error } = await supabase
+          .from('usuarios')
+          .select('*, estudiantes_matriculados(cursos(nombre))')
+          .eq('id_institucion', user.app_metadata.id_institucion)
+          .eq('rol', 'ESTUDIANTE');
+
+        if (dbStudents && dbStudents.length > 0) {
+          const mappedStudents: Student[] = dbStudents.map((s: any) => {
+            // Extraer el nombre del curso si existe
+            const cursoNombre = s.estudiantes_matriculados?.[0]?.cursos?.nombre || 'Sin curso asignado';
+            
+            return {
+              id: s.id_usuario,
+              name: s.nombre_completo,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nombre_completo)}&background=1e293b&color=cbd5e1`,
+              subject: cursoNombre,
+              grade: 0.0,
+              attendance: 100,
+              aiComment: 'Aún no hay suficientes calificaciones para generar un análisis.',
+              status: 'good',
+              institution: 'Mi Institución'
+            };
+          });
+          setStudents(mappedStudents);
+        } else {
+          setStudents([]); // No hay estudiantes aún
+        }
+      }
+    }
+    loadData();
+  }, [supabase]);
   const [newGrade, setNewGrade] = useState(4.0);
   const [newAttendance, setNewAttendance] = useState(90);
 
@@ -218,7 +200,7 @@ export default function DashboardPage() {
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition-all shadow-md shadow-indigo-600/20 hover:-translate-y-0.5"
             >
-              <IconPlus /> Registrar Nota / Alumno
+              <IconPlus /> Cargar Usuarios (CSV)
             </button>
           </div>
         </div>
@@ -388,96 +370,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* ─── SLIDE-OVER MODAL: ADD STUDENT / GRADE ────────────────────────── */}
-        {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
-            <div className="w-full max-w-md h-full bg-[#0c1220] border-l border-white/10 p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-bold text-white">Registrar Calificación</h2>
-                  <button
-                    onClick={() => setShowAddForm(false)}
-                    className="p-1 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddStudent} className="space-y-5">
-                  <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">Nombre Completo Alumno</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej: Daniel Antonio Torres"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">Materia / Asignatura</label>
-                    <select
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
-                    >
-                      <option className="bg-[#0c1220]" value="Matemáticas Avanzadas">Matemáticas Avanzadas</option>
-                      <option className="bg-[#0c1220]" value="Ciencias Naturales">Ciencias Naturales</option>
-                      <option className="bg-[#0c1220]" value="Comprensión Lectora">Comprensión Lectora</option>
-                      <option className="bg-[#0c1220]" value="Física Clásica">Física Clásica</option>
-                      <option className="bg-[#0c1220]" value="Historia Universal">Historia Universal</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">Calificación (0.0 - 5.0)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="5"
-                        required
-                        value={newGrade}
-                        onChange={(e) => setNewGrade(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">Asistencia %</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        required
-                        value={newAttendance}
-                        onChange={(e) => setNewAttendance(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-white/5">
-                    <button
-                      type="submit"
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white transition-all shadow-lg shadow-indigo-600/20"
-                    >
-                      Registrar Nota <IconArrow />
-                    </button>
-                    <p className="text-[10px] text-white/30 text-center mt-3 leading-relaxed">
-                      Al presionar registrar, la nota se guardará de forma segura en la base de datos y la IA Académica iniciará automáticamente el análisis predictivo.
-                    </p>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ─── SLIDE-OVER MODAL: BULK IMPORT CSV ──────────────────────────── */}
         {showAddForm && (
