@@ -1,0 +1,50 @@
+nombre_completo,email,rol,curso,jornada,ano_lectivo,carga_academica,email_estudiante_vinculado,parentesco
+Alejandro Gómez,alejandro.gomez@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Mariana Jiménez,mariana.jimenez@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Daniela Bermúdez,daniela.bermudez@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Sebastián Marín,sebastian.marin@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Andrés Felipe Villa,andres.villa@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Paula Valentina Ríos,paula.rios@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Kevin Santiago Niño,kevin.nino@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Laura Sofía Beltrán,laura.beltran@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Carlos Mario Buendía,carlos.buendia@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Valery Sofía Restrepo,valery.restrepo@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Diego Fernando Lugo,diego.lugo@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Emmanuel David Ruiz,emmanuel.ruiz@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Samuel Estevan Pardo,samuel.pardo@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Manuela Alejandra Paz,manuela.paz@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Julián Andrés Quintero,julian.quintero@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Emilio José Cárdenas,emilio.cardenas@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+María José Córdoba,maria.cordoba@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Jerónimo León,jeronimo.leon@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Sara Nicole Montoya,sara.montoya@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Tomas Alejandro Gracia,tomas.gracia@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Martín Suárez,martin.suarez@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Luciana del Pilar Vega,luciana.vega@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Matías Franco,matias.franco@edu.co,ESTUDIANTE,10-A,Tarde,2026,,,
+Elena María Salcedo,elena.salcedo@edu.co,ESTUDIANTE,10-B,Tarde,2026,,,
+Simón Pedro Agudelo,simon.agudelo@edu.co,ESTUDIANTE,11-A,Tarde,2026,,,
+Carlos Julio Gutiérrez,carlos.gutierrez@edu.co,DOCENTE,,,,Filosofía-11-A;Filosofía-11-B,,
+Martha Lucía Fonseca,martha.fonseca@edu.co,DOCENTE,,,,Español-10-A;Español-10-B,,
+Gustavo Adolfo Petro,gustavo.petro@edu.co,DOCENTE,,,,Sociales-10-B;Sociales-11-A,,
+Diana Carolina Osorio,diana.osorio@edu.co,DOCENTE,,,,Artes-10-A;Artes-11-B,,
+Ricardo Antonio Merchán,ricardo.merchan@edu.co,DOCENTE,,,,Tecnología-10-B;Tecnología-11-B,,
+Orlando Gómez,orlando.gomez@parent.co,ACUDIENTE,,,,,alejandro.gomez@edu.co,Padre
+Clara Jiménez,clara.jimenez@parent.co,ACUDIENTE,,,,,mariana.jimenez@edu.co,Madre
+Roberto Bermúdez,roberto.bermudez@parent.co,ACUDIENTE,,,,,daniela.bermudez@edu.co,Padre
+Sonia Marín,sonia.marin@parent.co,ACUDIENTE,,,,,sebastian.marin@edu.co,Madre
+Jaime Villa,jaime.villa@parent.co,ACUDIENTE,,,,,andres.villa@edu.co,Padre
+Liliana Ríos,liliana.rios@parent.co,ACUDIENTE,,,,,paula.rios@edu.co,Madre
+Álvaro Niño,alvaro.nino@parent.co,ACUDIENTE,,,,,kevin.nino@edu.co,Padre
+Angela Beltrán,angela.beltran@parent.co,ACUDIENTE,,,,,laura.beltran@edu.co,Madre
+Pedro Buendía,pedro.buendia@parent.co,ACUDIENTE,,,,,carlos.buendia@edu.co,Padre
+Gloria Restrepo,gloria.restrepo@parent.co,ACUDIENTE,,,,,valery.restrepo@edu.co,Madre
+Wilson Lugo,wilson.lugo@parent.co,ACUDIENTE,,,,,diego.lugo@edu.co,Padre
+Nohora Ruiz,nohora.ruiz@parent.co,ACUDIENTE,,,,,emmanuel.ruiz@edu.co,Madre
+Mauricio Pardo,mauricio.pardo@parent.co,ACUDIENTE,,,,,samuel.pardo@edu.co,Padre
+Ligia Paz,ligia.paz@parent.co,ACUDIENTE,,,,,manuela.paz@edu.co,Madre
+Arturo Quintero,arturo.quintero@parent.co,ACUDIENTE,,,,,julian.quintero@edu.co,Padre
+Yolanda Cárdenas,yolanda.cardenas@parent.co,ACUDIENTE,,,,,emilio.cardenas@edu.co,Madre
+José Córdoba,jose.cordoba@parent.co,ACUDIENTE,,,,,maria.cordoba@edu.co,Padre
+Consuelo León,consuelo.leon@parent.co,ACUDIENTE,,,,,jeronimo.leon@edu.co,Madre
+Fabián Montoya,fabian.montoya@parent.co,ACUDIENTE,,,,,sara.montoya@edu.co,Padre

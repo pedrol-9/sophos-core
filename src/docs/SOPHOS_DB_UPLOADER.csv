@@ -1,0 +1,21 @@
+nombre_completo,email,rol,curso,jornada,ano_lectivo,carga_academica,email_estudiante_vinculado,parentesco
+Mateo Silva,mateo.silva@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Valentina Ortiz,valentina.ortiz@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Juan Diego Rojas,juan.rojas@edu.co,ESTUDIANTE,10-A,Mañana,2026,,,
+Camila Mendoza,camila.mendoza@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Santiago Torres,santiago.torres@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Sofía Castro,sofia.castro@edu.co,ESTUDIANTE,11-B,Mañana,2026,,,
+Lucas Rincón,lucas.rincon@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Isabella Duarte,isabella.duarte@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Nicolás Vargas,nicolas.vargas@edu.co,ESTUDIANTE,10-B,Mañana,2026,,,
+Gabriela Peña,gabriela.pena@edu.co,ESTUDIANTE,11-A,Mañana,2026,,,
+Mariana Fuentes,mariana.fuentes@edu.co,DOCENTE,,,,"Matemáticas-10-A; Física-11-B",,
+Jorge Alberto Ruiz,jorge.ruiz@edu.co,DOCENTE,,,,"Ciencias-10-B; Biología-11-A",,
+Adriana Morales,adriana.morales@edu.co,DOCENTE,,,,"Química-11-B; Química-11-A",,
+Fernando Herrera,fernando.herrera@edu.co,DOCENTE,,,,"Historia-10-A; Historia-10-B",,
+Claudia Marcela Reyes,claudia.reyes@edu.co,DOCENTE,,,,"Inglés-11-B; Inglés-10-A",,
+Rodrigo Silva,rodrigo.silva@parent.co,ACUDIENTE,,,,,mateo.silva@edu.co,Padre
+Beatriz Ortiz,beatriz.ortiz@parent.co,ACUDIENTE,,,,,valentina.ortiz@edu.co,Madre
+Patricia Mendoza,patricia.mendoza@parent.co,ACUDIENTE,,,,,camila.mendoza@edu.co,Madre
+Luis Torres,luis.torres@parent.co,ACUDIENTE,,,,,santiago.torres@edu.co,Padre
+Diana Castro,diana.castro@parent.co,ACUDIENTE,,,,,sofia.castro@edu.co,Madre

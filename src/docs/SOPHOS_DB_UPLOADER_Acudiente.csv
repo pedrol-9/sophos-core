@@ -1,0 +1,6 @@
+nombre_completo,email,rol,email_estudiante_vinculado,parentesco
+Roberto Mendoza,roberto.mendoza@example.com,ACUDIENTE,carlos.mendoza@example.com,Padre
+Elena Perez,elena.perez@example.com,ACUDIENTE,lucia.perez@example.com,Madre
+Ricardo Silva,ricardo.silva@example.com,ACUDIENTE,jorge.silva@example.com,Padre
+Patricia Gomez,patricia.gomez@example.com,ACUDIENTE,maria.gomez@example.com,Madre
+Fernando Rojas,fernando.rojas@example.com,ACUDIENTE,andres.rojas@example.com,Tutor

@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
-// Read .env.local manually
+// Leer .env.local manualmente (subiendo 2 niveles)
 const envPath = path.join(__dirname, '..', '..', '.env.local');
 const envContent = fs.readFileSync(envPath, 'utf8');
 const env = {};
@@ -21,20 +21,27 @@ const supabaseUrl = env['NEXT_PUBLIC_SUPABASE_URL'];
 const serviceRoleKey = env['SUPABASE_SERVICE_ROLE_KEY'];
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
 });
 
 async function main() {
-  console.log("Checking must_change_password flag for all auth users...");
-  const { data: { users }, error } = await supabase.auth.admin.listUsers();
-  if (error) {
-    console.error("Error listing users:", error.message);
-    return;
+  console.log("=== INSPECCIONANDO CONTENIDO DE TABLAS DE ASIGNACIONES ===");
+
+  const { data: asig } = await supabase.from('asignaciones_academicas').select('*');
+  console.log(`Total asignaciones: ${asig?.length || 0}`);
+  
+  if (asig && asig.length > 0) {
+    console.log("Muestras de asignaciones:");
+    asig.slice(0, 10).forEach(a => {
+      console.log(`  - Docente: ${a.id_docente} | Materia: ${a.id_materia} | Curso: ${a.id_curso}`);
+    });
   }
 
-  users.forEach(u => {
-    console.log(`User: ${u.email} | Rol: ${u.app_metadata?.rol} | must_change_password: ${u.app_metadata?.must_change_password}`);
-  });
+  const { data: matriculas } = await supabase.from('estudiantes_matriculados').select('*');
+  console.log(`Total matrículas: ${matriculas?.length || 0}`);
 }
 
 main();

@@ -28,6 +28,7 @@ export default function DashboardPage() {
     isGenerating,
     generatingProgress,
     handleGenerateAIComment,
+    refresh,
   } = useAdminDashboard();
 
   const handleLogout = async () => {
@@ -67,7 +68,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── STATS GRID ────────────────────────────────────────────────────── */}
-        <StatsGrid />
+        <StatsGrid totalStudents={students.length} />
 
         {/* ─── WORK AREA (FLEX LAYOUT) ────────────────────────────────────────── */}
         <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -97,6 +98,7 @@ export default function DashboardPage() {
             onClose={() => setShowAddForm(false)} 
             onSuccess={() => {
               console.log("Usuarios importados correctamente. Refrescar datos...");
+              refresh();
             }} 
           />
         )}

@@ -1,0 +1,11 @@
+nombre_completo,email,rol,curso,jornada,ano_lectivo
+Carlos Mendoza,carlos.mendoza@example.com,ESTUDIANTE,10-A,Mañana,2026
+Lucia Perez,lucia.perez@example.com,ESTUDIANTE,10-A,Mañana,2026
+Jorge Silva,jorge.silva@example.com,ESTUDIANTE,11-B,Tarde,2026
+Maria Gomez,maria.gomez@example.com,ESTUDIANTE,11-B,Tarde,2026
+Andres Rojas,andres.rojas@example.com,ESTUDIANTE,9-C,Mañana,2026
+Sofia Castro,sofia.castro@example.com,ESTUDIANTE,9-C,Mañana,2026
+Daniel Vargas,daniel.vargas@example.com,ESTUDIANTE,10-B,Tarde,2026
+Valentina Ruiz,valentina.ruiz@example.com,ESTUDIANTE,10-B,Tarde,2026
+Alejandro Ortiz,alejandro.ortiz@example.com,ESTUDIANTE,11-A,Mañana,2026
+Camila Diaz,camila.diaz@example.com,ESTUDIANTE,11-A,Mañana,2026

@@ -22,6 +22,7 @@ export function useAdminDashboard() {
   const [search, setSearch] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -58,7 +59,7 @@ export function useAdminDashboard() {
       }
     }
     loadData();
-  }, [supabase]);
+  }, [supabase, refreshTrigger]);
 
   const handleGenerateAIComment = (studentId: string) => {
     setIsGenerating(true);
@@ -106,6 +107,7 @@ export function useAdminDashboard() {
     isGenerating,
     generatingProgress,
     handleGenerateAIComment,
-    setStudents
+    setStudents,
+    refresh: () => setRefreshTrigger((prev) => prev + 1)
   };
 }

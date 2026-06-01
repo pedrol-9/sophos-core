@@ -1,0 +1,6 @@
+nombre_completo,email,rol,carga_academica
+Laura Torres,laura.torres@example.com,DOCENTE,"Matemáticas-10-A, Física-11-B"
+David Martinez,david.martinez@example.com,DOCENTE,"Historia-10-A, Historia-11-B"
+Ana Garcia,ana.garcia@example.com,DOCENTE,"Química-11-A, Biología-10-B"
+Luis Hernandez,luis.hernandez@example.com,DOCENTE,"Inglés-9-C, Inglés-10-A, Inglés-11-A"
+Carmen Rodriguez,carmen.rodriguez@example.com,DOCENTE,"Educación Física-9-C, Educación Física-10-B"

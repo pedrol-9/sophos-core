@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
-// Read .env.local manually
+// Leer .env.local manualmente (subiendo 2 niveles)
 const envPath = path.join(__dirname, '..', '..', '.env.local');
 const envContent = fs.readFileSync(envPath, 'utf8');
 const env = {};
@@ -21,19 +21,25 @@ const supabaseUrl = env['NEXT_PUBLIC_SUPABASE_URL'];
 const serviceRoleKey = env['SUPABASE_SERVICE_ROLE_KEY'];
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false }
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
 });
 
 async function main() {
-  console.log("Checking must_change_password flag for all auth users...");
-  const { data: { users }, error } = await supabase.auth.admin.listUsers();
+  console.log("=== LISTANDO TODAS LAS INSTITUCIONES EN LA BASE DE DATOS ===");
+  const { data, error } = await supabase.from('instituciones').select('*');
   if (error) {
-    console.error("Error listing users:", error.message);
+    console.error("Error al obtener instituciones:", error.message);
     return;
   }
-
-  users.forEach(u => {
-    console.log(`User: ${u.email} | Rol: ${u.app_metadata?.rol} | must_change_password: ${u.app_metadata?.must_change_password}`);
+  console.log(`Total instituciones encontradas: ${data.length}`);
+  data.forEach((inst, index) => {
+    console.log(`\n[${index + 1}] ID: ${inst.id_institucion}`);
+    console.log(`    Nombre Legal: ${inst.nombre_legal}`);
+    console.log(`    NIT:          ${inst.nit}`);
+    console.log(`    Creado en:    ${inst.creado_en || inst.created_at}`);
   });
 }
 
