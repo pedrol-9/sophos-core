@@ -13,6 +13,7 @@ import {
   type AcademicAssignment,
   type CourseStudent 
 } from '@/app/actions/teacher-actions';
+import { PlanillaDocente } from '@/components/dashboard/docente/PlanillaDocente';
 
 export default function DocenteDashboard() {
   const router = useRouter();
@@ -253,7 +254,7 @@ export default function DocenteDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-white/90 font-sans flex overflow-hidden relative">
+    <div className="h-screen bg-[#090d16] text-white/90 font-sans flex overflow-hidden relative">
       {/* Ambient Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full" />
@@ -261,10 +262,10 @@ export default function DocenteDashboard() {
       </div>
 
       {/* Docente Sidebar */}
-      <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md relative z-10">
-        <div>
+      <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md relative z-10 h-full">
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Logo */}
-          <div className="p-6 border-b border-white/10">
+          <div className="p-6 border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
@@ -278,7 +279,7 @@ export default function DocenteDashboard() {
           </div>
 
           {/* Navigation */}
-          <nav className="p-4 space-y-1">
+          <nav className="p-4 space-y-1 overflow-y-auto flex-1">
             <button
               onClick={() => {
                 setActiveTab('courses');
@@ -332,7 +333,7 @@ export default function DocenteDashboard() {
         </div>
 
         {/* Profile Card & Logout */}
-        <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b]">
+        <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-500/35 flex items-center justify-center text-teal-300 font-bold uppercase shrink-0">
               {user?.email?.charAt(0) ?? 'D'}
@@ -440,124 +441,10 @@ export default function DocenteDashboard() {
 
           {/* VIEW 2: Grading view (Assignment selected + Courses tab) */}
           {selectedAssignment && activeTab === 'courses' && (
-            <div className="space-y-6">
-              {/* Toolbar */}
-              <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 rounded-2xl p-4 flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <label htmlFor="period-selector" className="text-xs font-medium text-white/40 uppercase tracking-wide">
-                    Periodo Académico:
-                  </label>
-                  <select
-                    id="period-selector"
-                    value={gradingPeriod}
-                    onChange={(e) => handlePeriodChange(Number(e.target.value))}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60"
-                  >
-                    <option value={1} className="bg-[#0c1220]">Periodo 1 (25%)</option>
-                    <option value={2} className="bg-[#0c1220]">Periodo 2 (25%)</option>
-                    <option value={3} className="bg-[#0c1220]">Periodo 3 (25%)</option>
-                    <option value={4} className="bg-[#0c1220]">Periodo 4 (25%)</option>
-                  </select>
-                </div>
-                <div className="text-xs text-white/40">
-                  Total matriculados: <strong className="text-white">{students.length}</strong>
-                </div>
-              </div>
-
-              {/* Students grading list */}
-              {studentsLoading ? (
-                <p className="text-white/40 text-sm">Cargando listado de estudiantes...</p>
-              ) : (
-                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-white/40 text-[10px] font-bold uppercase tracking-wider bg-white/[0.01]">
-                          <th className="py-4 px-6">Estudiante</th>
-                          <th className="py-4 px-6 text-center">Nota Periodo Actual</th>
-                          <th className="py-4 px-6 text-center">Notas P1-P4</th>
-                          <th className="py-4 px-6 text-center">Promedio Acum.</th>
-                          <th className="py-4 px-6 text-center">Faltas Reportadas</th>
-                          <th className="py-4 px-6">Análisis Predictivo de IA</th>
-                          <th className="py-4 px-6 text-right">Acción</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-sm">
-                        {students.map((student) => {
-                          const currentPeriodGrade = student.grades.find(g => g.periodo === gradingPeriod);
-                          const formattedAbsences = student.absencesCount;
-
-                          return (
-                            <tr key={student.id_estudiante} className="hover:bg-white/[0.01] transition-colors group">
-                              <td className="py-4 px-6 font-semibold text-white/90">
-                                {student.nombre_completo}
-                                <span className="block text-[11px] text-white/40 font-normal mt-0.5">{student.email}</span>
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className={`text-base font-bold px-2.5 py-1 rounded-lg ${
-                                  currentPeriodGrade
-                                    ? currentPeriodGrade.nota >= 3.0 ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                    : 'bg-white/5 text-white/30'
-                                }`}>
-                                  {currentPeriodGrade ? currentPeriodGrade.nota.toFixed(1) : '-.-'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                <div className="flex gap-1.5 justify-center">
-                                  {[1, 2, 3, 4].map(p => {
-                                    const g = student.grades.find(gr => gr.periodo === p);
-                                    return (
-                                      <span 
-                                        key={p} 
-                                        title={`Periodo ${p}`}
-                                        className={`w-7 h-7 text-[10px] font-bold rounded-md flex items-center justify-center border ${
-                                          g 
-                                            ? g.nota >= 3.0 
-                                              ? 'bg-teal-500/5 text-teal-400 border-teal-500/20' 
-                                              : 'bg-red-500/5 text-red-400 border-red-500/25'
-                                            : 'bg-white/3 text-white/20 border-white/5'
-                                        }`}
-                                      >
-                                        {g ? g.nota.toFixed(1) : '-'}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                              <td className="py-4 px-6 text-center font-bold text-white/90">
-                                {getAverageGrade(student)}
-                              </td>
-                              <td className="py-4 px-6 text-center">
-                                <span className={`px-2 py-0.5 rounded text-xs ${
-                                  formattedAbsences > 0 
-                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/25' 
-                                    : 'text-white/40'
-                                }`}>
-                                  {formattedAbsences}
-                                </span>
-                              </td>
-                              <td className="py-4 px-6 max-w-xs">
-                                <p className="text-xs text-white/50 line-clamp-2 italic leading-relaxed">
-                                  {currentPeriodGrade?.comentario_ia || 'Sin análisis generado aún.'}
-                                </p>
-                              </td>
-                              <td className="py-4 px-6 text-right">
-                                <button
-                                  onClick={() => handleSelectStudentForGrading(student)}
-                                  className="px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-300 hover:bg-teal-500/20 text-xs font-semibold transition-all border border-teal-500/20"
-                                >
-                                  Calificar
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
+            <PlanillaDocente 
+              idAsignacion={selectedAssignment.id_asignacion} 
+              idCurso={selectedAssignment.id_curso} 
+            />
           )}
 
           {/* VIEW 3: Attendance view (Assignment selected + Attendance tab) */}

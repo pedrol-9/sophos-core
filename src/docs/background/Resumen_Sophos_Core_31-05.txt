@@ -1,0 +1,30 @@
+Resumen de Sophos Core (SaaS Académico Inteligente)
+
+1. Arquitectura y Seguridad:
+
+* Multi-tenant (SaaS): Aislamiento riguroso de datos por institución educativa.
+* Control de Acceso: Roles diferenciados (Admin, Docente, Estudiante, Acudiente) con fronteras de acceso protegidas por el servidor.
+* Políticas RLS Activas (Producción): Row Level Security habilitado en las 10 tablas del esquema público en Supabase. Aísla las consultas de la aplicación web de forma estricta según el tenant (`id_institucion`) del JWT de sesión para impedir fugas de información.
+* Control de Colisión Multi-tenant: Verificación en tiempo de importación para detectar correos registrados en otros colegios, lanzando un error limpio a nivel de fila para evitar cruces o violaciones de restricciones.
+* Contraseñas: Cambio obligatorio de contraseña al primer ingreso para cuentas creadas administrativamente (`must_change_password`).
+* Sesión: Cierre automático por inactividad física o de red tras 30 minutos.
+
+2. Flujos Académicos Actuales:
+
+* Carga Masiva Optimizada (Admin): Procesamiento de archivos CSV/TXT de alto rendimiento.
+  - Precarga (Pre-fetching) en lote de entidades en memoria, reduciendo llamadas a la base de datos de cientos a menos de 15 por importación completa.
+  - Creación concurrente controlada (chunks de 10) en Supabase Auth, incrementando la velocidad ~10 veces y resolviendo fallas de conexión (`ConnectTimeoutError`).
+  - Verificación inteligente de matrículas por estudiante-año que previene fallas de llave única (`unq_estudiante_ano`) y actualiza automáticamente los cursos si hay traslados.
+  - Rollback manual robusto que elimina usuarios de Auth en caso de fallas durante el registro relacional.
+  - Interfaz de usuario (BulkImportModal) premium que despliega un panel de resultados interactivo con éxitos, fallas y listados detallados por número de fila original sin alertas emergentes del navegador.
+* Evaluación (Docente): Registro y modificación de calificaciones en escala decimal de 0.0 a 5.0 (nota mínima de aprobación: 3.0) a lo largo de 4 periodos académicos.
+* Asistencia (Docente): Control diario donde solo se registran las inasistencias (Falta Justificada / Injustificada). El sistema asume por defecto la asistencia si no hay reporte.
+* Boletín (Estudiante): Interfaz para consultar calificaciones periodo a periodo, consolidados de inasistencias y alertas de rendimiento.
+
+3. Motor de IA Académica (Gemini):
+
+* Genera un análisis predictivo de rendimiento y alertas tempranas al guardar una nota. Considera: la calificación actual, la tendencia histórica de notas de periodos anteriores en esa materia, las inasistencias acumuladas en la asignatura y el comentario cualitativo del profesor.
+
+4. Utilidades de Desarrollo y Diagnóstico:
+
+* Consolidación de Scripts (db-util.js): Herramienta CLI unificada (`node scratch/debug/db-util.js`) que reemplaza múltiples scripts dispersos para realizar auditorías Auth/DB paginadas (`audit`), limpiezas completas de datos de prueba preservando administradores (`reset`), remoción de perfiles huérfanos (`orphans`) y listado rápido de tenants (`list`).

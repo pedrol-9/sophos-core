@@ -16,10 +16,10 @@ interface SidebarProps {
 
 export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProps) {
   return (
-    <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md">
-      <div>
+    <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md h-full">
+      <div className="flex flex-col flex-1 min-h-0">
         {/* Logo */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-white/10 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
@@ -33,7 +33,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="p-4 space-y-1 overflow-y-auto flex-1">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
@@ -104,7 +104,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
       </div>
 
       {/* Profile Card / Logout */}
-      <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b]">
+      <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/35 flex items-center justify-center text-indigo-300 font-bold uppercase">
             {user?.email?.charAt(0) ?? 'U'}

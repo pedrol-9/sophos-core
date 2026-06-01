@@ -1,0 +1,74 @@
+rol,nombre_completo,email,carga_academica,email_estudiante_vinculado,parentesco
+DOCENTE,Carlos Mendoza,carlos.mendoza@sophos.edu.co,Matematicas-10-A;Algebra-11-B,,
+DOCENTE,Martha Rodriguez,martha.rodriguez@sophos.edu.co,Espanol-10-A;Literatura-11-A,,
+DOCENTE,Jorge Eliecer,jorge.eliecer@sophos.edu.co,Fisica-10-B;Fisica-11-B,,
+DOCENTE,Amparo Grisales,amparo.grisales@sophos.edu.co,Ingles-10-A;Ingles-10-B,,
+DOCENTE,Alberto Linero,alberto.linero@sophos.edu.co,Etica-10-A;Religion-11-A,,
+DOCENTE,Diana Quintana,diana.quintana@sophos.edu.co,Quimica-10-B;Quimica-11-A,,
+DOCENTE,Hernando Parra,hernando.parra@sophos.edu.co,Sociales-10-A;Filosofia-11-B,,
+DOCENTE,Lucia Contreras,lucia.contreras@sophos.edu.co,Biologia-10-B;Ciencias-11-A,,
+DOCENTE,Gustavo Petro,gustavo.petro@sophos.edu.co,Economia-11-A;Politica-11-B,,
+DOCENTE,Alvaro Uribe,alvaro.uribe@sophos.edu.co,Educacion Fisica-10-A;Deportes-10-B,,
+ESTUDIANTE,Juan Andres Becerra,juan.becerra@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Maria Camila Gomez,maria.gomez@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Diego Fernando Luis,diego.luis@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Valentina Sofia Silva,valentina.silva@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Sebastian Torres,sebastian.torres@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Daniela Alejandro Ruiz,daniela.ruiz@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Nicolas Restrepo,nicolas.restrepo@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Paula Andrea Castro,paula.castro@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Mateo Gutierrez,mateo.gutierrez@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Alejandra Morales,alejandra.morales@sophos.edu.co,10-A-Manana,,
+ESTUDIANTE,Santiago Ortega,santiago.ortega@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Manuela Cardona,manuela.cardona@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Andres Felipe Lopez,andres.lopez@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Natalia Bermudez,natalia.bermudez@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Camilo Estevan Munoz,camilo.munoz@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Sofia Isabella Rojas,sofia.rojas@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Julian David Ramirez,julian.ramirez@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Laura Victoria Suarez,laura.suarez@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Cristian Camilo Perez,cristian.perez@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Gabriela Valencia,gabriela.valencia@sophos.edu.co,10-B-Tarde,,
+ESTUDIANTE,Kevin Alexis Delgado,kevin.delgado@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Mariana Alexandra Diaz,mariana.diaz@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Brayan Stiven Marin,brayan.marin@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Angie Tatiana Vargas,angie.vargas@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Duvan Felipe Sanchez,duvan.sanchez@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Luisa Fernanda Arias,luisa.arias@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Felipe Mendoza,felipe.mendoza@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Adriana Lucia Beltran,adriana.beltran@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Jhon Jairo Cordoba,jhon.cordoba@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Daniel Esteban Hurtado,daniel.hurtado@sophos.edu.co,11-A-Manana,,
+ESTUDIANTE,Carlos Mario Herrera,carlos.herrera@sophos.edu.co,11-B-Tarde,,
+ESTUDIANTE,Vanessa Alejandra Gil,vanessa.gil@sophos.edu.co,11-B-Tarde,,
+ESTUDIANTE,Mauricio Ospina,mauricio.ospina@sophos.edu.co,11-B-Tarde,,
+ESTUDIANTE,Tatiana Lizeth Palacios,tatiana.palacios@sophos.edu.co,11-B-Tarde,,
+ESTUDIANTE,Jefferson David Sossa,jefferson.sossa@sophos.edu.co,11-B-Tarde,,
+ACUDIENTE,Pedro Becerra,pedro.becerra@gmail.com,,juan.becerra@sophos.edu.co,PADRE
+ACUDIENTE,Clara Gomez,clara.gomez@gmail.com,,maria.gomez@sophos.edu.co,MADRE
+ACUDIENTE,Luis Fernando Luis,luis.luis@gmail.com,,diego.luis@sophos.edu.co,PADRE
+ACUDIENTE,Martha Silva,martha.silva@gmail.com,,valentina.silva@sophos.edu.co,MADRE
+ACUDIENTE,Jorge Torres,jorge.torres@gmail.com,,sebastian.torres@sophos.edu.co,PADRE
+ACUDIENTE,Elena Ruiz,elena.ruiz@gmail.com,,daniela.ruiz@sophos.edu.co,MADRE
+ACUDIENTE,Ramiro Restrepo,ramiro.restrepo@gmail.com,,nicolas.restrepo@sophos.edu.co,PADRE
+ACUDIENTE,Patricia Castro,patricia.castro@gmail.com,,paula.castro@sophos.edu.co,MADRE
+ACUDIENTE,Gonzalo Gutierrez,gonzalo.gutierrez@gmail.com,,mateo.gutierrez@sophos.edu.co,PADRE
+ACUDIENTE,Ines Morales,ines.morales@gmail.com,,alejandra.morales@sophos.edu.co,MADRE
+ACUDIENTE,Rodrigo Ortega,rodrigo.ortega@gmail.com,,santiago.ortega@sophos.edu.co,PADRE
+ACUDIENTE,Beatriz Cardona,beatriz.cardona@gmail.com,,manuela.cardona@sophos.edu.co,MADRE
+ACUDIENTE,Alvaro Lopez,alvaro.lopez@gmail.com,,andres.lopez@sophos.edu.co,PADRE
+ACUDIENTE,Constanza Bermudez,constanza.bermudez@gmail.com,,natalia.bermudez@sophos.edu.co,MADRE
+ACUDIENTE,Jaime Munoz,jaime.munoz@gmail.com,,camilo.munoz@sophos.edu.co,PADRE
+ACUDIENTE,Sandra Rojas,sandra.rojas@gmail.com,,sofia.rojas@sophos.edu.co,MADRE
+ACUDIENTE,William Ramirez,william.ramirez@gmail.com,,julian.ramirez@sophos.edu.co,PADRE
+ACUDIENTE,Liliana Suarez,liliana.suarez@gmail.com,,laura.suarez@sophos.edu.co,MADRE
+ACUDIENTE,Hector Perez,hector.perez@gmail.com,,cristian.perez@sophos.edu.co,PADRE
+ACUDIENTE,Gloria Valencia,gloria.valencia@gmail.com,,gabriela.valencia@sophos.edu.co,MADRE
+ACUDIENTE,Arturo Delgado,arturo.delgado@gmail.com,,kevin.delgado@sophos.edu.co,PADRE
+ACUDIENTE,Rosa Diaz,rosa.diaz@gmail.com,,mariana.diaz@sophos.edu.co,MADRE
+ACUDIENTE,Fabio Marin,fabio.marin@gmail.com,,brayan.marin@sophos.edu.co,PADRE
+ACUDIENTE,Janeth Vargas,janeth.vargas@gmail.com,,angie.vargas@sophos.edu.co,MADRE
+ACUDIENTE,Wilson Sanchez,wilson.sanchez@gmail.com,,duvan.sanchez@sophos.edu.co,PADRE
+ACUDIENTE,Claudia Arias,claudia.arias@gmail.com,,luisa.arias@sophos.edu.co,MADRE
+ACUDIENTE,Francisco Mendoza,francisco.mendoza@gmail.com,,felipe.mendoza@sophos.edu.co,PADRE
+ACUDIENTE,Teresa Beltran,teresa.beltran@gmail.com,,adriana.beltran@sophos.edu.co,MADRE

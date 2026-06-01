@@ -10,7 +10,7 @@ interface StudentDetailProps {
 
 export function StudentDetail({ selectedStudent, isGenerating, generatingProgress, onGenerateAIComment }: StudentDetailProps) {
   return (
-    <div className="w-full lg:w-96 bg-[#0c1220] border border-white/10 rounded-2xl p-6 backdrop-blur-sm shrink-0 min-h-[450px] relative overflow-hidden">
+    <div className="w-full lg:w-96 lg:sticky lg:top-8 bg-[#0c1220] border border-white/10 rounded-2xl p-6 backdrop-blur-sm shrink-0 min-h-[450px] relative overflow-hidden">
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
       {selectedStudent ? (

@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -124,35 +124,44 @@ export type Database = {
       }
       calificaciones: {
         Row: {
+          actividad: string
           comentario_docente: string | null
           comentario_ia: string | null
+          dimension: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro: string | null
           id_asignacion: string
           id_calificacion: string
           id_institucion: string
           id_matricula: string
+          id_periodo: string | null
           nota: number
           periodo: number
         }
         Insert: {
+          actividad?: string
           comentario_docente?: string | null
           comentario_ia?: string | null
+          dimension?: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro?: string | null
           id_asignacion: string
           id_calificacion?: string
           id_institucion: string
           id_matricula: string
+          id_periodo?: string | null
           nota: number
           periodo: number
         }
         Update: {
+          actividad?: string
           comentario_docente?: string | null
           comentario_ia?: string | null
+          dimension?: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro?: string | null
           id_asignacion?: string
           id_calificacion?: string
           id_institucion?: string
           id_matricula?: string
+          id_periodo?: string | null
           nota?: number
           periodo?: number
         }
@@ -178,6 +187,41 @@ export type Database = {
             referencedRelation: "estudiantes_matriculados"
             referencedColumns: ["id_matricula"]
           },
+        ]
+      }
+      configuracion_ponderaciones: {
+        Row: {
+          fecha_creacion: string | null
+          id_institucion: string
+          id_ponderacion: string
+          peso_hacer: number
+          peso_saber: number
+          peso_ser: number
+        }
+        Insert: {
+          fecha_creacion?: string | null
+          id_institucion: string
+          id_ponderacion?: string
+          peso_hacer?: number
+          peso_saber?: number
+          peso_ser?: number
+        }
+        Update: {
+          fecha_creacion?: string | null
+          id_institucion?: string
+          id_ponderacion?: string
+          peso_hacer?: number
+          peso_saber?: number
+          peso_ser?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracion_ponderaciones_id_institucion_fkey"
+            columns: ["id_institucion"]
+            isOneToOne: true
+            referencedRelation: "instituciones"
+            referencedColumns: ["id_institucion"]
+          }
         ]
       }
       cursos: {
@@ -253,6 +297,80 @@ export type Database = {
             referencedRelation: "instituciones"
             referencedColumns: ["id_institucion"]
           },
+        ]
+      }
+      escala_valoracion: {
+        Row: {
+          fecha_creacion: string | null
+          id_escala: string
+          id_institucion: string
+          nombre_desempeno: Database["public"]["Enums"]["tipo_desempeno_escala"]
+          nota_maxima: number
+          nota_minima: number
+        }
+        Insert: {
+          fecha_creacion?: string | null
+          id_escala?: string
+          id_institucion: string
+          nombre_desempeno: Database["public"]["Enums"]["tipo_desempeno_escala"]
+          nota_maxima: number
+          nota_minima: number
+        }
+        Update: {
+          fecha_creacion?: string | null
+          id_escala?: string
+          id_institucion?: string
+          nombre_desempeno?: Database["public"]["Enums"]["tipo_desempeno_escala"]
+          nota_maxima?: number
+          nota_minima?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escala_valoracion_id_institucion_fkey"
+            columns: ["id_institucion"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id_institucion"]
+          }
+        ]
+      }
+      evidencias_logros: {
+        Row: {
+          descripcion: string
+          fecha_creacion: string | null
+          id_asignacion: string
+          id_logro: string
+          id_periodo: string
+        }
+        Insert: {
+          descripcion: string
+          fecha_creacion?: string | null
+          id_asignacion: string
+          id_logro?: string
+          id_periodo: string
+        }
+        Update: {
+          descripcion?: string
+          fecha_creacion?: string | null
+          id_asignacion?: string
+          id_logro?: string
+          id_periodo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidencias_logros_id_asignacion_fkey"
+            columns: ["id_asignacion"]
+            isOneToOne: false
+            referencedRelation: "asignaciones_academicas"
+            referencedColumns: ["id_asignacion"]
+          },
+          {
+            foreignKeyName: "evidencias_logros_id_periodo_fkey"
+            columns: ["id_periodo"]
+            isOneToOne: false
+            referencedRelation: "periodos_academicos"
+            referencedColumns: ["id_periodo"]
+          }
         ]
       }
       instituciones: {
@@ -458,6 +576,44 @@ export type Database = {
           },
         ]
       }
+      periodos_academicos: {
+        Row: {
+          activo: boolean
+          fecha_creacion: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id_institucion: string
+          id_periodo: string
+          numero_periodo: number
+        }
+        Insert: {
+          activo?: boolean
+          fecha_creacion?: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id_institucion: string
+          id_periodo?: string
+          numero_periodo: number
+        }
+        Update: {
+          activo?: boolean
+          fecha_creacion?: string | null
+          fecha_fin?: string
+          fecha_inicio?: string
+          id_institucion?: string
+          id_periodo?: string
+          numero_periodo?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "periodos_academicos_id_institucion_fkey"
+            columns: ["id_institucion"]
+            isOneToOne: false
+            referencedRelation: "instituciones"
+            referencedColumns: ["id_institucion"]
+          }
+        ]
+      }
       planes_suscripcion: {
         Row: {
           id_suscripcion: number
@@ -522,6 +678,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      tipo_desempeno_escala: "SUPERIOR" | "ALTO" | "BASICO" | "BAJO"
+      tipo_dimension_nota: "SABER" | "HACER" | "SER"
       tipo_estado_asistencia:
         | "PRESENTE"
         | "FALTA_JUSTIFICADA"
