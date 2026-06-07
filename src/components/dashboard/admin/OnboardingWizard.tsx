@@ -345,20 +345,20 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
+                  onClick={() => setShowConfirmSkip(false)}
+                  className="flex-1 py-2 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setShowConfirmSkip(false);
                     if (onDismiss) onDismiss();
                   }}
-                  className="flex-1 py-2 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
-                >
-                  Salir
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmSkip(false)}
                   className="flex-1 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
                 >
-                  Continuar
+                  Aceptar
                 </button>
               </div>
             </div>
