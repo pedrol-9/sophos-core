@@ -9,6 +9,6 @@ Este documento es un registro de tareas, optimizaciones y configuraciones de seg
 
 ## 🛠️ Mejoras Futuras
 
-- [ ] **Dashboard Admin:** Implementar el frontend (componente visual) para la carga masiva de usuarios CSV, conectándolo con la Server Action `bulkImportUsers`.
+- [x] **Dashboard Admin:** Implementar el frontend (componente visual) para la carga masiva de usuarios CSV, conectándolo con la Server Action `bulkImportUsers`.
 - [ ] **Gestión de Suscripciones:** Crear una tabla de planes para reemplazar el estado estático `'PRUEBA'` en `auth-actions.ts`, definiendo límites (ej. max alumnos, días de prueba).
 - [ ] **Super Admin:** Crear un rol o vista especial (`SUPER_ADMIN`) para los administradores del SaaS (Sophos) para gestionar y ver el estado de todos los colegios sin estar limitados por el `id_institucion`.

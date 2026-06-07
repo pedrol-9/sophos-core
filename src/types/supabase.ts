@@ -478,6 +478,9 @@ export type Database = {
       observador_digital: {
         Row: {
           fecha_registro: string | null
+          fecha_firma: string | null
+          firmado: boolean
+          firmado_por: string | null
           id_docente: string
           id_estudiante: string
           id_institucion: string
@@ -488,6 +491,9 @@ export type Database = {
         }
         Insert: {
           fecha_registro?: string | null
+          fecha_firma?: string | null
+          firmado?: boolean
+          firmado_por?: string | null
           id_docente: string
           id_estudiante: string
           id_institucion: string
@@ -498,6 +504,9 @@ export type Database = {
         }
         Update: {
           fecha_registro?: string | null
+          fecha_firma?: string | null
+          firmado?: boolean
+          firmado_por?: string | null
           id_docente?: string
           id_estudiante?: string
           id_institucion?: string
@@ -527,6 +536,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "instituciones"
             referencedColumns: ["id_institucion"]
+          },
+          {
+            foreignKeyName: "observador_digital_firmado_por_fkey"
+            columns: ["firmado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id_usuario"]
           },
         ]
       }

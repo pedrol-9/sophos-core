@@ -14,6 +14,11 @@ import {
   type CourseStudent 
 } from '@/app/actions/teacher-actions';
 import { PlanillaDocente } from '@/components/dashboard/docente/PlanillaDocente';
+import { 
+  createObservacion, 
+  getStudentObservations, 
+  type ObservadorRecord 
+} from '@/app/actions/observador-actions';
 
 export default function DocenteDashboard() {
   const router = useRouter();
@@ -21,7 +26,7 @@ export default function DocenteDashboard() {
   const [user, setUser] = useState<User | null>(null);
   
   // Tabs & Views
-  const [activeTab, setActiveTab] = useState<'courses' | 'attendance_tab'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'attendance_tab' | 'observador_tab'>('courses');
   const [assignments, setAssignments] = useState<AcademicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +51,13 @@ export default function DocenteDashboard() {
   // Track absences locally: studentId -> 'PRESENTE' | 'FALTA_JUSTIFICADA' | 'FALTA_INJUSTIFICADA'
   const [localAbsences, setLocalAbsences] = useState<Record<string, 'PRESENTE' | 'FALTA_JUSTIFICADA' | 'FALTA_INJUSTIFICADA'>>({});
   const [savingAttendance, setSavingAttendance] = useState(false);
+
+  // Observador Digital state
+  const [observations, setObservations] = useState<ObservadorRecord[]>([]);
+  const [loadingObs, setLoadingObs] = useState(false);
+  const [newObsType, setNewObsType] = useState<'PEDAGOGICA' | 'DISCIPLINARIA' | 'LOGRO_DESTACADO'>('PEDAGOGICA');
+  const [newObsText, setNewObsText] = useState('');
+  const [savingObs, setSavingObs] = useState(false);
 
   // Load teacher profile & assignments
   useEffect(() => {
@@ -226,6 +238,45 @@ export default function DocenteDashboard() {
     setSavingAttendance(false);
   };
 
+  const handleSelectStudentForObservador = async (student: CourseStudent) => {
+    setSelectedStudent(student);
+    setLoadingObs(true);
+    const res = await getStudentObservations(student.id_estudiante);
+    if (res.error) {
+      alert(`Error al cargar observador: ${res.error}`);
+    } else if (res.data) {
+      setObservations(res.data);
+    }
+    setLoadingObs(false);
+    // Reset form
+    setNewObsText('');
+    setNewObsType('PEDAGOGICA');
+  };
+
+  const handleSaveObservacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent || !newObsText.trim()) return;
+
+    setSavingObs(true);
+    const res = await createObservacion(
+      selectedStudent.id_estudiante,
+      newObsType,
+      newObsText
+    );
+
+    if (res.error) {
+      alert(`Error al registrar novedad: ${res.error}`);
+    } else {
+      // Re-load observations for list
+      const updated = await getStudentObservations(selectedStudent.id_estudiante);
+      if (updated.data) {
+        setObservations(updated.data);
+      }
+      setNewObsText('');
+    }
+    setSavingObs(false);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
@@ -326,6 +377,21 @@ export default function DocenteDashboard() {
                   }`}
                 >
                   <IconChecklist className="w-3.5 h-3.5" /> Control de Faltas
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('observador_tab');
+                    setSelectedStudent(null);
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                    activeTab === 'observador_tab'
+                      ? 'bg-teal-600/10 text-teal-300'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg> Observador Digital
                 </button>
               </div>
             )}
@@ -548,6 +614,58 @@ export default function DocenteDashboard() {
               )}
             </div>
           )}
+
+          {/* VIEW 4: Observador Digital view (Assignment selected + Observador tab) */}
+          {selectedAssignment && activeTab === 'observador_tab' && (
+            <div className="space-y-6">
+              {/* Toolbar */}
+              <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 rounded-2xl p-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white">Observador Digital de Convivencia</h3>
+                  <p className="text-xs text-white/50 mt-0.5">Administra la hoja de vida, observaciones y reconocimientos de los estudiantes.</p>
+                </div>
+              </div>
+
+              {/* Students list */}
+              {studentsLoading ? (
+                <p className="text-white/40 text-sm">Cargando listado de estudiantes...</p>
+              ) : (
+                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 text-white/40 text-[10px] font-bold uppercase tracking-wider bg-white/[0.01]">
+                          <th className="py-4 px-6">Estudiante</th>
+                          <th className="py-4 px-6">Email</th>
+                          <th className="py-4 px-6 text-center">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-sm">
+                        {students.map((student) => (
+                          <tr key={student.id_estudiante} className="hover:bg-white/[0.01] transition-colors">
+                            <td className="py-4 px-6 font-semibold text-white/90">
+                              {student.nombre_completo}
+                            </td>
+                            <td className="py-4 px-6 text-white/60">
+                              {student.email}
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <button
+                                onClick={() => handleSelectStudentForObservador(student)}
+                                className="px-4 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600/20 text-teal-400 border border-teal-500/20 hover:border-teal-500/40 text-xs font-semibold transition-all"
+                              >
+                                Ver / Registrar Novedad
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ─── SLIDE-OVER PANEL: EDIT GRADE & SHOW AI REMARK ───────────────── */}
@@ -663,6 +781,137 @@ export default function DocenteDashboard() {
                 El análisis predictivo de IA considera el historial completo de calificaciones y las faltas reportadas para sugerir alertas tempranas de bajo rendimiento.
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* ─── SLIDE-OVER PANEL: OBSERVADOR DIGITAL ─────────────────────────── */}
+        {selectedStudent && selectedAssignment && activeTab === 'observador_tab' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
+            <div className="w-full max-w-lg h-full bg-[#0c1220] border-l border-white/10 p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
+              
+              <div className="space-y-6 flex-1 flex flex-col min-h-0">
+                {/* Panel Header */}
+                <div className="flex justify-between items-center pb-4 border-b border-white/5 shrink-0">
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Observador Digital</h2>
+                    <p className="text-xs text-white/50 mt-0.5">{selectedStudent.nombre_completo}</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedStudent(null)}
+                    className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Form to Create New Observation */}
+                <form onSubmit={handleSaveObservacion} className="space-y-4 shrink-0 bg-white/[0.01] border border-white/5 rounded-2xl p-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400">Registrar Nueva Novedad</h3>
+                  
+                  {/* Tipo de Nota */}
+                  <div>
+                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                      Tipo de Anotación
+                    </label>
+                    <select
+                      value={newObsType}
+                      onChange={(e) => setNewObsType(e.target.value as any)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-500/60"
+                    >
+                      <option value="PEDAGOGICA" className="bg-[#0c1220]">Pedagógica (Seguimiento Académico/Convivencia)</option>
+                      <option value="DISCIPLINARIA" className="bg-[#0c1220]">Disciplinaria (Llamado de atención / Falta)</option>
+                      <option value="LOGRO_DESTACADO" className="bg-[#0c1220]">Reconocimiento / Logro Destacado</option>
+                    </select>
+                  </div>
+
+                  {/* Observacion Informal */}
+                  <div>
+                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                      Detalle de la Observación (Nota en bruto)
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      placeholder="Ej: El alumno interrumpió la clase varias veces hablando con sus compañeros. Se le llamó la atención."
+                      value={newObsText}
+                      onChange={(e) => setNewObsText(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-xs placeholder-white/20 focus:outline-none focus:border-teal-500/60 focus:bg-white/8 transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Submit button */}
+                  <button
+                    type="submit"
+                    disabled={savingObs || !newObsText.trim()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-emerald-500 text-xs font-semibold text-white transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50"
+                  >
+                    {savingObs ? 'Procesando con IA Gemini...' : 'Registrar y Formalizar con IA'}
+                  </button>
+                </form>
+
+                {/* History of Observations */}
+                <div className="flex-1 flex flex-col min-h-0 pt-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3 shrink-0">Historial del Estudiante</h3>
+                  
+                  {loadingObs ? (
+                    <p className="text-white/40 text-xs text-center py-8">Cargando bitácora...</p>
+                  ) : observations.length === 0 ? (
+                    <p className="text-white/30 text-xs italic text-center py-8">Sin anotaciones en este periodo.</p>
+                  ) : (
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                      {observations.map((obs) => (
+                        <div key={obs.id_observador} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs">
+                          <div className="flex justify-between items-start flex-wrap gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                              obs.tipo_nota === 'DISCIPLINARIA' 
+                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                                : obs.tipo_nota === 'LOGRO_DESTACADO' 
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                            }`}>
+                              {obs.tipo_nota === 'DISCIPLINARIA' ? 'Disciplinaria' :
+                               obs.tipo_nota === 'LOGRO_DESTACADO' ? 'Logro' : 'Pedagógica'}
+                            </span>
+                            
+                            {/* Sign status */}
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                              obs.firmado 
+                                ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
+                                : 'bg-amber-600/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {obs.firmado ? `Firmado por ${obs.firmadorNombre || 'Acudiente'}` : 'Pendiente de firma'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-[11px] leading-relaxed">
+                            <div>
+                              <span className="block text-[8px] font-bold uppercase tracking-wider text-white/30">Nota original:</span>
+                              <p className="text-white/60 italic">"{obs.observacion_informal}"</p>
+                            </div>
+                            {obs.observacion_formal_ia && (
+                              <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg text-indigo-200/90">
+                                <span className="block text-[8px] font-bold uppercase tracking-wider text-indigo-400">Transcripción IA:</span>
+                                <p>"{obs.observacion_formal_ia}"</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="text-[9px] text-white/30 text-right">
+                            {new Date(obs.fecha_registro || '').toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

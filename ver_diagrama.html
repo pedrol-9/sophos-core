@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualizador del Diagrama de Base de Datos - Sophos Core</title>
+  
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Mermaid.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  
+  <style>
+    :root {
+      /* Palette: Dark Mode */
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-secondary: #06b6d4;
+      --btn-secondary: rgba(255, 255, 255, 0.1);
+      --btn-secondary-hover: rgba(255, 255, 255, 0.15);
+      --mermaid-bg: #1e293b;
+    }
+
+    body.light-theme {
+      /* Palette: Light Mode */
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --border-card: rgba(15, 23, 42, 0.08);
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --accent-secondary: #0891b2;
+      --btn-secondary: rgba(15, 23, 42, 0.06);
+      --btn-secondary-hover: rgba(15, 23, 42, 0.1);
+      --mermaid-bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      max-width: 800px;
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #818cf8, #38bdf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.025em;
+    }
+    
+    body.light-theme h1 {
+      background: linear-gradient(to right, #4f46e5, #0891b2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-sub);
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+
+    /* Controls container */
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--btn-secondary);
+      color: var(--text-main);
+      border: 1px solid var(--border-card);
+    }
+
+    .btn-secondary:hover {
+      background: var(--btn-secondary-hover);
+    }
+
+    .btn-accent-sec {
+      background: var(--accent-secondary);
+      color: #ffffff;
+    }
+    
+    .btn-accent-sec:hover {
+      opacity: 0.9;
+      box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Diagram Card */
+    .diagram-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 1300px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      justify-content: center;
+      overflow: auto;
+      margin-bottom: 2rem;
+      transition: background 0.4s ease, border 0.4s ease;
+    }
+
+    /* Mermaid customization */
+    .mermaid {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      background: transparent;
+      padding: 1rem;
+      border-radius: 16px;
+    }
+
+    /* SVG styling overrides to make it look fantastic */
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+      background: transparent !important;
+    }
+
+    footer {
+      margin-top: auto;
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .diagram-card, header, .controls {
+      animation: fadeIn 0.6s ease forwards;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Diagrama de Base de Datos</h1>
+    <p class="subtitle">Visualiza de forma clara el modelo Entidad-Relación de tu base de datos Sophos Core. Cambia el tema para exportar el fondo a tu gusto (claro para documentos, oscuro para pantallas).</p>
+  </header>
+
+  <div class="controls">
+    <button class="btn-secondary" onclick="toggleTheme()">
+      <span id="theme-icon">☀️</span> <span id="theme-text">Modo Claro</span>
+    </button>
+    <button class="btn-primary" onclick="downloadPNG()">
+      📥 Descargar Imagen PNG
+    </button>
+    <button class="btn-accent-sec" onclick="downloadSVG()">
+      📐 Descargar Formato SVG (Vectorial)
+    </button>
+  </div>
+
+  <div class="diagram-card" id="card-container">
+    <div class="mermaid" id="diagram-content">
+erDiagram
+    planes_suscripcion ||--o{ instituciones : "id_suscripcion"
+    instituciones ||--o{ usuarios : "id_institucion"
+    instituciones ||--o{ cursos : "id_institucion"
+    instituciones ||--o{ materias : "id_institucion"
+    instituciones ||--o{ periodos_academicos : "id_institucion"
+    instituciones |o--|| configuracion_ponderaciones : "id_institucion"
+    instituciones ||--o{ escala_valoracion : "id_institucion"
+    instituciones ||--o{ estudiantes_matriculados : "id_institucion"
+    instituciones ||--o{ asignaciones_academicas : "id_institucion"
+    instituciones ||--o{ calificaciones : "id_institucion"
+    instituciones ||--o{ asistencias : "id_institucion"
+    instituciones ||--o{ observador_digital : "id_institucion"
+    instituciones ||--o{ perfiles_acudientes_estudiantes : "id_institucion"
+    instituciones ||--o{ logs_ia_tokens : "id_institucion"
+
+    usuarios ||--o{ estudiantes_matriculados : "id_estudiante"
+    usuarios ||--o{ asignaciones_academicas : "id_docente"
+    usuarios ||--o{ observador_digital : "id_estudiante"
+    usuarios ||--o{ observador_digital : "id_docente"
+    usuarios ||--o{ perfiles_acudientes_estudiantes : "id_acudiente"
+    usuarios ||--o{ perfiles_acudientes_estudiantes : "id_estudiante"
+
+    cursos ||--o{ estudiantes_matriculados : "id_curso"
+    cursos ||--o{ asignaciones_academicas : "id_curso"
+    materias ||--o{ asignaciones_academicas : "id_materia"
+
+    estudiantes_matriculados ||--o{ calificaciones : "id_matricula"
+    estudiantes_matriculados ||--o{ asistencias : "id_matricula"
+
+    asignaciones_academicas ||--o{ evidencias_logros : "id_asignacion"
+    asignaciones_academicas ||--o{ calificaciones : "id_asignacion"
+    asignaciones_academicas ||--o{ asistencias : "id_asignacion"
+
+    periodos_academicos ||--o{ evidencias_logros : "id_periodo"
+    periodos_academicos ||--o{ calificaciones : "id_periodo"
+    </div>
+  </div>
+
+  <footer>
+    Desarrollado para la formación de ADSO - SENA &copy; 2026.
+  </footer>
+
+  <script>
+    // Initialize Mermaid with a modern theme
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark', // We will update theme variables manually or through reload if needed
+      themeVariables: {
+        background: 'transparent',
+        primaryColor: '#1e293b',
+        primaryTextColor: '#f8fafc',
+        lineColor: '#6366f1',
+        secondaryColor: '#0f172a',
+        tertiaryColor: '#1e1b4b'
+      },
+      securityLevel: 'loose'
+    });
+
+    // Theme switcher
+    function toggleTheme() {
+      const body = document.body;
+      const themeIcon = document.getElementById('theme-icon');
+      const themeText = document.getElementById('theme-text');
+      
+      body.classList.toggle('light-theme');
+      
+      if (body.classList.contains('light-theme')) {
+        themeIcon.textContent = '🌙';
+        themeText.textContent = 'Modo Oscuro';
+        // We can reload or re-render with a light theme styling
+        updateSVGStyles('light');
+      } else {
+        themeIcon.textContent = '☀️';
+        themeText.textContent = 'Modo Claro';
+        updateSVGStyles('dark');
+      }
+    }
+
+    // Dynamic style update for SVG nodes
+    function updateSVGStyles(theme) {
+      const svg = document.querySelector('.mermaid svg');
+      if (!svg) return;
+      
+      const rects = svg.querySelectorAll('rect');
+      const texts = svg.querySelectorAll('text');
+      const paths = svg.querySelectorAll('path');
+      
+      if (theme === 'light') {
+        rects.forEach(r => {
+          if(r.style.fill !== 'transparent') {
+            r.style.fill = '#f8fafc';
+            r.style.stroke = '#cbd5e1';
+          }
+        });
+        texts.forEach(t => {
+          t.style.fill = '#0f172a';
+        });
+        paths.forEach(p => {
+          if (p.style.stroke) p.style.stroke = '#4f46e5';
+        });
+      } else {
+        rects.forEach(r => {
+          if(r.style.fill !== 'transparent') {
+            r.style.fill = '#1e293b';
+            r.style.stroke = '#475569';
+          }
+        });
+        texts.forEach(t => {
+          t.style.fill = '#f8fafc';
+        });
+        paths.forEach(p => {
+          if (p.style.stroke) p.style.stroke = '#6366f1';
+        });
+      }
+    }
+
+    // Wait until Mermaid finishes rendering, then apply initial styles
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(() => {
+        updateSVGStyles('dark');
+      }, 1000);
+    });
+
+    // Download PNG Logic
+    function downloadPNG() {
+      const svgElement = document.querySelector('.mermaid svg');
+      if (!svgElement) return alert('El diagrama no ha cargado completamente.');
+
+      // Clone the SVG element to avoid modifying the screen element
+      const svgClone = svgElement.cloneNode(true);
+      
+      // Get dimensions
+      const bbox = svgElement.getBoundingClientRect();
+      const width = svgElement.viewBox.baseVal.width || bbox.width || 1200;
+      const height = svgElement.viewBox.baseVal.height || bbox.height || 900;
+      
+      // Ensure clone has absolute size
+      svgClone.setAttribute('width', width);
+      svgClone.setAttribute('height', height);
+      
+      // Serialize to string
+      const serializer = new XMLSerializer();
+      let svgString = serializer.serializeToString(svgClone);
+      
+      // Create data URL
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const URL = window.URL || window.webkitURL || window;
+      const blobURL = URL.createObjectURL(svgBlob);
+      
+      const image = new Image();
+      image.onload = () => {
+        // High resolution scaling (2x scale)
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        
+        const context = canvas.getContext('2d');
+        context.scale(scale, scale);
+        
+        // Background color based on active theme
+        const isLightTheme = document.body.classList.contains('light-theme');
+        context.fillStyle = isLightTheme ? '#ffffff' : '#0f172a';
+        context.fillRect(0, 0, width, height);
+        
+        // Draw the image
+        context.drawImage(image, 0, 0, width, height);
+        
+        // Trigger download
+        try {
+          const pngURL = canvas.toDataURL('image/png');
+          const downloadLink = document.createElement('a');
+          downloadLink.href = pngURL;
+          downloadLink.download = 'diagrama_modelo_relacional.png';
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+        } catch (e) {
+          alert('Hubo un error generando el PNG: ' + e.message);
+        }
+        
+        URL.revokeObjectURL(blobURL);
+      };
+      
+      image.onerror = (err) => {
+        console.error('Error cargando imagen SVG:', err);
+        alert('Error al procesar el diagrama como imagen.');
+      };
+      
+      image.src = blobURL;
+    }
+
+    // Download SVG Logic
+    function downloadSVG() {
+      const svgElement = document.querySelector('.mermaid svg');
+      if (!svgElement) return alert('El diagrama no ha cargado completamente.');
+
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svgElement);
+      
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const URL = window.URL || window.webkitURL || window;
+      const blobURL = URL.createObjectURL(svgBlob);
+      
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobURL;
+      downloadLink.download = 'diagrama_modelo_relacional.svg';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(blobURL);
+      }, 100);
+    }
+  </script>
+</body>
+</html>

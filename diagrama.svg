@@ -1,0 +1,386 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1920" width="100%" height="100%" style="background-color: #0f172a; font-family: 'Segoe UI', sans-serif;">
+
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#818cf8" />
+    </marker>
+  </defs>
+
+<text x="1000" y="50" font-size="28" font-weight="bold" fill="#f8fafc" text-anchor="middle" letter-spacing="1">DIAGRAMA ENTIDAD-RELACIÓN - SOPHOS CORE</text>
+<text x="1000" y="78" font-size="14" fill="#94a3b8" text-anchor="middle">(*) Nota: La relación id_institucion (Multi-tenant) está presente en todas las tablas para aislamiento de datos lógicos.</text>
+<path d="M 400 198 L 470 198 L 470 234 L 540 234" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 198 L 470 198 L 470 234 L 540 234" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 642 L 470 642 L 470 1050 L 540 1050" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 642 L 470 642 L 470 1050 L 540 1050" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 240 744 L 240 744 L 240 1380 L 240 1380" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 240 744 L 240 744 L 240 1380 L 240 1380" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 642 L 930 642 L 930 1086 L 1460 1086" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 642 L 930 642 L 930 1086 L 1460 1086" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 642 L 470 642 L 470 630 L 540 630" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 642 L 470 642 L 470 630 L 540 630" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 1038 L 470 1038 L 470 1050 L 540 1050" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 1038 L 470 1038 L 470 1050 L 540 1050" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 240 1116 L 240 1116 L 240 1380 L 240 1380" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 240 1116 L 240 1116 L 240 1380 L 240 1380" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 1000 1038 L 700 1038 L 700 1482 L 400 1482" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 1000 1038 L 700 1038 L 700 1482 L 400 1482" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 860 1050 L 930 1050 L 930 1554 L 1000 1554" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 860 1050 L 930 1050 L 930 1554 L 1000 1554" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 860 1050 L 1160 1050 L 1160 1494 L 1460 1494" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 860 1050 L 1160 1050 L 1160 1494 L 1460 1494" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 1482 L 470 1482 L 470 1470 L 540 1470" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 1482 L 470 1482 L 470 1470 L 540 1470" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 1482 L 700 1482 L 700 1554 L 1000 1554" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 1482 L 700 1482 L 700 1554 L 1000 1554" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 400 1482 L 930 1482 L 930 1494 L 1460 1494" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 400 1482 L 930 1482 L 930 1494 L 1460 1494" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 1000 654 L 930 654 L 930 1470 L 860 1470" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 1000 654 L 930 654 L 930 1470 L 860 1470" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<path d="M 1160 768 L 1160 768 L 1160 1380 L 1160 1380" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="2 4" opacity="0.65" />
+<path d="M 1160 768 L 1160 768 L 1160 1380 L 1160 1380" fill="none" stroke="#818cf8" stroke-width="1.5" marker-end="url(#arrow)" opacity="0.85" />
+<rect x="80" y="120" width="320" height="156" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="80" y="120" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="80" y="155" width="320" height="10" fill="#4f46e5" />
+<text x="95" y="148" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">PLANES_SUSCRIPCION</text>
+<text x="98" y="192" fill="#38bdf8" font-size="12.5" font-weight="bold">id_suscripcion</text>
+<text x="382" y="192" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER (PK, Auto)</text>
+<line x1="90" y1="204" x2="390" y2="204" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="216" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre</text>
+<text x="382" y="216" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="90" y1="228" x2="390" y2="228" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="240" fill="#f8fafc" font-size="12.5" font-weight="normal">precio</text>
+<text x="382" y="240" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="90" y1="252" x2="390" y2="252" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="264" fill="#f8fafc" font-size="12.5" font-weight="normal">limite_usuarios</text>
+<text x="382" y="264" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<rect x="540" y="120" width="320" height="228" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="540" y="120" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="540" y="155" width="320" height="10" fill="#4f46e5" />
+<text x="555" y="148" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">INSTITUCIONES</text>
+<text x="558" y="192" fill="#38bdf8" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="842" y="192" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="550" y1="204" x2="850" y2="204" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="216" fill="#f8fafc" font-size="12.5" font-weight="normal">nit</text>
+<text x="842" y="216" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="550" y1="228" x2="850" y2="228" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="240" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre_legal</text>
+<text x="842" y="240" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="550" y1="252" x2="850" y2="252" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="264" fill="#f8fafc" font-size="12.5" font-weight="normal">dominio_personalizado</text>
+<text x="842" y="264" fill="#94a3b8" font-size="11" text-anchor="end">TEXT (Null)</text>
+<line x1="550" y1="276" x2="850" y2="276" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="288" fill="#f8fafc" font-size="12.5" font-weight="normal">estado_suscripcion</text>
+<text x="842" y="288" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="550" y1="300" x2="850" y2="300" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="312" fill="#fbbf24" font-size="12.5" font-weight="bold">id_suscripcion</text>
+<text x="842" y="312" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER (FK)</text>
+<line x1="550" y1="324" x2="850" y2="324" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="336" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_registro</text>
+<text x="842" y="336" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="1000" y="120" width="320" height="204" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1000" y="120" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1000" y="155" width="320" height="10" fill="#4f46e5" />
+<text x="1015" y="148" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">CONFIGURACION_PONDERACIONES</text>
+<text x="1018" y="192" fill="#38bdf8" font-size="12.5" font-weight="bold">id_ponderacion</text>
+<text x="1302" y="192" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1010" y1="204" x2="1310" y2="204" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="216" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1302" y="216" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK, Unique)</text>
+<line x1="1010" y1="228" x2="1310" y2="228" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="240" fill="#f8fafc" font-size="12.5" font-weight="normal">peso_saber</text>
+<text x="1302" y="240" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1010" y1="252" x2="1310" y2="252" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="264" fill="#f8fafc" font-size="12.5" font-weight="normal">peso_hacer</text>
+<text x="1302" y="264" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1010" y1="276" x2="1310" y2="276" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="288" fill="#f8fafc" font-size="12.5" font-weight="normal">peso_ser</text>
+<text x="1302" y="288" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1010" y1="300" x2="1310" y2="300" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="312" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_creacion</text>
+<text x="1302" y="312" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="1460" y="120" width="320" height="204" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1460" y="120" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1460" y="155" width="320" height="10" fill="#4f46e5" />
+<text x="1475" y="148" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">ESCALA_VALORACION</text>
+<text x="1478" y="192" fill="#38bdf8" font-size="12.5" font-weight="bold">id_escala</text>
+<text x="1762" y="192" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1470" y1="204" x2="1770" y2="204" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="216" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1762" y="216" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="228" x2="1770" y2="228" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="240" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre_desempeno</text>
+<text x="1762" y="240" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="1470" y1="252" x2="1770" y2="252" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="264" fill="#f8fafc" font-size="12.5" font-weight="normal">nota_minima</text>
+<text x="1762" y="264" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1470" y1="276" x2="1770" y2="276" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="288" fill="#f8fafc" font-size="12.5" font-weight="normal">nota_maxima</text>
+<text x="1762" y="288" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1470" y1="300" x2="1770" y2="300" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="312" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_creacion</text>
+<text x="1762" y="312" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="80" y="540" width="320" height="204" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="80" y="540" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="80" y="575" width="320" height="10" fill="#4f46e5" />
+<text x="95" y="568" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">USUARIOS</text>
+<text x="98" y="612" fill="#38bdf8" font-size="12.5" font-weight="bold">id_usuario</text>
+<text x="382" y="612" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="90" y1="624" x2="390" y2="624" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="636" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="382" y="636" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="648" x2="390" y2="648" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="660" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre_completo</text>
+<text x="382" y="660" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="90" y1="672" x2="390" y2="672" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="684" fill="#f8fafc" font-size="12.5" font-weight="normal">email</text>
+<text x="382" y="684" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="90" y1="696" x2="390" y2="696" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="708" fill="#f8fafc" font-size="12.5" font-weight="normal">rol</text>
+<text x="382" y="708" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="90" y1="720" x2="390" y2="720" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="732" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_registro</text>
+<text x="382" y="732" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="540" y="540" width="320" height="180" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="540" y="540" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="540" y="575" width="320" height="10" fill="#4f46e5" />
+<text x="555" y="568" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">PERFILES_ACUDIENTES</text>
+<text x="558" y="612" fill="#38bdf8" font-size="12.5" font-weight="bold">id_acudiente_estudiante</text>
+<text x="842" y="612" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="550" y1="624" x2="850" y2="624" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="636" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="842" y="636" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="648" x2="850" y2="648" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="660" fill="#fbbf24" font-size="12.5" font-weight="bold">id_acudiente</text>
+<text x="842" y="660" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="672" x2="850" y2="672" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="684" fill="#fbbf24" font-size="12.5" font-weight="bold">id_estudiante</text>
+<text x="842" y="684" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="696" x2="850" y2="696" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="708" fill="#f8fafc" font-size="12.5" font-weight="normal">parentesco</text>
+<text x="842" y="708" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<rect x="1000" y="540" width="320" height="228" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1000" y="540" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1000" y="575" width="320" height="10" fill="#4f46e5" />
+<text x="1015" y="568" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">PERIODOS_ACADEMICOS</text>
+<text x="1018" y="612" fill="#38bdf8" font-size="12.5" font-weight="bold">id_periodo</text>
+<text x="1302" y="612" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1010" y1="624" x2="1310" y2="624" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="636" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1302" y="636" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1010" y1="648" x2="1310" y2="648" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="660" fill="#f8fafc" font-size="12.5" font-weight="normal">numero_periodo</text>
+<text x="1302" y="660" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<line x1="1010" y1="672" x2="1310" y2="672" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="684" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_inicio</text>
+<text x="1302" y="684" fill="#94a3b8" font-size="11" text-anchor="end">DATE</text>
+<line x1="1010" y1="696" x2="1310" y2="696" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="708" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_fin</text>
+<text x="1302" y="708" fill="#94a3b8" font-size="11" text-anchor="end">DATE</text>
+<line x1="1010" y1="720" x2="1310" y2="720" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="732" fill="#f8fafc" font-size="12.5" font-weight="normal">activo</text>
+<text x="1302" y="732" fill="#94a3b8" font-size="11" text-anchor="end">BOOLEAN</text>
+<line x1="1010" y1="744" x2="1310" y2="744" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="756" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_creacion</text>
+<text x="1302" y="756" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="1460" y="540" width="320" height="204" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1460" y="540" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1460" y="575" width="320" height="10" fill="#4f46e5" />
+<text x="1475" y="568" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">LOGS_IA_TOKENS</text>
+<text x="1478" y="612" fill="#38bdf8" font-size="12.5" font-weight="bold">id_ia_token</text>
+<text x="1762" y="612" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1470" y1="624" x2="1770" y2="624" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="636" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1762" y="636" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="648" x2="1770" y2="648" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="660" fill="#f8fafc" font-size="12.5" font-weight="normal">servicio_ia</text>
+<text x="1762" y="660" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="1470" y1="672" x2="1770" y2="672" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="684" fill="#f8fafc" font-size="12.5" font-weight="normal">tokens_usados</text>
+<text x="1762" y="684" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<line x1="1470" y1="696" x2="1770" y2="696" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="708" fill="#f8fafc" font-size="12.5" font-weight="normal">costo_estimado</text>
+<text x="1762" y="708" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1470" y1="720" x2="1770" y2="720" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="732" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_peticion</text>
+<text x="1762" y="732" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="80" y="960" width="320" height="156" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="80" y="960" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="80" y="995" width="320" height="10" fill="#4f46e5" />
+<text x="95" y="988" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">CURSOS</text>
+<text x="98" y="1032" fill="#38bdf8" font-size="12.5" font-weight="bold">id_curso</text>
+<text x="382" y="1032" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="90" y1="1044" x2="390" y2="1044" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1056" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="382" y="1056" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="1068" x2="390" y2="1068" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1080" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre</text>
+<text x="382" y="1080" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="90" y1="1092" x2="390" y2="1092" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1104" fill="#f8fafc" font-size="12.5" font-weight="normal">jornada</text>
+<text x="382" y="1104" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<rect x="540" y="960" width="320" height="180" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="540" y="960" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="540" y="995" width="320" height="10" fill="#4f46e5" />
+<text x="555" y="988" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">ESTUDIANTES_MATRICULADOS</text>
+<text x="558" y="1032" fill="#38bdf8" font-size="12.5" font-weight="bold">id_matricula</text>
+<text x="842" y="1032" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="550" y1="1044" x2="850" y2="1044" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1056" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="842" y="1056" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="1068" x2="850" y2="1068" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1080" fill="#fbbf24" font-size="12.5" font-weight="bold">id_estudiante</text>
+<text x="842" y="1080" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="1092" x2="850" y2="1092" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1104" fill="#fbbf24" font-size="12.5" font-weight="bold">id_curso</text>
+<text x="842" y="1104" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="1116" x2="850" y2="1116" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1128" fill="#f8fafc" font-size="12.5" font-weight="normal">ano_lectivo</text>
+<text x="842" y="1128" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<rect x="1000" y="960" width="320" height="156" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1000" y="960" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1000" y="995" width="320" height="10" fill="#4f46e5" />
+<text x="1015" y="988" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">MATERIAS</text>
+<text x="1018" y="1032" fill="#38bdf8" font-size="12.5" font-weight="bold">id_materia</text>
+<text x="1302" y="1032" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1010" y1="1044" x2="1310" y2="1044" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1056" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1302" y="1056" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1010" y1="1068" x2="1310" y2="1068" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1080" fill="#f8fafc" font-size="12.5" font-weight="normal">nombre</text>
+<text x="1302" y="1080" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="1010" y1="1092" x2="1310" y2="1092" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1104" fill="#f8fafc" font-size="12.5" font-weight="normal">area</text>
+<text x="1302" y="1104" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<rect x="1460" y="960" width="320" height="252" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1460" y="960" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1460" y="995" width="320" height="10" fill="#4f46e5" />
+<text x="1475" y="988" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">OBSERVADOR_DIGITAL</text>
+<text x="1478" y="1032" fill="#38bdf8" font-size="12.5" font-weight="bold">id_observador</text>
+<text x="1762" y="1032" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1470" y1="1044" x2="1770" y2="1044" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1056" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1762" y="1056" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1068" x2="1770" y2="1068" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1080" fill="#fbbf24" font-size="12.5" font-weight="bold">id_estudiante</text>
+<text x="1762" y="1080" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1092" x2="1770" y2="1092" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1104" fill="#fbbf24" font-size="12.5" font-weight="bold">id_docente</text>
+<text x="1762" y="1104" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1116" x2="1770" y2="1116" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1128" fill="#f8fafc" font-size="12.5" font-weight="normal">tipo_nota</text>
+<text x="1762" y="1128" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="1470" y1="1140" x2="1770" y2="1140" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1152" fill="#f8fafc" font-size="12.5" font-weight="normal">observacion_informal</text>
+<text x="1762" y="1152" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="1470" y1="1164" x2="1770" y2="1164" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1176" fill="#f8fafc" font-size="12.5" font-weight="normal">observacion_formal_ia</text>
+<text x="1762" y="1176" fill="#94a3b8" font-size="11" text-anchor="end">TEXT (Null)</text>
+<line x1="1470" y1="1188" x2="1770" y2="1188" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1200" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_registro</text>
+<text x="1762" y="1200" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="80" y="1380" width="320" height="204" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="80" y="1380" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="80" y="1415" width="320" height="10" fill="#4f46e5" />
+<text x="95" y="1408" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">ASIGNACIONES_ACADEMICAS</text>
+<text x="98" y="1452" fill="#38bdf8" font-size="12.5" font-weight="bold">id_asignacion</text>
+<text x="382" y="1452" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="90" y1="1464" x2="390" y2="1464" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1476" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="382" y="1476" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="1488" x2="390" y2="1488" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1500" fill="#fbbf24" font-size="12.5" font-weight="bold">id_docente</text>
+<text x="382" y="1500" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="1512" x2="390" y2="1512" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1524" fill="#fbbf24" font-size="12.5" font-weight="bold">id_materia</text>
+<text x="382" y="1524" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="1536" x2="390" y2="1536" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1548" fill="#fbbf24" font-size="12.5" font-weight="bold">id_curso</text>
+<text x="382" y="1548" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="90" y1="1560" x2="390" y2="1560" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="98" y="1572" fill="#f8fafc" font-size="12.5" font-weight="normal">ano_lectivo</text>
+<text x="382" y="1572" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<rect x="540" y="1380" width="320" height="180" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="540" y="1380" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="540" y="1415" width="320" height="10" fill="#4f46e5" />
+<text x="555" y="1408" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">EVIDENCIAS_LOGROS</text>
+<text x="558" y="1452" fill="#38bdf8" font-size="12.5" font-weight="bold">id_logro</text>
+<text x="842" y="1452" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="550" y1="1464" x2="850" y2="1464" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1476" fill="#fbbf24" font-size="12.5" font-weight="bold">id_asignacion</text>
+<text x="842" y="1476" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="1488" x2="850" y2="1488" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1500" fill="#fbbf24" font-size="12.5" font-weight="bold">id_periodo</text>
+<text x="842" y="1500" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="550" y1="1512" x2="850" y2="1512" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1524" fill="#f8fafc" font-size="12.5" font-weight="normal">descripcion</text>
+<text x="842" y="1524" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="550" y1="1536" x2="850" y2="1536" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="558" y="1548" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_creacion</text>
+<text x="842" y="1548" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="1000" y="1380" width="320" height="348" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1000" y="1380" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1000" y="1415" width="320" height="10" fill="#4f46e5" />
+<text x="1015" y="1408" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">CALIFICACIONES</text>
+<text x="1018" y="1452" fill="#38bdf8" font-size="12.5" font-weight="bold">id_calificacion</text>
+<text x="1302" y="1452" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1010" y1="1464" x2="1310" y2="1464" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1476" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1302" y="1476" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1010" y1="1488" x2="1310" y2="1488" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1500" fill="#fbbf24" font-size="12.5" font-weight="bold">id_matricula</text>
+<text x="1302" y="1500" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1010" y1="1512" x2="1310" y2="1512" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1524" fill="#fbbf24" font-size="12.5" font-weight="bold">id_asignacion</text>
+<text x="1302" y="1524" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1010" y1="1536" x2="1310" y2="1536" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1548" fill="#fbbf24" font-size="12.5" font-weight="bold">id_periodo</text>
+<text x="1302" y="1548" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK, Null)</text>
+<line x1="1010" y1="1560" x2="1310" y2="1560" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1572" fill="#f8fafc" font-size="12.5" font-weight="normal">periodo</text>
+<text x="1302" y="1572" fill="#94a3b8" font-size="11" text-anchor="end">INTEGER</text>
+<line x1="1010" y1="1584" x2="1310" y2="1584" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1596" fill="#f8fafc" font-size="12.5" font-weight="normal">dimension</text>
+<text x="1302" y="1596" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="1010" y1="1608" x2="1310" y2="1608" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1620" fill="#f8fafc" font-size="12.5" font-weight="normal">actividad</text>
+<text x="1302" y="1620" fill="#94a3b8" font-size="11" text-anchor="end">TEXT</text>
+<line x1="1010" y1="1632" x2="1310" y2="1632" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1644" fill="#f8fafc" font-size="12.5" font-weight="normal">nota</text>
+<text x="1302" y="1644" fill="#94a3b8" font-size="11" text-anchor="end">NUMERIC</text>
+<line x1="1010" y1="1656" x2="1310" y2="1656" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1668" fill="#f8fafc" font-size="12.5" font-weight="normal">comentario_docente</text>
+<text x="1302" y="1668" fill="#94a3b8" font-size="11" text-anchor="end">TEXT (Null)</text>
+<line x1="1010" y1="1680" x2="1310" y2="1680" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1692" fill="#f8fafc" font-size="12.5" font-weight="normal">comentario_ia</text>
+<text x="1302" y="1692" fill="#94a3b8" font-size="11" text-anchor="end">TEXT (Null)</text>
+<line x1="1010" y1="1704" x2="1310" y2="1704" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1018" y="1716" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha_registro</text>
+<text x="1302" y="1716" fill="#94a3b8" font-size="11" text-anchor="end">TIMESTAMP</text>
+<rect x="1460" y="1380" width="320" height="228" rx="12" ry="12" fill="#1e293b" stroke="#334155" stroke-width="1.5" filter="url(#shadow)" />
+<rect x="1460" y="1380" width="320" height="45" rx="12" ry="12" fill="#4f46e5" />
+<rect x="1460" y="1415" width="320" height="10" fill="#4f46e5" />
+<text x="1475" y="1408" fill="#f8fafc" font-size="15" font-weight="bold" letter-spacing="0.5">ASISTENCIAS</text>
+<text x="1478" y="1452" fill="#38bdf8" font-size="12.5" font-weight="bold">id_asistencia</text>
+<text x="1762" y="1452" fill="#94a3b8" font-size="11" text-anchor="end">UUID (PK)</text>
+<line x1="1470" y1="1464" x2="1770" y2="1464" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1476" fill="#fbbf24" font-size="12.5" font-weight="bold">id_institucion</text>
+<text x="1762" y="1476" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1488" x2="1770" y2="1488" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1500" fill="#fbbf24" font-size="12.5" font-weight="bold">id_matricula</text>
+<text x="1762" y="1500" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1512" x2="1770" y2="1512" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1524" fill="#fbbf24" font-size="12.5" font-weight="bold">id_asignacion</text>
+<text x="1762" y="1524" fill="#94a3b8" font-size="11" text-anchor="end">UUID (FK)</text>
+<line x1="1470" y1="1536" x2="1770" y2="1536" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1548" fill="#f8fafc" font-size="12.5" font-weight="normal">fecha</text>
+<text x="1762" y="1548" fill="#94a3b8" font-size="11" text-anchor="end">DATE</text>
+<line x1="1470" y1="1560" x2="1770" y2="1560" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1572" fill="#f8fafc" font-size="12.5" font-weight="normal">estado</text>
+<text x="1762" y="1572" fill="#94a3b8" font-size="11" text-anchor="end">ENUM</text>
+<line x1="1470" y1="1584" x2="1770" y2="1584" stroke="#334155" stroke-width="0.8" opacity="0.5" />
+<text x="1478" y="1596" fill="#f8fafc" font-size="12.5" font-weight="normal">observacion</text>
+<text x="1762" y="1596" fill="#94a3b8" font-size="11" text-anchor="end">TEXT (Null)</text>
+</svg>
