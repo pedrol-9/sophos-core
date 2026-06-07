@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { exportPlantillaDocente, importPlanillaDocente, BulkImportError } from '@/app/actions/gradeActions';
 
-interface CargaPlanillaModalProps {
+interface UploadGradebookModalProps {
   idAsignacion: string;
   idPeriodo: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess }: CargaPlanillaModalProps) {
+export function UploadGradebookModal({ idAsignacion, idPeriodo, onClose, onSuccess }: UploadGradebookModalProps) {
   const [downloading, setDownloading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -25,6 +25,16 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !uploading && !downloading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, uploading, downloading]);
 
   // Descargar plantilla de notas
   const handleDownloadTemplate = async () => {
@@ -44,11 +54,22 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
       } else {
         alert(res.error || 'Error al exportar la plantilla.');
       }
-    } catch (err: any) {
-      alert('Error: ' + err.message);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Error desconocido';
+      alert('Error: ' + errMsg);
     } finally {
       setDownloading(false);
     }
+  };
+
+  // Helper to run with timeout
+  const runWithTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+      )
+    ]);
   };
 
   // Procesar archivo de carga
@@ -65,37 +86,57 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
       const reader = new FileReader();
       reader.onload = async (e) => {
         const text = e.target?.result as string;
-        const res = await importPlanillaDocente(text);
+        try {
+          // Timeout de 15 segundos
+          const res = await runWithTimeout(
+            importPlanillaDocente(idAsignacion, idPeriodo, text),
+            15000
+          );
 
-        if (res.success) {
-          setImportResult({
-            processed: true,
-            successCount: res.successCount,
-            errorCount: res.errorCount,
-            errors: res.errors
-          });
-          if (res.successCount > 0) {
-            onSuccess(); // Recargar la planilla detrás del modal
+          if (res.success) {
+            setImportResult({
+              processed: true,
+              successCount: res.successCount,
+              errorCount: res.errorCount,
+              errors: res.errors
+            });
+            if (res.successCount > 0) {
+              onSuccess(); // Recargar la planilla detrás del modal
+            }
+          } else {
+            setImportResult({
+              processed: true,
+              successCount: 0,
+              errorCount: 0,
+              errors: [],
+              error: res.error || 'Ocurrió un error inesperado al procesar el archivo.'
+            });
           }
-        } else {
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error && err.message === 'TIMEOUT'
+            ? 'La carga masiva superó el tiempo límite de espera (15 segundos). Verifica tu conexión o intenta con un archivo más pequeño.'
+            : (err instanceof Error ? err.message : 'Error desconocido');
+          
           setImportResult({
             processed: true,
             successCount: 0,
             errorCount: 0,
             errors: [],
-            error: res.error || 'Ocurrió un error inesperado al procesar el archivo.'
+            error: errMsg
           });
+        } finally {
+          setUploading(false);
         }
-        setUploading(false);
       };
       reader.readAsText(file, 'utf-8');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Error desconocido';
       setImportResult({
         processed: true,
         successCount: 0,
         errorCount: 0,
         errors: [],
-        error: 'Error de lectura: ' + err.message
+        error: 'Error de lectura: ' + errMsg
       });
       setUploading(false);
     }
@@ -127,7 +168,14 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+    <div 
+      className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !uploading && !downloading) {
+          onClose();
+        }
+      }}
+    >
       <div className="relative w-full max-w-2xl bg-[#0c1220] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200">
         
         {/* Header */}
@@ -138,7 +186,8 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            disabled={uploading || downloading}
+            className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -259,7 +308,8 @@ export function CargaPlanillaModal({ idAsignacion, idPeriodo, onClose, onSuccess
         <div className="flex justify-end pt-6 border-t border-white/5 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-xs font-semibold text-white/70 transition-all"
+            disabled={uploading || downloading}
+            className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-xs font-semibold text-white/70 transition-all disabled:opacity-40 disabled:pointer-events-none"
           >
             Cerrar Ventana
           </button>

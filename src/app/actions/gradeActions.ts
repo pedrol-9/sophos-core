@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/supabase';
+import { getEvidenciasForAsignacion, getGradesheetByEvidencias } from '@/app/actions/evidenciasActions';
 
 export type DimensionType = Database["public"]["Enums"]["tipo_dimension_nota"];
 
@@ -46,6 +47,7 @@ export type PeriodoInfo = {
 
 /**
  * Guarda o actualiza atómicamente la calificación diaria de una actividad específica para un estudiante.
+ * @deprecated en favor de upsertCalificacionEvidencia de evidenciasActions
  */
 export async function upsertCalificacionDiaria(
   idAsignacion: string,
@@ -245,6 +247,7 @@ export async function getParametrizacionDocente(
 
 /**
  * Obtiene los alumnos matriculados y sus notas del periodo seleccionado para cargar la planilla.
+ * @deprecated en favor de getGradesheetByEvidencias
  */
 export async function getGradesheetStudents(
   idCurso: string,
@@ -330,6 +333,8 @@ export type BulkImportResponse = {
 
 /**
  * Genera una plantilla CSV con los estudiantes matriculados para calificar sin conexión.
+ * Adaptado para el nuevo sistema de evidencias por periodo.
+ * Esta plantilla contiene únicamente datos editables y no expone identificadores únicos.
  */
 export async function exportPlantillaDocente(
   idAsignacion: string,
@@ -361,26 +366,52 @@ export async function exportPlantillaDocente(
       return { success: false, error: 'No tienes permisos de docente sobre esta asignación o no existe.' };
     }
 
-    // 3. Obtener los alumnos matriculados en este curso
-    const { data: matriculas, error: matError } = await supabase
-      .from('estudiantes_matriculados')
-      .select(`
-        id_matricula,
-        usuarios!inner (nombre_completo)
-      `)
-      .eq('id_curso', asignacion.id_curso)
-      .eq('ano_lectivo', asignacion.ano_lectivo);
-
-    if (matError || !matriculas) {
-      return { success: false, error: 'Error al consultar estudiantes matriculados en el curso.' };
+    // 3. Obtener evidencias activas para el periodo
+    const evRes = await getEvidenciasForAsignacion(idAsignacion, idPeriodo);
+    if (!evRes.success || !evRes.data) {
+      return { success: false, error: evRes.error || 'No se pudieron obtener evidencias.' };
+    }
+    const activeEvidencias = evRes.data.filter((e) => e.activaEnPeriodo);
+    if (activeEvidencias.length === 0) {
+      return { success: false, error: 'No hay evidencias activas configuradas para este periodo. Por favor confíguralas en la planilla primero.' };
     }
 
-    // 4. Construir CSV en memoria
-    let csv = 'id_institucion,id_matricula,id_asignacion,id_periodo,nombre_estudiante,nota_saber,nota_hacer,nota_ser,observaciones\n';
+    // 4. Obtener planilla de estudiantes y sus notas actuales
+    const studentRes = await getGradesheetByEvidencias(asignacion.id_curso, idAsignacion, idPeriodo);
+    if (!studentRes.success || !studentRes.data) {
+      return { success: false, error: studentRes.error || 'Error al consultar planilla de estudiantes.' };
+    }
+
+    // 5. Construir CSV en memoria
+    const headers = [
+      'email',
+      'nombre_estudiante',
+      ...activeEvidencias.map((e) => `"${e.nombre.replace(/"/g, '""')}"`),
+      'observaciones'
+    ];
+    let csv = headers.join(',') + '\n';
     
-    matriculas.forEach((m: any) => {
-      const nombreEscapado = m.usuarios.nombre_completo.replace(/"/g, '""');
-      csv += `${idInstitucion},${m.id_matricula},${idAsignacion},${idPeriodo},"${nombreEscapado}",,,,\n`;
+    studentRes.data.forEach((student) => {
+      const email = student.email || '';
+      const nombreEscapado = student.nombre_completo.replace(/"/g, '""');
+      
+      const gradeValues = activeEvidencias.map((ev) => {
+        const gradeRow = student.grades[ev.id_evidencia];
+        return gradeRow && gradeRow.nota !== null ? gradeRow.nota.toFixed(1) : '';
+      });
+
+      // Buscar primera observación que exista para el estudiante
+      let obs = '';
+      for (const ev of activeEvidencias) {
+        const gradeRow = student.grades[ev.id_evidencia];
+        if (gradeRow?.comentario_docente) {
+          obs = gradeRow.comentario_docente;
+          break;
+        }
+      }
+      const obsEscapado = obs ? `"${obs.replace(/"/g, '""')}"` : '';
+
+      csv += `${email},"${nombreEscapado}",${gradeValues.join(',')},${obsEscapado}\n`;
     });
 
     return { success: true, data: csv };
@@ -392,8 +423,13 @@ export async function exportPlantillaDocente(
 
 /**
  * Procesa masivamente un archivo CSV subido por el docente para importar calificaciones de forma atómica.
+ * Cruza la información mediante el correo electrónico del estudiante para asociar con su id_matricula.
+ * Mapea las columnas dinámicas a sus respectivas evidencias configuradas y activas.
+ * Utiliza bulk upsert en una sola transacción para maximizar el rendimiento.
  */
 export async function importPlanillaDocente(
+  idAsignacion: string,
+  idPeriodo: string,
   csvContent: string
 ): Promise<BulkImportResponse> {
   try {
@@ -416,161 +452,195 @@ export async function importPlanillaDocente(
       return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'El archivo está vacío o solo contiene la cabecera.' };
     }
 
-    // Pre-cargar asignaciones del docente para validación en memoria
+    // 2. Pre-cargar asignaciones del docente y verificar permisos
     const { data: teacherAsigs } = await supabase
       .from('asignaciones_academicas')
-      .select('id_asignacion')
+      .select('id_asignacion, id_curso')
       .eq('id_docente', user.id);
-    const validAsigsSet = new Set(teacherAsigs?.map((a) => a.id_asignacion) || []);
+    
+    const currentAsig = teacherAsigs?.find((a) => a.id_asignacion === idAsignacion);
+    if (!currentAsig) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'No tienes permisos de docente sobre la asignación especificada.' };
+    }
 
+    // 3. Obtener las evidencias activas para el periodo
+    const evRes = await getEvidenciasForAsignacion(idAsignacion, idPeriodo);
+    if (!evRes.success || !evRes.data) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: evRes.error || 'No se pudieron obtener evidencias.' };
+    }
+    const activeEvidencias = evRes.data.filter((e) => e.activaEnPeriodo);
+    if (activeEvidencias.length === 0) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'No hay evidencias activas configuradas para este periodo.' };
+    }
+
+    // 4. Obtener los alumnos matriculados en este curso para cruzar por email
+    const { data: matriculas, error: matError } = await supabase
+      .from('estudiantes_matriculados')
+      .select(`
+        id_matricula,
+        usuarios!inner (email)
+      `)
+      .eq('id_curso', currentAsig.id_curso)
+      .eq('ano_lectivo', new Date().getFullYear());
+
+    if (matError || !matriculas) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'Error al consultar estudiantes matriculados en el curso.' };
+    }
+
+    // Crear mapa de email -> id_matricula
+    const emailToMatriculaMap = new Map<string, string>();
+    matriculas.forEach((m: any) => {
+      let email: string | null = null;
+      if (m.usuarios) {
+        if (Array.isArray(m.usuarios)) {
+          email = m.usuarios[0]?.email || null;
+        } else {
+          email = (m.usuarios as any).email || null;
+        }
+      }
+      if (email) {
+        emailToMatriculaMap.set(email.toLowerCase().trim(), m.id_matricula);
+      }
+    });
+
+    // 5. Obtener el número entero del período activo para compatibilidad
+    const { data: per, error: perError } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo')
+      .eq('id_periodo', idPeriodo)
+      .maybeSingle();
+
+    if (perError || !per) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'El período académico especificado no es válido.' };
+    }
+    const numeroPeriodo = per.numero_periodo ?? 1;
+
+    // 6. Obtener calificaciones previas registradas para esta asignación y período para optimizar en memoria
+    const { data: existingCalificaciones, error: queryErr } = await supabase
+      .from('calificaciones')
+      .select('id_calificacion, id_matricula, id_evidencia')
+      .eq('id_asignacion', idAsignacion)
+      .eq('id_periodo', idPeriodo)
+      .not('id_evidencia', 'is', null);
+
+    if (queryErr) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'Error al verificar calificaciones preexistentes.' };
+    }
+
+    // Construir mapa en memoria de: "id_matricula-id_evidencia" -> id_calificacion
+    const existingGradesMap = new Map<string, string>();
+    existingCalificaciones?.forEach((c) => {
+      if (c.id_evidencia) {
+        existingGradesMap.set(`${c.id_matricula}-${c.id_evidencia}`, c.id_calificacion);
+      }
+    });
+
+    // 7. Parsear cabecera para mapear columnas de evidencias
+    const headerLine = lines[0];
+    const headers = headerLine.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((h) => h.trim().replace(/^"|"$/g, ''));
+
+    // Encontrar índices clave
+    const emailIdx = headers.findIndex((h) => h.toLowerCase() === 'email');
+    const obsIdx = headers.findIndex((h) => h.toLowerCase() === 'observaciones');
+
+    if (emailIdx === -1) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'El archivo CSV no contiene la columna obligatoria "email".' };
+    }
+
+    // Mapear cada columna a su correspondiente id_evidencia
+    // Columna idx -> id_evidencia
+    const columnToEvidenciaMap = new Map<number, string>();
+    
+    headers.forEach((header, idx) => {
+      if (idx === emailIdx || idx === obsIdx || header.toLowerCase() === 'nombre_estudiante') {
+        return;
+      }
+      // Buscar evidencia cuyo nombre coincida
+      const ev = activeEvidencias.find((e) => e.nombre.toLowerCase().trim() === header.toLowerCase().trim());
+      if (ev) {
+        columnToEvidenciaMap.set(idx, ev.id_evidencia);
+      }
+    });
+
+    if (columnToEvidenciaMap.size === 0) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'No se encontraron columnas que coincidan con las evidencias activas de este periodo.' };
+    }
+
+    const recordsToUpsert: any[] = [];
     const errors: BulkImportError[] = [];
     let successCount = 0;
     let errorCount = 0;
 
-    // Guardar periodos mapeados en memoria para evitar consultas redundantes
-    const periodMap = new Map<string, number>();
-
-    // 2. Parser posicional
+    // 8. Parser posicional del CSV
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
-      // Regex para separar comas respetando comillas
       const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map((c) => c.trim().replace(/^"|"$/g, ''));
 
-      if (cols.length < 5) {
+      if (cols.length <= emailIdx) {
         errorCount++;
-        errors.push({ row: i + 1, error: 'Estructura de columnas inválida en la fila.' });
+        errors.push({ row: i + 1, error: 'Línea vacía o sin email.' });
         continue;
       }
 
-      const rowInstId = cols[0];
-      const rowMatriculaId = cols[1];
-      const rowAsignacionId = cols[2];
-      const rowPeriodoId = cols[3];
-      const rowNombre = cols[4];
-      const notaSaberStr = cols[5];
-      const notaHacerStr = cols[6];
-      const notaSerStr = cols[7];
-      const observaciones = cols[8] || null;
-
-      // A. Validar Tenant
-      if (rowInstId !== idInstitucion) {
+      const rowEmail = cols[emailIdx]?.toLowerCase().trim();
+      const rowMatriculaId = emailToMatriculaMap.get(rowEmail);
+      if (!rowMatriculaId) {
         errorCount++;
-        errors.push({ row: i + 1, error: `La fila no pertenece a esta institución (ID: ${rowInstId}).` });
+        errors.push({ row: i + 1, error: `El estudiante con email "${rowEmail}" no está matriculado en este curso.` });
         continue;
       }
 
-      // B. Validar pertenencia de la asignación
-      if (!validAsigsSet.has(rowAsignacionId)) {
-        errorCount++;
-        errors.push({ row: i + 1, error: 'No tienes permisos de docente sobre la asignación especificada.' });
-        continue;
-      }
+      const observaciones = obsIdx !== -1 && cols[obsIdx] ? cols[obsIdx] : null;
+      let rowHasError = false;
 
-      // C. Validar Periodo
-      let numeroPeriodo: number;
-      const cachedPeriod = periodMap.get(rowPeriodoId);
-      if (cachedPeriod === undefined) {
-        const { data: per, error: perError } = await supabase
-          .from('periodos_academicos')
-          .select('numero_periodo')
-          .eq('id_periodo', rowPeriodoId)
-          .maybeSingle();
-
-        if (perError || !per) {
-          errorCount++;
-          errors.push({ row: i + 1, error: `El periodo ID (${rowPeriodoId}) no existe o no es válido.` });
-          continue;
+      // Iterar sobre las columnas de evidencias mapeadas
+      columnToEvidenciaMap.forEach((idEvidencia, colIdx) => {
+        const notaStr = cols[colIdx];
+        if (notaStr === undefined || notaStr === '') {
+          return; // Celda vacía, omitir sin error
         }
-        const num = per.numero_periodo ?? 1;
-        numeroPeriodo = num;
-        periodMap.set(rowPeriodoId, num);
-      } else {
-        numeroPeriodo = cachedPeriod;
-      }
-
-      // D. Helper para guardar o actualizar nota por dimensión
-      const upsertDimension = async (
-        notaStr: string,
-        dim: DimensionType
-      ): Promise<{ ok: boolean; error?: string }> => {
-        if (!notaStr) return { ok: true }; // Celda vacía, omitir
 
         const score = parseFloat(notaStr);
         if (isNaN(score) || score < 0.0 || score > 5.0) {
-          return { ok: false, error: `Nota ${dim} (${notaStr}) fuera del rango válido (0.0 - 5.0).` };
+          errors.push({ row: i + 1, error: `Nota fuera del rango válido (0.0 - 5.0): "${notaStr}"` });
+          rowHasError = true;
+          return;
         }
 
-        // Buscar si ya existe la nota de esta actividad de plantilla
-        const { data: existing } = await supabase
-          .from('calificaciones')
-          .select('id_calificacion')
-          .eq('id_matricula', rowMatriculaId)
-          .eq('id_asignacion', rowAsignacionId)
-          .eq('id_periodo', rowPeriodoId)
-          .eq('actividad', 'Consolidado_Plantilla')
-          .eq('dimension', dim)
-          .maybeSingle();
+        const mapKey = `${rowMatriculaId}-${idEvidencia}`;
+        const existingId = existingGradesMap.get(mapKey);
 
-        if (existing) {
-          const { error: uErr } = await supabase
-            .from('calificaciones')
-            .update({
-              nota: score,
-              comentario_docente: observaciones,
-              fecha_registro: new Date().toISOString()
-            })
-            .eq('id_calificacion', existing.id_calificacion);
+        recordsToUpsert.push({
+          ...(existingId ? { id_calificacion: existingId } : {}),
+          id_matricula: rowMatriculaId,
+          id_asignacion: idAsignacion,
+          id_periodo: idPeriodo,
+          periodo: numeroPeriodo,
+          id_evidencia: idEvidencia,
+          actividad: 'evidencia',
+          dimension: 'SABER',
+          nota: score,
+          comentario_docente: observaciones,
+          id_institucion: idInstitucion,
+          fecha_registro: new Date().toISOString()
+        });
+      });
 
-          if (uErr) return { ok: false, error: `Error al actualizar nota: ${uErr.message}` };
-        } else {
-          const { error: iErr } = await supabase
-            .from('calificaciones')
-            .insert({
-              id_matricula: rowMatriculaId,
-              id_asignacion: rowAsignacionId,
-              id_periodo: rowPeriodoId,
-              periodo: numeroPeriodo,
-              dimension: dim,
-              actividad: 'Consolidado_Plantilla',
-              nota: score,
-              comentario_docente: observaciones,
-              id_institucion: idInstitucion,
-              fecha_registro: new Date().toISOString()
-            });
-
-          if (iErr) return { ok: false, error: `Error al registrar nota: ${iErr.message}` };
-        }
-
-        return { ok: true };
-      };
-
-      // Procesar dimensiones de forma secuencial
-      try {
-        const resSaber = await upsertDimension(notaSaberStr, 'SABER');
-        if (!resSaber.ok) {
-          errorCount++;
-          errors.push({ row: i + 1, error: resSaber.error || '' });
-          continue;
-        }
-
-        const resHacer = await upsertDimension(notaHacerStr, 'HACER');
-        if (!resHacer.ok) {
-          errorCount++;
-          errors.push({ row: i + 1, error: resHacer.error || '' });
-          continue;
-        }
-
-        const resSer = await upsertDimension(notaSerStr, 'SER');
-        if (!resSer.ok) {
-          errorCount++;
-          errors.push({ row: i + 1, error: resSer.error || '' });
-          continue;
-        }
-
-        successCount++;
-      } catch (err: any) {
+      if (rowHasError) {
         errorCount++;
-        errors.push({ row: i + 1, error: err.message || 'Error al procesar notas.' });
+      } else {
+        successCount++;
+      }
+    }
+
+    // 9. Ejecutar el Bulk Upsert en lote
+    if (recordsToUpsert.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from('calificaciones')
+        .upsert(recordsToUpsert);
+
+      if (upsertErr) {
+        return { success: false, successCount: 0, errorCount: 0, errors: [], error: `Error al almacenar calificaciones: ${upsertErr.message}` };
       }
     }
 
@@ -581,7 +651,7 @@ export async function importPlanillaDocente(
       errors
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error desconocido al importar la plantilla.';
+    const msg = err instanceof Error ? err.message : 'Error desconocido al importar la planilla.';
     return { success: false, successCount: 0, errorCount: 0, errors: [], error: msg };
   }
 }

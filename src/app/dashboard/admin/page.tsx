@@ -11,12 +11,14 @@ import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import { StudentList } from '@/components/dashboard/admin/StudentList';
 import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
 import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
+import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
 
 export default function DashboardPage() {
   const router = useRouter();
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEvidencias, setShowEvidencias] = useState(false);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
 
@@ -136,6 +138,19 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setShowEvidencias(!showEvidencias)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 ${
+                showEvidencias
+                  ? 'bg-teal-600 hover:bg-teal-500 shadow-md shadow-teal-600/20'
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white/80'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Gestionar Evidencias
+            </button>
+            <button
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition-all shadow-md shadow-indigo-600/20 hover:-translate-y-0.5"
             >
@@ -143,6 +158,29 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* ─── PANEL EVIDENCIAS ─────────────────────────────────────────────── */}
+        {showEvidencias && (
+          <div className="mb-8 bg-[#0d1220]/70 border border-white/10 rounded-2xl p-6 animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-sm font-bold text-white">Gestión de Evidencias del Año Lectivo</h2>
+                <p className="text-xs text-white/40 mt-0.5">
+                  Define las evidencias de aprendizaje por grado y materia que los docentes evaluarán cada periodo.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEvidencias(false)}
+                className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <EvidenciasManager />
+          </div>
+        )}
 
         {/* ─── STATS GRID ────────────────────────────────────────────────────── */}
         <StatsGrid totalStudents={students.length} />

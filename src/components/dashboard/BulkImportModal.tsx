@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { IconArrow } from '@/components/icons';
 
 interface BulkImportModalProps {
@@ -21,6 +21,16 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isGenerating) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, isGenerating]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -52,7 +62,14 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isGenerating) {
+          onClose();
+        }
+      }}
+    >
       <div 
         className={`w-full max-w-md h-full border-l p-8 flex flex-col overflow-y-auto relative animate-in slide-in-from-right duration-200 transition-colors ${
           isDragging 

@@ -13,7 +13,7 @@ import {
   type AcademicAssignment,
   type CourseStudent 
 } from '@/app/actions/teacher-actions';
-import { PlanillaDocente } from '@/components/dashboard/docente/PlanillaDocente';
+import { TeacherGradebook } from '@/components/dashboard/teacher/TeacherGradebook';
 import { 
   createObservacion, 
   getStudentObservations, 
@@ -30,6 +30,49 @@ export default function DocenteDashboard() {
   const [assignments, setAssignments] = useState<AcademicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter state
+  const [filterGrade, setFilterGrade] = useState<string>('');
+  const [filterSubject, setFilterSubject] = useState<string>('');
+
+  // Compute unique grades and subjects from academic assignments
+  const uniqueGrades = Array.from(
+    new Set(assignments.map(ass => ass.cursos?.nombre).filter(Boolean))
+  ).sort() as string[];
+
+  const uniqueSubjects = Array.from(
+    new Set(assignments.map(ass => ass.materias?.nombre).filter(Boolean))
+  ).sort() as string[];
+
+  // Dynamic available options for cross-filtering
+  const availableGrades = filterSubject
+    ? Array.from(
+        new Set(
+          assignments
+            .filter(ass => ass.materias?.nombre === filterSubject)
+            .map(ass => ass.cursos?.nombre)
+            .filter(Boolean)
+        )
+      ).sort() as string[]
+    : uniqueGrades;
+
+  const availableSubjects = filterGrade
+    ? Array.from(
+        new Set(
+          assignments
+            .filter(ass => ass.cursos?.nombre === filterGrade)
+            .map(ass => ass.materias?.nombre)
+            .filter(Boolean)
+        )
+      ).sort() as string[]
+    : uniqueSubjects;
+
+  // Filtered assignments
+  const filteredAssignments = assignments.filter(ass => {
+    const matchGrade = !filterGrade || ass.cursos?.nombre === filterGrade;
+    const matchSubject = !filterSubject || ass.materias?.nombre === filterSubject;
+    return matchGrade && matchSubject;
+  });
 
   // Selected state for grading/attendance
   const [selectedAssignment, setSelectedAssignment] = useState<AcademicAssignment | null>(null);
@@ -463,51 +506,132 @@ export default function DocenteDashboard() {
 
           {/* VIEW 1: Grid of courses (No course selected) */}
           {!selectedAssignment && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {loading ? (
-                <p className="text-white/40 text-sm col-span-full">Cargando materias...</p>
-              ) : assignments.length === 0 ? (
-                <div className="col-span-full py-16 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01]">
-                  <p className="text-white/40 mb-2">No tienes asignaciones académicas configuradas para este año.</p>
-                </div>
-              ) : (
-                assignments.map(ass => (
-                  <div 
-                    key={ass.id_asignacion} 
-                    className="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-teal-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 p-4 text-teal-500/10 group-hover:text-teal-500/20 transition-colors">
-                      <IconNotebook className="w-10 h-10" />
+            <div className="space-y-6">
+              {/* Filter controls */}
+              {assignments.length > 0 && (
+                <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md items-center justify-between">
+                  <div className="flex flex-wrap gap-4 w-full sm:w-auto">
+                    {/* Grado Selector */}
+                    <div className="flex flex-col gap-1.5 min-w-[150px] w-full sm:w-auto">
+                      <label htmlFor="filter-grade" className="text-[10px] uppercase font-bold tracking-wider text-white/40">
+                        Grado
+                      </label>
+                      <select
+                        id="filter-grade"
+                        value={filterGrade}
+                        onChange={(e) => setFilterGrade(e.target.value)}
+                        className="px-3.5 py-2 rounded-xl bg-[#090d16]/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-[#0c1220] transition-all cursor-pointer"
+                      >
+                        <option value="" className="bg-[#090d16] text-white">Todos los grados</option>
+                        {availableGrades.map(grade => (
+                          <option key={grade} value={grade} className="bg-[#090d16] text-white">
+                            {grade}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded">
-                      {ass.materias?.area || 'Asignatura'}
-                    </span>
-                    <h3 className="text-xl font-bold text-white/95 mt-3 mb-1">{ass.materias?.nombre}</h3>
-                    <p className="text-sm text-white/50 mb-6">Curso: <strong className="text-white/80">{ass.cursos?.nombre}</strong></p>
-                    
-                    <div className="flex gap-3 pt-3 border-t border-white/5">
-                      <button 
-                        onClick={() => handleSelectAssignment(ass, 'grade')}
-                        className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-all shadow-md shadow-teal-600/10 hover:-translate-y-0.5"
+
+                    {/* Materia Selector */}
+                    <div className="flex flex-col gap-1.5 min-w-[180px] w-full sm:w-auto">
+                      <label htmlFor="filter-subject" className="text-[10px] uppercase font-bold tracking-wider text-white/40">
+                        Materia
+                      </label>
+                      <select
+                        id="filter-subject"
+                        value={filterSubject}
+                        onChange={(e) => setFilterSubject(e.target.value)}
+                        className="px-3.5 py-2 rounded-xl bg-[#090d16]/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-[#0c1220] transition-all cursor-pointer"
                       >
-                        Calificar
-                      </button>
-                      <button 
-                        onClick={() => handleSelectAssignment(ass, 'attendance')}
-                        className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
-                      >
-                        Control Faltas
-                      </button>
+                        <option value="" className="bg-[#090d16] text-white">Todas las materias</option>
+                        {availableSubjects.map(subject => (
+                          <option key={subject} value={subject} className="bg-[#090d16] text-white">
+                            {subject}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                ))
+
+                  {/* Summary / Reset */}
+                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <span className="text-xs text-white/40 font-medium">
+                      Mostrando <strong className="text-white/80">{filteredAssignments.length}</strong> de <strong className="text-white/80">{assignments.length}</strong> materias
+                    </span>
+                    {(filterGrade || filterSubject) && (
+                      <button
+                        onClick={() => {
+                          setFilterGrade('');
+                          setFilterSubject('');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        Limpiar filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
+
+              {/* Grid of cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {loading ? (
+                  <p className="text-white/40 text-sm col-span-full">Cargando materias...</p>
+                ) : assignments.length === 0 ? (
+                  <div className="col-span-full py-16 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01]">
+                    <p className="text-white/40 mb-2">No tienes asignaciones académicas configuradas para este año.</p>
+                  </div>
+                ) : filteredAssignments.length === 0 ? (
+                  <div className="col-span-full py-16 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01]">
+                    <p className="text-white/40 mb-3">No se encontraron materias que coincidan con los filtros seleccionados.</p>
+                    <button
+                      onClick={() => {
+                        setFilterGrade('');
+                        setFilterSubject('');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Restablecer filtros
+                    </button>
+                  </div>
+                ) : (
+                  filteredAssignments.map(ass => (
+                    <div 
+                      key={ass.id_asignacion} 
+                      className="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-teal-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 p-4 text-teal-500/10 group-hover:text-teal-500/20 transition-colors">
+                        <IconNotebook className="w-10 h-10" />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded">
+                        {ass.materias?.area || 'Asignatura'}
+                      </span>
+                      <h3 className="text-xl font-bold text-white/95 mt-3 mb-1">{ass.materias?.nombre}</h3>
+                      <p className="text-sm text-white/50 mb-6">Curso: <strong className="text-white/80">{ass.cursos?.nombre}</strong></p>
+                      
+                      <div className="flex gap-3 pt-3 border-t border-white/5">
+                        <button 
+                          onClick={() => handleSelectAssignment(ass, 'grade')}
+                          className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-all shadow-md shadow-teal-600/10 hover:-translate-y-0.5"
+                        >
+                          Calificar
+                        </button>
+                        <button 
+                          onClick={() => handleSelectAssignment(ass, 'attendance')}
+                          className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
+                        >
+                          Control Faltas
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
           {/* VIEW 2: Grading view (Assignment selected + Courses tab) */}
           {selectedAssignment && activeTab === 'courses' && (
-            <PlanillaDocente 
+            <TeacherGradebook 
               idAsignacion={selectedAssignment.id_asignacion} 
               idCurso={selectedAssignment.id_curso} 
             />
@@ -818,7 +942,7 @@ export default function DocenteDashboard() {
                     </label>
                     <select
                       value={newObsType}
-                      onChange={(e) => setNewObsType(e.target.value as any)}
+                      onChange={(e) => setNewObsType(e.target.value as 'PEDAGOGICA' | 'DISCIPLINARIA' | 'LOGRO_DESTACADO')}
                       className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-500/60"
                     >
                       <option value="PEDAGOGICA" className="bg-[#0c1220]">Pedagógica (Seguimiento Académico/Convivencia)</option>
@@ -889,12 +1013,12 @@ export default function DocenteDashboard() {
                           <div className="space-y-2 text-[11px] leading-relaxed">
                             <div>
                               <span className="block text-[8px] font-bold uppercase tracking-wider text-white/30">Nota original:</span>
-                              <p className="text-white/60 italic">"{obs.observacion_informal}"</p>
+                              <p className="text-white/60 italic">&ldquo;{obs.observacion_informal}&rdquo;</p>
                             </div>
                             {obs.observacion_formal_ia && (
                               <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg text-indigo-200/90">
                                 <span className="block text-[8px] font-bold uppercase tracking-wider text-indigo-400">Transcripción IA:</span>
-                                <p>"{obs.observacion_formal_ia}"</p>
+                                <p>&ldquo;{obs.observacion_formal_ia}&rdquo;</p>
                               </div>
                             )}
                           </div>

@@ -98,3 +98,15 @@ body {
   font-family: var(--font-sans);
   min-height: 100vh;
 }
+
+/* Ocultar botones de subir/bajar en inputs tipo number (spinners de navegador) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
