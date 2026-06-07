@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * NOTA DE MANTENIMIENTO:
+ * Al modificar o re-escribir este script, asegúrate de mantener o crear 
+ * las relaciones de multi-acudiente (acudientes con 2 o más estudiantes).
+ * Esto permite validar el selector familiar en el dashboard de acudientes.
+ * Ejemplo: 'rodrigo.silva@parent.co' representa a Mateo Silva y Juan Diego Rojas.
+ * ============================================================================
+ */
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
@@ -428,6 +437,33 @@ async function runSeed() {
       });
       if (relErr) {
         console.error(`Error vinculando acudiente ${row.email} con ${row.emailEstudianteVinculado}:`, relErr.message);
+      }
+    }
+  }
+
+  // Vincular acudientes adicionales (multi-acudiente para pruebas de selector familiar)
+  console.log('Generando vínculos adicionales para acudientes con múltiples estudiantes a cargo...');
+  const padresMultiples = ['rodrigo.silva@parent.co', 'beatriz.ortiz@parent.co', 'patricia.mendoza@parent.co'];
+  const hijosMultiples = ['juan.rojas@edu.co', 'carolina.marin@edu.co', 'sofia.castro@edu.co'];
+
+  for (let i = 0; i < padresMultiples.length; i++) {
+    const padreEmail = padresMultiples[i];
+    const hijoExtraEmail = hijosMultiples[i];
+
+    const padreId = userEmailsMap.get(padreEmail);
+    const hijoId = userEmailsMap.get(hijoExtraEmail);
+
+    if (padreId && hijoId) {
+      const { error: multiRelErr } = await supabase.from('perfiles_acudientes_estudiantes').insert({
+        id_acudiente: padreId,
+        id_estudiante: hijoId,
+        id_institucion: idInstitucion,
+        parentesco: 'Responsable Adicional'
+      });
+      if (multiRelErr) {
+        console.error(`Error vinculando acudiente adicional ${padreEmail} con ${hijoExtraEmail}:`, multiRelErr.message);
+      } else {
+        console.log(`Vínculo adicional creado: ${padreEmail} -> ${hijoExtraEmail}`);
       }
     }
   }
