@@ -22,6 +22,8 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [showConfirmSkip, setShowConfirmSkip] = useState(false);
 
   // ─── PASO 1: ESTRUCTURA TEMPORAL ───────────────────────────────────────────
   const [cantPeriodos, setCantPeriodos] = useState<3 | 4>(4);
@@ -64,32 +66,6 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     setPeriodos(updated);
   };
 
-  // Validaciones del paso 1
-  const validateStep1 = () => {
-    for (let i = 0; i < periodos.length; i++) {
-      const p = periodos[i];
-      if (!p.fecha_inicio || !p.fecha_fin) {
-        return 'Todas las fechas de inicio y fin son obligatorias.';
-      }
-      const start = new Date(p.fecha_inicio);
-      const end = new Date(p.fecha_fin);
-      if (start >= end) {
-        return `Periodo ${p.numero_periodo}: La fecha de inicio debe ser anterior a la de fin.`;
-      }
-      if (i > 0) {
-        const prevEnd = new Date(periodos[i - 1].fecha_fin);
-        if (start <= prevEnd) {
-          return `Periodo ${p.numero_periodo}: La fecha de inicio debe ser posterior al fin del Periodo ${p.numero_periodo - 1}.`;
-        }
-      }
-    }
-    const hasActive = periodos.some((p) => p.activo);
-    if (!hasActive) {
-      return 'Debe seleccionar un periodo como activo.';
-    }
-    return '';
-  };
-
   // ─── PASO 2: PONDERACIONES DE LEY ──────────────────────────────────────────
   const [saber, setSaber] = useState(40);
   const [hacer, setHacer] = useState(40);
@@ -111,8 +87,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     setEscalas(updated);
   };
 
-  // Validaciones del paso 3
-  const validateStep3 = () => {
+  const validateStepScale = () => {
     for (let i = 0; i < escalas.length; i++) {
       const e = escalas[i];
       if (e.nota_minima < 0 || e.nota_minima > 5 || e.nota_maxima < 0 || e.nota_maxima > 5) {
@@ -123,11 +98,8 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
       }
       if (i > 0) {
         const prevMax = escalas[i - 1].nota_maxima;
-        if (e.nota_minima !== prevMax && e.nota_minima !== parseFloat((prevMax + 0.1).toFixed(1))) {
-          // Validar continuidad
-          if (e.nota_minima < prevMax) {
-            return `El rango de ${e.nombre_desempeno} se solapa con el anterior.`;
-          }
+        if (e.nota_minima < prevMax) {
+          return `El rango de ${e.nombre_desempeno} se solapa con el desempeño anterior (${escalas[i - 1].nombre_desempeno}).`;
         }
       }
     }
@@ -147,9 +119,47 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   const [logroText, setLogroText] = useState('');
   const [logros, setLogros] = useState<LogroParam[]>([]);
 
+  // ─── DRAFT PERSISTENCE (localStorage) ──────────────────────────────────────
+  // Load draft on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('sophos_onboarding_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        if (draft.cantPeriodos) setCantPeriodos(draft.cantPeriodos);
+        if (draft.periodos) setPeriodos(draft.periodos);
+        if (draft.saber) setSaber(draft.saber);
+        if (draft.hacer) setHacer(draft.hacer);
+        if (draft.ser) setSer(draft.ser);
+        if (draft.escalas) setEscalas(draft.escalas);
+        if (draft.logros) setLogros(draft.logros);
+        if (draft.currentStep) setCurrentStep(draft.currentStep);
+      } catch (err) {
+        console.error('Error loading onboarding draft:', err);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save draft on changes (only after mounting and loading completes)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const draft = {
+      cantPeriodos,
+      periodos,
+      saber,
+      hacer,
+      ser,
+      escalas,
+      logros,
+      currentStep,
+    };
+    localStorage.setItem('sophos_onboarding_draft', JSON.stringify(draft));
+  }, [cantPeriodos, periodos, saber, hacer, ser, escalas, logros, currentStep, isLoaded]);
+
   useEffect(() => {
     async function fetchAssignments() {
-      // Cargamos materias, cursos y docentes asociados de la institución
       const { data, error } = await supabase
         .from('asignaciones_academicas')
         .select(`
@@ -197,33 +207,87 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     setLogros(logros.filter((_, i) => i !== index));
   };
 
-  // ─── NAVEGACIÓN ────────────────────────────────────────────────────────────
+  // ─── DYNAMIC STEPS & NAVIGATION ────────────────────────────────────────────
+  const cantPeriodosInt = Number(cantPeriodos);
+  const totalSteps = cantPeriodosInt === 3 ? 8 : 9;
+  const progressPercent = Math.round((currentStep / totalSteps) * 100);
+
+  const handlePeriodCountSelect = (count: 3 | 4) => {
+    handlePeriodCountChange(count);
+    setErrorMsg('');
+    setTimeout(() => {
+      setCurrentStep(2);
+    }, 200);
+  };
+
+  const handleActivePeriodSelect = (index: number) => {
+    handlePeriodActiveChange(index);
+    setErrorMsg('');
+    setTimeout(() => {
+      setCurrentStep(cantPeriodosInt + 3); // Avanza a ponderaciones
+    }, 200);
+  };
+
   const handleNext = () => {
     setErrorMsg('');
-    if (currentStep === 1) {
-      const err = validateStep1();
-      if (err) {
-        setErrorMsg(err);
+
+    // Validations for step dates
+    if (currentStep >= 2 && currentStep <= cantPeriodosInt + 1) {
+      const idx = currentStep - 2;
+      const p = periodos[idx];
+      if (!p.fecha_inicio || !p.fecha_fin) {
+        setErrorMsg('Ambas fechas son obligatorias.');
         return;
       }
-    } else if (currentStep === 2) {
+      const start = new Date(p.fecha_inicio);
+      const end = new Date(p.fecha_fin);
+      if (start >= end) {
+        setErrorMsg(`Periodo ${p.numero_periodo}: La fecha de inicio debe ser anterior a la de fin.`);
+        return;
+      }
+      if (idx > 0) {
+        const prevEnd = new Date(periodos[idx - 1].fecha_fin);
+        if (start <= prevEnd) {
+          setErrorMsg(`Periodo ${p.numero_periodo}: Debe iniciar después del cierre del Periodo ${p.numero_periodo - 1} (${periodos[idx - 1].fecha_fin}).`);
+          return;
+        }
+      }
+    }
+
+    // Validation for Active Period selection
+    if (currentStep === cantPeriodosInt + 2) {
+      const hasActive = periodos.some((p) => p.activo);
+      if (!hasActive) {
+        setErrorMsg('Debe seleccionar un periodo activo.');
+        return;
+      }
+    }
+
+    // Validation for Ponderaciones
+    if (currentStep === cantPeriodosInt + 3) {
       if (totalPonderaciones !== 100) {
-        setErrorMsg('La suma de las ponderaciones debe ser exactamente 100% (1.0).');
+        setErrorMsg('La suma de las ponderaciones debe ser exactamente 100%.');
         return;
       }
-    } else if (currentStep === 3) {
-      const err = validateStep3();
+    }
+
+    // Validation for Scale
+    if (currentStep === cantPeriodosInt + 4) {
+      const err = validateStepScale();
       if (err) {
         setErrorMsg(err);
         return;
       }
     }
+
     setCurrentStep(currentStep + 1);
   };
 
   const handlePrev = () => {
     setErrorMsg('');
-    setCurrentStep(currentStep - 1);
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -245,6 +309,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
 
     setLoading(false);
     if (res.success) {
+      localStorage.removeItem('sophos_onboarding_draft'); // Clean up draft on success
       onComplete();
     } else {
       setErrorMsg(res.error || 'Ocurrió un error al guardar la configuración.');
@@ -252,118 +317,310 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   };
 
   return (
-    <div className="fixed inset-0 bg-[#060911]/98 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-indigo-500/10 blur-[130px] rounded-full" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-lg bg-black/60 overflow-y-auto">
+      {/* Background Decorative Ambient Glows */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-500/10 blur-[130px] rounded-full" />
+        <div className="absolute bottom-1/4 left-1/3 w-[350px] h-[350px] bg-cyan-500/5 blur-[100px] rounded-full" />
       </div>
 
-      <div className="relative w-full max-w-3xl bg-[#0c1220]/90 border border-white/10 rounded-2xl shadow-2xl p-8 backdrop-blur-md">
+      {/* Modal Card */}
+      <div className="relative w-full max-w-xl bg-[#0c1220]/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300">
         
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex p-3 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-xl mb-4 text-white shadow-lg">
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-              <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Configuración del Año Lectivo</h1>
-          <p className="text-sm text-white/50 mt-1">Completa los parámetros iniciales de tu institución</p>
-        </div>
-
-        {/* Stepper */}
-        <div className="flex justify-between items-center mb-8 max-w-md mx-auto relative px-2">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/10 -translate-y-1/2 z-0" />
-          {[1, 2, 3, 4].map((step) => (
-            <div
-              key={step}
-              className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm transition-all border ${
-                step === currentStep
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/30'
-                  : step < currentStep
-                  ? 'bg-emerald-500 border-emerald-500 text-white'
-                  : 'bg-[#0f172a] border-white/10 text-white/40'
-              }`}
-            >
-              {step < currentStep ? '✓' : step}
+        {/* CONFIRM SKIP SUB-OVERLAY */}
+        {showConfirmSkip && (
+          <div className="absolute inset-0 bg-[#060911]/90 z-20 flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="max-w-sm text-center space-y-5 bg-[#0f172a] border border-white/10 p-6 rounded-2xl shadow-xl">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">¿Pausar la configuración?</h3>
+                <p className="text-xs text-white/50 mt-1.5 leading-relaxed">
+                  Guardamos tu progreso en este navegador como borrador. Podrás continuar completando los pasos más tarde desde el panel general.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirmSkip(false);
+                    if (onDismiss) onDismiss();
+                  }}
+                  className="flex-1 py-2 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
+                >
+                  Salir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmSkip(false)}
+                  className="flex-1 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+                >
+                  Continuar
+                </button>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Error Alert */}
-        {errorMsg && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2.5">
-            <svg className="w-5 h-5 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            <p className="text-red-300 text-sm">{errorMsg}</p>
           </div>
         )}
 
-        {/* Step Contents */}
-        <div className="min-h-[280px]">
+        {/* Sleek Progress Bar */}
+        <div 
+          className="absolute top-0 left-0 h-1 bg-gradient-to-r from-indigo-500 to-cyan-500 transition-all duration-500" 
+          style={{ width: `${progressPercent}%` }}
+        />
+
+        <div className="p-8">
           
-          {/* PASO 1: ESTRUCTURA TEMPORAL */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wide mb-2.5">
-                  Número de Periodos Académicos
-                </label>
-                <div className="flex gap-4">
-                  {[3, 4].map((count) => (
+          {/* Header Step Counter */}
+          <div className="flex justify-between items-center mb-6">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+              Paso {currentStep} de {totalSteps}
+            </span>
+            <span className="text-[10px] text-white/30 font-medium">
+              {progressPercent}% completado
+            </span>
+          </div>
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2.5 animate-in fade-in duration-200">
+              <svg className="w-4 h-4 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-300 text-xs font-medium">{errorMsg}</p>
+            </div>
+          )}
+
+          {/* Conversational Screen Selector */}
+          <div key={currentStep} className="animate-in fade-in slide-in-from-bottom-4 duration-300 min-h-[220px] flex flex-col justify-center">
+            
+            {/* STEP 1: Period Count */}
+            {currentStep === 1 && (
+              <div className="space-y-5">
+                <div className="text-center sm:text-left">
+                  <h2 className="text-xl font-bold text-white tracking-tight">Estructura del año escolar</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Comencemos por definir el número de periodos académicos en los que se dividirá el año lectivo.
+                  </p>
+                </div>
+                <div className="space-y-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePeriodCountSelect(3)}
+                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left font-semibold transition-all ${
+                      cantPeriodos === 3
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md'
+                        : 'bg-white/3 border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-sm">3 Periodos</span>
+                      <span className="block text-[10px] text-white/40 font-normal mt-0.5">Esquema Trimestral</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded">Seleccionar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handlePeriodCountSelect(4)}
+                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left font-semibold transition-all ${
+                      cantPeriodos === 4
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md'
+                        : 'bg-white/3 border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-sm">4 Periodos</span>
+                      <span className="block text-[10px] text-white/40 font-normal mt-0.5">Esquema Bimestral (Más común en Latam)</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded">Seleccionar</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2 to cantPeriodosInt + 1: Specific Period dates */}
+            {currentStep >= 2 && currentStep <= cantPeriodosInt + 1 && (() => {
+              const idx = currentStep - 2;
+              const p = periodos[idx];
+              return (
+                <div className="space-y-5">
+                  <div>
+                    <span className="text-[10px] font-bold bg-indigo-500/15 text-indigo-400 px-2.5 py-1 rounded">Calendario Escolar</span>
+                    <h2 className="text-xl font-bold text-white tracking-tight mt-3">Fecha del Periodo {p.numero_periodo}</h2>
+                    <p className="text-xs text-white/50 mt-1">
+                      Define los límites de fecha para el inicio y fin de las clases del Periodo {p.numero_periodo}.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor={`start-date-p${p.numero_periodo}`} className="block text-[10px] font-bold uppercase tracking-wider text-white/40">Fecha de Inicio</label>
+                      <input
+                        id={`start-date-p${p.numero_periodo}`}
+                        type="date"
+                        value={p.fecha_inicio}
+                        onChange={(e) => handlePeriodDateChange(idx, 'fecha_inicio', e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor={`end-date-p${p.numero_periodo}`} className="block text-[10px] font-bold uppercase tracking-wider text-white/40">Fecha de Cierre</label>
+                      <input
+                        id={`end-date-p${p.numero_periodo}`}
+                        type="date"
+                        value={p.fecha_fin}
+                        onChange={(e) => handlePeriodDateChange(idx, 'fecha_fin', e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* STEP cantPeriodosInt + 2: Active Period choice */}
+            {currentStep === cantPeriodosInt + 2 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">¿Cuál es el periodo activo actual?</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Selecciona en cuál periodo se iniciará la toma de asistencia y registro de calificaciones en la app.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  {periodos.map((p, idx) => (
                     <button
-                      key={count}
+                      key={p.numero_periodo}
                       type="button"
-                      onClick={() => handlePeriodCountChange(count as 3 | 4)}
-                      className={`flex-1 py-3 px-4 rounded-xl border text-sm font-semibold transition-all ${
-                        cantPeriodos === count
-                          ? 'bg-indigo-600/15 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-600/5'
-                          : 'bg-white/3 border-white/10 text-white/60 hover:bg-white/5'
+                      onClick={() => handleActivePeriodSelect(idx)}
+                      className={`p-4 rounded-xl border text-center font-bold text-sm transition-all ${
+                        p.activo
+                          ? 'bg-indigo-600/15 border-indigo-500 text-indigo-300 shadow-md'
+                          : 'bg-white/3 border-white/10 text-white/60 hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      {count} Periodos ({count === 3 ? 'Trimestral' : 'Bimestral'})
+                      Periodo {p.numero_periodo}
                     </button>
                   ))}
                 </div>
               </div>
+            )}
 
+            {/* STEP cantPeriodosInt + 3: Ponderaciones (Saber/Hacer/Ser) */}
+            {currentStep === cantPeriodosInt + 3 && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Ponderaciones de Evaluación</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Distribuye los pesos porcentuales de las tres dimensiones fundamentales del aprendizaje. La suma debe dar 100%.
+                  </p>
+                </div>
+
+                <div className="space-y-4 pt-1">
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5">
+                      <span className="text-white/70">Cognitivo (Saber / Exámenes)</span>
+                      <span className="text-indigo-400">{saber}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={saber}
+                      onChange={(e) => setSaber(parseInt(e.target.value, 10))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5">
+                      <span className="text-white/70">Procedimental (Hacer / Proyectos y Tareas)</span>
+                      <span className="text-indigo-400">{hacer}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={hacer}
+                      onChange={(e) => setHacer(parseInt(e.target.value, 10))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5">
+                      <span className="text-white/70">Actitudinal (Ser / Convivencia y Asistencia)</span>
+                      <span className="text-indigo-400">{ser}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ser}
+                      onChange={(e) => setSer(parseInt(e.target.value, 10))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                  <span className="text-xs text-white/40 font-medium">Suma Total de Pesos:</span>
+                  <span className={`text-sm font-extrabold px-3 py-1 rounded-lg ${
+                    totalPonderaciones === 100
+                      ? 'text-teal-400 bg-teal-500/10 border border-teal-500/20'
+                      : 'text-red-400 bg-red-500/10 border border-red-500/20'
+                  }`}>
+                    {totalPonderaciones}% / 100%
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* STEP cantPeriodosInt + 4: Escala de valoración */}
+            {currentStep === cantPeriodosInt + 4 && (
               <div className="space-y-4">
-                <label className="block text-xs font-semibold text-white/60 uppercase tracking-wide">
-                  Configuración de Fechas y Periodo Activo
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {periodos.map((p, idx) => (
-                    <div key={p.numero_periodo} className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-3 relative">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-white">Periodo {p.numero_periodo}</span>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="activePeriod"
-                            checked={p.activo}
-                            onChange={() => handlePeriodActiveChange(idx)}
-                            className="w-3.5 h-3.5 accent-indigo-500"
-                          />
-                          <span className="text-xs text-white/40">Activo</span>
-                        </label>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Escala de Valoración</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Homologa las notas numéricas (0.0 a 5.0) con los desempeños nacionales obligatorios del Decreto 1290.
+                  </p>
+                </div>
+                <div className="space-y-2.5 max-h-[200px] overflow-y-auto pr-1">
+                  {escalas.map((e, idx) => (
+                    <div key={e.nombre_desempeno} className="bg-white/3 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          e.nombre_desempeno === 'SUPERIOR' ? 'bg-emerald-400' :
+                          e.nombre_desempeno === 'ALTO' ? 'bg-indigo-400' :
+                          e.nombre_desempeno === 'BASICO' ? 'bg-cyan-400' : 'bg-red-400'
+                        }`} />
+                        <span className="text-xs font-bold text-white">{e.nombre_desempeno}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <span className="text-[10px] text-white/40 uppercase">Inicio</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-white/40 uppercase">Min</span>
                           <input
-                            type="date"
-                            value={p.fecha_inicio}
-                            onChange={(e) => handlePeriodDateChange(idx, 'fecha_inicio', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="5"
+                            value={e.nota_minima}
+                            onChange={(e) => handleEscalaChange(idx, 'nota_minima', parseFloat(e.target.value) || 0)}
+                            className="w-14 bg-white/5 border border-white/10 rounded-lg py-1 text-center text-xs text-white focus:outline-none focus:border-indigo-500"
                           />
                         </div>
-                        <div>
-                          <span className="text-[10px] text-white/40 uppercase">Cierre</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-white/40 uppercase">Max</span>
                           <input
-                            type="date"
-                            value={p.fecha_fin}
-                            onChange={(e) => handlePeriodDateChange(idx, 'fecha_fin', e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="5"
+                            value={e.nota_maxima}
+                            onChange={(e) => handleEscalaChange(idx, 'nota_maxima', parseFloat(e.target.value) || 0)}
+                            className="w-14 bg-white/5 border border-white/10 rounded-lg py-1 text-center text-xs text-white focus:outline-none focus:border-indigo-500"
                           />
                         </div>
                       </div>
@@ -371,261 +628,152 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* PASO 2: PONDERACIONES DE LEY */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
-                <p className="text-xs text-indigo-300 leading-relaxed">
-                  <strong>Normativa MEN (Colombia):</strong> Define la distribución de pesos de las tres dimensiones académicas fundamentales. La suma total de los porcentajes debe ser exactamente <strong>100%</strong> (1.0).
-                </p>
-              </div>
-
+            {/* STEP cantPeriodosInt + 5: Banco de Logros (Opcional) */}
+            {currentStep === cantPeriodosInt + 5 && (
               <div className="space-y-4">
-                {/* Saber */}
                 <div>
-                  <div className="flex justify-between text-sm font-medium mb-1.5">
-                    <span className="text-white">Cognitivo (Saber / Exámenes)</span>
-                    <span className="text-indigo-400 font-bold">{saber}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={saber}
-                    onChange={(e) => setSaber(parseInt(e.target.value, 10))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
+                  <h2 className="text-xl font-bold text-white tracking-tight">Banco de Logros (Opcional)</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Redacta un logro académico inicial para tu banco de evidencias. Puedes omitir o saltar este paso si lo deseas.
+                  </p>
                 </div>
 
-                {/* Hacer */}
-                <div>
-                  <div className="flex justify-between text-sm font-medium mb-1.5">
-                    <span className="text-white">Procedimental (Hacer / Talleres)</span>
-                    <span className="text-indigo-400 font-bold">{hacer}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={hacer}
-                    onChange={(e) => setHacer(parseInt(e.target.value, 10))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                </div>
-
-                {/* Ser */}
-                <div>
-                  <div className="flex justify-between text-sm font-medium mb-1.5">
-                    <span className="text-white">Actitudinal (Ser / Convivencia y Asistencia)</span>
-                    <span className="text-indigo-400 font-bold">{ser}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={ser}
-                    onChange={(e) => setSer(parseInt(e.target.value, 10))}
-                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Total Indicator */}
-              <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-                <span className="text-sm text-white/50">Suma total de ponderaciones:</span>
-                <span className={`text-lg font-bold px-3 py-1 rounded-lg ${
-                  totalPonderaciones === 100
-                    ? 'text-emerald-400 bg-emerald-500/10'
-                    : 'text-red-400 bg-red-500/10'
-                }`}>
-                  {totalPonderaciones}% / 100%
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* PASO 3: ESCALA DE VALORACIÓN */}
-          {currentStep === 3 && (
-            <div className="space-y-5">
-              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
-                <p className="text-xs text-indigo-300 leading-relaxed">
-                  Homologa la escala numérica de tu institución con los desempeños nacionales obligatorios del Decreto 1290. El rango completo debe iniciar en <strong>0.0</strong> y finalizar en <strong>5.0</strong>.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {escalas.map((e, idx) => (
-                  <div key={e.nombre_desempeno} className="bg-white/3 border border-white/5 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${
-                        e.nombre_desempeno === 'SUPERIOR' ? 'bg-emerald-400' :
-                        e.nombre_desempeno === 'ALTO' ? 'bg-indigo-400' :
-                        e.nombre_desempeno === 'BASICO' ? 'bg-cyan-400' : 'bg-red-400'
-                      }`} />
-                      <span className="text-sm font-semibold text-white w-24">{e.nombre_desempeno}</span>
+                <div className="bg-white/3 border border-white/5 rounded-xl p-3.5 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="assignment-select" className="block text-[9px] text-white/40 uppercase mb-1">Materia & Curso</label>
+                      <select
+                        id="assignment-select"
+                        value={selectedAsignacion}
+                        onChange={(e) => setSelectedAsignacion(e.target.value)}
+                        className="w-full bg-[#0c1220] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                      >
+                        {assignments.length === 0 ? (
+                          <option value="">Sin asignaciones</option>
+                        ) : (
+                          assignments.map((a) => (
+                            <option key={a.id_asignacion} value={a.id_asignacion}>
+                              {a.materia} — {a.curso}
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-white/40">MÍNIMA</span>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="5"
-                          value={e.nota_minima}
-                          onChange={(e) => handleEscalaChange(idx, 'nota_minima', parseFloat(e.target.value) || 0)}
-                          className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-white/40">MÁXIMA</span>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="5"
-                          value={e.nota_maxima}
-                          onChange={(e) => handleEscalaChange(idx, 'nota_maxima', parseFloat(e.target.value) || 0)}
-                          className="w-16 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
+                    <div>
+                      <label htmlFor="period-logro-select" className="block text-[9px] text-white/40 uppercase mb-1">Periodo</label>
+                      <select
+                        id="period-logro-select"
+                        value={selectedPeriodoLogro}
+                        onChange={(e) => setSelectedPeriodoLogro(parseInt(e.target.value, 10))}
+                        className="w-full bg-[#0c1220] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                      >
+                        {periodos.map((p) => (
+                          <option key={p.numero_periodo} value={p.numero_periodo}>
+                            Periodo {p.numero_periodo}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* PASO 4: BANCO DE EVIDENCIAS / LOGROS */}
-          {currentStep === 4 && (
-            <div className="space-y-5">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-white">Redacción de Logros Iniciales</h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] text-white/40 uppercase mb-1">Grupo y Materia</label>
-                    <select
-                      value={selectedAsignacion}
-                      onChange={(e) => setSelectedAsignacion(e.target.value)}
-                      className="w-full bg-[#0f172a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                    >
-                      {assignments.map((a) => (
-                        <option key={a.id_asignacion} value={a.id_asignacion}>
-                          {a.materia} — {a.curso} ({a.docente})
-                        </option>
-                      ))}
-                    </select>
+                    <label htmlFor="logro-desc" className="block text-[9px] text-white/40 uppercase mb-1">Descripción del Logro</label>
+                    <textarea
+                      id="logro-desc"
+                      rows={2}
+                      value={logroText}
+                      onChange={(e) => setLogroText(e.target.value)}
+                      placeholder="Ej: Formula y resuelve problemas usando la lógica de conjuntos."
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500 resize-none"
+                    />
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-white/40 uppercase mb-1">Periodo Destino</label>
-                    <select
-                      value={selectedPeriodoLogro}
-                      onChange={(e) => setSelectedPeriodoLogro(parseInt(e.target.value, 10))}
-                      className="w-full bg-[#0f172a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                    >
-                      {periodos.map((p) => (
-                        <option key={p.numero_periodo} value={p.numero_periodo}>
-                          Periodo {p.numero_periodo}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddLogro}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    + Agregar Logro
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] text-white/40 uppercase mb-1">Meta / Logro Académico</label>
-                  <textarea
-                    rows={2}
-                    value={logroText}
-                    onChange={(e) => setLogroText(e.target.value)}
-                    placeholder="Ej. Reconoce e identifica figuras geométricas tridimensionales en problemas aplicados."
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500 resize-none"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddLogro}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-semibold transition-colors"
-                >
-                  + Agregar al Banco
-                </button>
-              </div>
-
-              {/* Logros List */}
-              {logros.length > 0 && (
-                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1">
-                  {logros.map((l, idx) => {
-                    const assign = assignments.find(a => a.id_asignacion === l.id_asignacion);
-                    return (
-                      <div key={idx} className="bg-white/3 border border-white/5 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
-                        <div className="text-xs">
-                          <span className="font-semibold text-indigo-400 mr-2">P{l.numero_periodo} · {assign?.materia} ({assign?.curso}):</span>
-                          <span className="text-white/70 italic">{l.descripcion}</span>
+                {logros.length > 0 && (
+                  <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-1">
+                    {logros.map((l, idx) => {
+                      const assign = assignments.find(a => a.id_asignacion === l.id_asignacion);
+                      return (
+                        <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-lg px-3 py-1.5 flex items-center justify-between gap-3 text-[11px]">
+                          <span className="text-white/80 truncate">
+                            <strong className="text-indigo-400 mr-1.5">P{l.numero_periodo} · {assign?.materia}:</strong>
+                            {l.descripcion}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLogro(idx)}
+                            className="text-red-400 hover:text-red-300 font-semibold px-1"
+                          >
+                            Eliminar
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLogro(idx)}
-                          className="text-red-400 hover:text-red-300 text-xs px-2 py-1"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
-        </div>
+          </div>
 
-        {/* Footer Actions */}
-        <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5">
-          <div className="flex gap-2">
+          {/* Footer Controls & Navigation */}
+          <div className="flex justify-between items-center mt-8 pt-6 border-t border-white/5">
+            
+            {/* Left Back Button */}
             <button
               type="button"
               onClick={handlePrev}
               disabled={currentStep === 1 || loading}
-              className="px-4 py-2 rounded-xl bg-white/3 border border-white/10 text-sm text-white/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/75 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
             >
               Atrás
             </button>
+
+            {/* Middle Omit/Skip Button */}
             {onDismiss && (
               <button
                 type="button"
-                onClick={onDismiss}
-                className="px-4 py-2 rounded-xl bg-white/3 border border-transparent hover:bg-red-500/10 hover:text-red-400 text-sm text-white/40 font-semibold transition-all"
+                onClick={() => setShowConfirmSkip(true)}
+                disabled={loading}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
               >
-                Configurar más tarde
+                Omitir configuración
               </button>
             )}
+
+            {/* Right Next/Finish Button */}
+            {currentStep < totalSteps ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+              >
+                Siguiente
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading}
+                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-600/15 cursor-pointer"
+              >
+                {loading ? 'Guardando...' : 'Finalizar configuración'}
+              </button>
+            )}
+
           </div>
 
-          {currentStep < 4 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold text-white transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/20"
-            >
-              Siguiente
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-600/15"
-            >
-              {loading ? 'Guardando...' : 'Finalizar Parametrización'}
-            </button>
-          )}
         </div>
-
       </div>
     </div>
   );
