@@ -31,7 +31,54 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 async function runSeed() {
   console.log('=== INICIANDO LIMPIEZA DE BASE DE DATOS ===');
 
-  // 1. Listar y borrar usuarios de Supabase Auth
+  // 1. Borrar datos de las tablas públicas en orden de dependencias
+  const tablesToWipe = [
+    'asistencias',
+    'calificaciones',
+    'configuracion_evidencias_periodo',
+    'evidencias_logros',
+    'evidencias',
+    'observador_digital',
+    'perfiles_acudientes_estudiantes',
+    'estudiantes_matriculados',
+    'asignaciones_academicas',
+    'cursos',
+    'materias',
+    'periodos_academicos',
+    'escala_valoracion',
+    'usuarios',
+    'instituciones'
+  ];
+
+  for (const table of tablesToWipe) {
+    console.log(`Limpiando tabla: ${table}...`);
+    try {
+      let pkField = 'id';
+      if (table === 'calificaciones') pkField = 'id_calificacion';
+      else if (table === 'asistencias') pkField = 'id_asistencia';
+      else if (table === 'evidencias_logros') pkField = 'id_logro';
+      else if (table === 'evidencias') pkField = 'id_evidencia';
+      else if (table === 'observador_digital') pkField = 'id_observador';
+      else if (table === 'perfiles_acudientes_estudiantes') pkField = 'id_acudiente_estudiante';
+      else if (table === 'estudiantes_matriculados') pkField = 'id_matricula';
+      else if (table === 'asignaciones_academicas') pkField = 'id_asignacion';
+      else if (table === 'cursos') pkField = 'id_curso';
+      else if (table === 'materias') pkField = 'id_materia';
+      else if (table === 'periodos_academicos') pkField = 'id_periodo';
+      else if (table === 'escala_valoracion') pkField = 'id_escala';
+      else if (table === 'usuarios') pkField = 'id_usuario';
+      else if (table === 'instituciones') pkField = 'id_institucion';
+
+      const { error } = await supabase.from(table).delete().not(pkField, 'is', null);
+      if (error) {
+        console.error(`Error borrando en tabla ${table}: ${error.message}`);
+      }
+    } catch (err) {
+      console.error(`Excepción limpiando tabla ${table}:`, err.message || err);
+    }
+  }
+
+  // 2. Listar y borrar usuarios de Supabase Auth
   try {
     let deletedCount = 0;
     while (true) {
@@ -55,55 +102,6 @@ async function runSeed() {
     console.log(`Total de usuarios eliminados de Supabase Auth: ${deletedCount}`);
   } catch (err) {
     console.warn('Advertencia o error limpiando Supabase Auth:', err.message || err);
-  }
-
-  // 2. Borrar datos de las tablas públicas en orden de dependencias
-  const tablesToWipe = [
-    'asistencias',
-    'calificaciones',
-    'configuracion_evidencias_periodo',
-    'evidencias_logros',
-    'evidencias',
-    'observador_digital',
-    'perfiles_acudientes_estudiantes',
-    'estudiantes_matriculados',
-    'asignaciones_academicas',
-    'cursos',
-    'materias',
-    'periodos_academicos',
-    'escala_valoracion',
-    'configuracion_ponderaciones',
-    'usuarios',
-    'instituciones'
-  ];
-
-  for (const table of tablesToWipe) {
-    console.log(`Limpiando tabla: ${table}...`);
-    try {
-      let pkField = 'id';
-      if (table === 'calificaciones') pkField = 'id_calificacion';
-      else if (table === 'asistencias') pkField = 'id_asistencia';
-      else if (table === 'evidencias_logros') pkField = 'id_logro';
-      else if (table === 'evidencias') pkField = 'id_evidencia';
-      else if (table === 'observador_digital') pkField = 'id_observador';
-      else if (table === 'perfiles_acudientes_estudiantes') pkField = 'id_acudiente_estudiante';
-      else if (table === 'estudiantes_matriculados') pkField = 'id_matricula';
-      else if (table === 'asignaciones_academicas') pkField = 'id_asignacion';
-      else if (table === 'cursos') pkField = 'id_curso';
-      else if (table === 'materias') pkField = 'id_materia';
-      else if (table === 'periodos_academicos') pkField = 'id_periodo';
-      else if (table === 'escala_valoracion') pkField = 'id_escala';
-      else if (table === 'configuracion_ponderaciones') pkField = 'id_ponderacion';
-      else if (table === 'usuarios') pkField = 'id_usuario';
-      else if (table === 'instituciones') pkField = 'id_institucion';
-
-      const { error } = await supabase.from(table).delete().not(pkField, 'is', null);
-      if (error) {
-        console.error(`Error borrando en tabla ${table}: ${error.message}`);
-      }
-    } catch (err) {
-      console.error(`Excepción limpiando tabla ${table}:`, err.message || err);
-    }
   }
 
   console.log('\n=== CREANDO INSTITUCIÓN Y ADMINISTRADOR DEMO ===');
@@ -162,14 +160,7 @@ async function runSeed() {
   }
   console.log('Administrador contacto@jm-carbonell.edu.co registrado correctamente.');
 
-  // Configurar Ponderaciones
-  const { error: pondError } = await supabase.from('configuracion_ponderaciones').insert({
-    id_institucion: idInstitucion,
-    peso_saber: 0.40,
-    peso_hacer: 0.40,
-    peso_ser: 0.20
-  });
-  if (pondError) console.error('Error configurando ponderaciones:', pondError.message);
+
 
   // Configurar Escalas de valoración
   const escalas = [
@@ -274,7 +265,9 @@ async function runSeed() {
   console.log(`Creando ${coursesToCreate.size} cursos...`);
   const coursesMap = new Map();
   for (const cStr of coursesToCreate) {
-    const [nombre, jornada] = cStr.split('-');
+    const parts = cStr.split('-');
+    const jornada = parts[parts.length - 1];
+    const nombre = parts.slice(0, parts.length - 1).join('-');
     const { data: cursoRow, error: cError } = await supabase.from('cursos').insert({
       id_institucion: idInstitucion,
       nombre,
@@ -498,16 +491,14 @@ async function runSeed() {
     if (cursoEstudiantes.length === 0) continue;
 
     // --- PERIODO 1 (CERRADO CON ACCESO A BOLETINES) ---
-    // Crear dos evidencias para Periodo 1
-    const ev1P1Nombre = `Examen Bimestral P1`;
-    const ev2P1Nombre = `Seguimiento de Talleres P1`;
+    const evsP1 = getEvidenciasPorMateria(asig.materiaNombre, 1);
 
     const { data: evP1_1 } = await supabase.from('evidencias').insert({
       id_institucion: idInstitucion,
       id_materia: asig.id_materia,
       grado: extractGrado(asig.cursoNombre),
-      nombre: ev1P1Nombre,
-      descripcion: `Evaluación sumativa de fin de Periodo 1`,
+      nombre: evsP1[0].nombre,
+      descripcion: evsP1[0].descripcion,
       orden: 1,
       activo: true,
       ano_lectivo: 2026
@@ -517,8 +508,8 @@ async function runSeed() {
       id_institucion: idInstitucion,
       id_materia: asig.id_materia,
       grado: extractGrado(asig.cursoNombre),
-      nombre: ev2P1Nombre,
-      descripcion: `Portafolio de evidencias y talleres prácticos en clase del Periodo 1`,
+      nombre: evsP1[1].nombre,
+      descripcion: evsP1[1].descripcion,
       orden: 2,
       activo: true,
       ano_lectivo: 2026
@@ -559,7 +550,6 @@ async function runSeed() {
           periodo: 1,
           id_evidencia: evP1_1.id_evidencia,
           actividad: 'evidencia',
-          dimension: 'SABER',
           nota: nota1,
           fecha_registro: '2026-03-20T10:00:00Z'
         });
@@ -573,7 +563,6 @@ async function runSeed() {
           periodo: 1,
           id_evidencia: evP1_2.id_evidencia,
           actividad: 'evidencia',
-          dimension: 'HACER',
           nota: nota2,
           fecha_registro: '2026-04-12T10:00:00Z'
         });
@@ -585,15 +574,14 @@ async function runSeed() {
     const esImportante = materiasImportantes.some(mi => asig.materiaNombre.toLowerCase().includes(mi.toLowerCase()));
 
     if (esImportante) {
-      const ev1P2Nombre = `Taller Temático P2`;
-      const ev2P2Nombre = `Evaluación de Cierre P2 (Límite: 20 de Junio)`;
+      const evsP2 = getEvidenciasPorMateria(asig.materiaNombre, 2);
 
       const { data: evP2_1 } = await supabase.from('evidencias').insert({
         id_institucion: idInstitucion,
         id_materia: asig.id_materia,
         grado: extractGrado(asig.cursoNombre),
-        nombre: ev1P2Nombre,
-        descripcion: `Talleres de aplicación práctica del segundo periodo`,
+        nombre: evsP2[0].nombre,
+        descripcion: evsP2[0].descripcion,
         orden: 1,
         activo: true,
         ano_lectivo: 2026
@@ -603,8 +591,8 @@ async function runSeed() {
         id_institucion: idInstitucion,
         id_materia: asig.id_materia,
         grado: extractGrado(asig.cursoNombre),
-        nombre: ev2P2Nombre,
-        descripcion: `Evaluación final del periodo - Fecha de presentación programada: 20 de Junio de 2026`,
+        nombre: evsP2[1].nombre,
+        descripcion: evsP2[1].descripcion,
         orden: 2,
         activo: true,
         ano_lectivo: 2026
@@ -646,7 +634,6 @@ async function runSeed() {
             periodo: 2,
             id_evidencia: evP2_1.id_evidencia,
             actividad: 'evidencia',
-            dimension: 'HACER',
             nota: notaP2,
             fecha_registro: '2026-05-20T10:00:00Z'
           });
@@ -767,6 +754,165 @@ function extractGrado(nombreCurso) {
     return num;
   }
   return nombreCurso;
+}
+
+function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
+  const normalized = (materiaNombre || '').toLowerCase().trim();
+  
+  if (normalized.includes('lectura') || normalized.includes('español') || normalized.includes('lengua') || normalized.includes('castellana')) {
+    if (numeroPeriodo === 1) {
+      return [
+        {
+          nombre: "Comprensión Literal",
+          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión LITERAL del mismo."
+        },
+        {
+          nombre: "Comprensión Inferencial",
+          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión INFERENCIAL del mismo."
+        }
+      ];
+    } else {
+      return [
+        {
+          nombre: "Comprensión Crítica",
+          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión CRÍTICA e INTERTEXTUAL del mismo."
+        },
+        {
+          nombre: "Escritura de Reseña",
+          descripcion: "Escribo una RESEÑA a partir de la interpretación coherente del plan lector."
+        }
+      ];
+    }
+  }
+
+  if (normalized.includes('historia') || normalized.includes('sociales') || normalized.includes('geografía')) {
+    if (numeroPeriodo === 1) {
+      return [
+        {
+          nombre: "Conquista y Colonización",
+          descripcion: "Periodizo y caracterizo los procesos de conquista y colonización de América, siendo consciente de su impacto demográfico y social para la conformación del mundo actual."
+        },
+        {
+          nombre: "Geopolítica de Oriente",
+          descripcion: "Establezco la relación entre la geopolítica actual y la historia de Oriente, Asia y China durante la dinastía Ming."
+        }
+      ];
+    } else {
+      return [
+        {
+          nombre: "Independencia de Colombia",
+          descripcion: "Defino y comprendo el proceso de Independencia de Colombia, la transición hacía la República y la construcción del estado-nación, indagando en el origen multiétnico y pluricultural de la sociedad colombiana."
+        },
+        {
+          nombre: "Cimentación de la República",
+          descripcion: "Entiendo, esbozo y caracterizo el periodo de cimentación de la Gran Colombia hasta la etapa de regeneración y federalismo durante el siglo XIX."
+        }
+      ];
+    }
+  }
+
+  if (normalized.includes('matemáticas') || normalized.includes('álgebra') || normalized.includes('geometría') || normalized.includes('cálculo')) {
+    if (numeroPeriodo === 1) {
+      return [
+        {
+          nombre: "Operaciones de Conjuntos",
+          descripcion: "Resuelvo problemas utilizando operaciones de conjuntos y diagramas de Venn de manera lógica."
+        },
+        {
+          nombre: "Propiedades Numéricas",
+          descripcion: "Reconozco y utilizo las propiedades de los números enteros y racionales para solucionar situaciones cotidianas."
+        }
+      ];
+    } else {
+      return [
+        {
+          nombre: "Factorización Algebraica",
+          descripcion: "Identifico y simplifico expresiones algebraicas complejas utilizando diversos métodos de factorización."
+        },
+        {
+          nombre: "Sistemas de Ecuaciones",
+          descripcion: "Planteo y resuelvo sistemas de ecuaciones lineales aplicados a situaciones del entorno."
+        }
+      ];
+    }
+  }
+
+  if (normalized.includes('inglés') || normalized.includes('english')) {
+    if (numeroPeriodo === 1) {
+      return [
+        {
+          nombre: "Reading Comprehension",
+          descripcion: "Extracts main ideas and specific details from medium-length texts about academic and familiar topics."
+        },
+        {
+          nombre: "Oral Debate",
+          descripcion: "Participates in active conversations and debates about current events using fluent grammar."
+        }
+      ];
+    } else {
+      return [
+        {
+          nombre: "Written Essay",
+          descripcion: "Writes structured and coherent essays using transition words and advanced sentence connectors."
+        },
+        {
+          nombre: "Listening Ability",
+          descripcion: "Understands main points of standard spoken English on familiar and academic matters."
+        }
+      ];
+    }
+  }
+
+  if (normalized.includes('biología') || normalized.includes('naturales') || normalized.includes('química') || normalized.includes('física') || normalized.includes('ciencias')) {
+    if (numeroPeriodo === 1) {
+      return [
+        {
+          nombre: "Estructura Celular",
+          descripcion: "Explico y relaciono la estructura y funciones de los orgánulos de la célula animal y vegetal."
+        },
+        {
+          nombre: "Diseño Experimental",
+          descripcion: "Formulo hipótesis coherentes y diseño montajes experimentales sencillos para registrar datos."
+        }
+      ];
+    } else {
+      return [
+        {
+          nombre: "Leyes del Movimiento",
+          descripcion: "Analizo y describo situaciones de equilibrio y movimiento utilizando las leyes de la dinámica de Newton."
+        },
+        {
+          nombre: "Modelos Atómicos",
+          descripcion: "Relaciono las propiedades químicas de los elementos con su configuración electrónica y evolución histórica."
+        }
+      ];
+    }
+  }
+
+  // Genéricas por defecto para otras asignaturas
+  if (numeroPeriodo === 1) {
+    return [
+      {
+        nombre: "Apropiación Teórica P1",
+        descripcion: `Demuestra comprensión y apropiación conceptual de los contenidos fundamentales de ${materiaNombre} durante el Periodo 1.`
+      },
+      {
+        nombre: "Ejecución Práctica P1",
+        descripcion: `Desarrolla con rigor metodológico los talleres, laboratorios y actividades prácticas en clase para el Periodo 1.`
+      }
+    ];
+  } else {
+    return [
+      {
+        nombre: "Pensamiento Crítico P2",
+        descripcion: `Aplica el análisis crítico y la resolución de problemas para abordar situaciones complejas en ${materiaNombre} del Periodo 2.`
+      },
+      {
+        nombre: "Proyecto Integrador P2",
+        descripcion: `Presenta y sustenta de manera creativa y coherente el proyecto de síntesis del Periodo 2.`
+      }
+    ];
+  }
 }
 
 runSeed().catch(err => {

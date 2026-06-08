@@ -25,6 +25,11 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   const [isLoaded, setIsLoaded] = useState(false);
   const [showConfirmSkip, setShowConfirmSkip] = useState(false);
 
+  // ─── PASO DE NOMENCLATURA ──────────────────────────────────────────────────
+  const [nomenclaturaOption, setNomenclaturaOption] = useState<'6A' | '601' | 'custom'>('6A');
+  const [nomenclaturaCursos, setNomenclaturaCursos] = useState('6A');
+  const [customNomenclaturaInput, setCustomNomenclaturaInput] = useState('');
+
   // ─── PASO 1: ESTRUCTURA TEMPORAL ───────────────────────────────────────────
   const [cantPeriodos, setCantPeriodos] = useState<3 | 4>(4);
   const [periodos, setPeriodos] = useState<PeriodoParam[]>([
@@ -65,13 +70,6 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     }));
     setPeriodos(updated);
   };
-
-  // ─── PASO 2: PONDERACIONES DE LEY ──────────────────────────────────────────
-  const [saber, setSaber] = useState(40);
-  const [hacer, setHacer] = useState(40);
-  const [ser, setSer] = useState(20);
-
-  const totalPonderaciones = saber + hacer + ser;
 
   // ─── PASO 3: ESCALA DE VALORACIÓN ──────────────────────────────────────────
   const [escalas, setEscalas] = useState<EscalaParam[]>([
@@ -129,12 +127,12 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
         const draft = JSON.parse(saved);
         if (draft.cantPeriodos) setCantPeriodos(draft.cantPeriodos);
         if (draft.periodos) setPeriodos(draft.periodos);
-        if (draft.saber) setSaber(draft.saber);
-        if (draft.hacer) setHacer(draft.hacer);
-        if (draft.ser) setSer(draft.ser);
         if (draft.escalas) setEscalas(draft.escalas);
         if (draft.logros) setLogros(draft.logros);
         if (draft.currentStep) setCurrentStep(draft.currentStep);
+        if (draft.nomenclaturaCursos) setNomenclaturaCursos(draft.nomenclaturaCursos);
+        if (draft.nomenclaturaOption) setNomenclaturaOption(draft.nomenclaturaOption);
+        if (draft.customNomenclaturaInput) setCustomNomenclaturaInput(draft.customNomenclaturaInput);
       } catch (err) {
         console.error('Error loading onboarding draft:', err);
       }
@@ -150,15 +148,15 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     const draft = {
       cantPeriodos,
       periodos,
-      saber,
-      hacer,
-      ser,
       escalas,
       logros,
       currentStep,
+      nomenclaturaCursos,
+      nomenclaturaOption,
+      customNomenclaturaInput,
     };
     localStorage.setItem('sophos_onboarding_draft', JSON.stringify(draft));
-  }, [cantPeriodos, periodos, saber, hacer, ser, escalas, logros, currentStep, isLoaded]);
+  }, [cantPeriodos, periodos, escalas, logros, currentStep, nomenclaturaCursos, nomenclaturaOption, customNomenclaturaInput, isLoaded]);
 
   useEffect(() => {
     async function fetchAssignments() {
@@ -227,16 +225,24 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     handlePeriodActiveChange(index);
     setErrorMsg('');
     setTimeout(() => {
-      setCurrentStep(cantPeriodosInt + 3); // Avanza a ponderaciones
+      setCurrentStep(cantPeriodosInt + 4); // Avanza directamente a la escala de valoración (se saltan ponderaciones)
     }, 200);
   };
 
   const handleNext = () => {
     setErrorMsg('');
 
-    // Validations for step dates
-    if (currentStep >= 2 && currentStep <= cantPeriodosInt + 1) {
-      const idx = currentStep - 2;
+    // Validación para Paso 2: Nomenclatura de cursos
+    if (currentStep === 2) {
+      if (nomenclaturaOption === 'custom' && !customNomenclaturaInput.trim()) {
+        setErrorMsg('Por favor escribe la nomenclatura base.');
+        return;
+      }
+    }
+
+    // Validations for step dates (desplazadas por la nomenclatura)
+    if (currentStep >= 3 && currentStep <= cantPeriodosInt + 2) {
+      const idx = currentStep - 3;
       const p = periodos[idx];
       if (!p.fecha_inicio || !p.fecha_fin) {
         setErrorMsg('Ambas fechas son obligatorias.');
@@ -257,8 +263,8 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
       }
     }
 
-    // Validation for Active Period selection
-    if (currentStep === cantPeriodosInt + 2) {
+    // Validation for Active Period selection (desplazada)
+    if (currentStep === cantPeriodosInt + 3) {
       const hasActive = periodos.some((p) => p.activo);
       if (!hasActive) {
         setErrorMsg('Debe seleccionar un periodo activo.');
@@ -266,15 +272,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
       }
     }
 
-    // Validation for Ponderaciones
-    if (currentStep === cantPeriodosInt + 3) {
-      if (totalPonderaciones !== 100) {
-        setErrorMsg('La suma de las ponderaciones debe ser exactamente 100%.');
-        return;
-      }
-    }
-
-    // Validation for Scale
+    // Validation for Scale (desplazada)
     if (currentStep === cantPeriodosInt + 4) {
       const err = validateStepScale();
       if (err) {
@@ -297,15 +295,15 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     setLoading(true);
     setErrorMsg('');
 
+    const finalNomenclatura = nomenclaturaOption === 'custom' 
+      ? customNomenclaturaInput.trim() 
+      : nomenclaturaOption;
+
     const formattedData: OnboardingData = {
       periodos,
       escalas,
-      ponderaciones: {
-        peso_saber: parseFloat((saber / 100).toFixed(2)),
-        peso_hacer: parseFloat((hacer / 100).toFixed(2)),
-        peso_ser: parseFloat((ser / 100).toFixed(2)),
-      },
       logros,
+      nomenclaturaCursos: finalNomenclatura,
     };
 
     const res = await saveOnboardingParametrizacion(formattedData);
@@ -444,9 +442,101 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
               </div>
             )}
 
-            {/* STEP 2 to cantPeriodosInt + 1: Specific Period dates */}
-            {currentStep >= 2 && currentStep <= cantPeriodosInt + 1 && (() => {
-              const idx = currentStep - 2;
+            {/* STEP 2: Nomenclatura de Cursos */}
+            {currentStep === 2 && (
+              <div className="space-y-5">
+                <div className="text-center sm:text-left">
+                  <span className="text-[10px] font-bold bg-indigo-500/15 text-indigo-400 px-2.5 py-1 rounded">Configuración de Cursos</span>
+                  <h2 className="text-xl font-bold text-white tracking-tight mt-3">Nomenclatura de Cursos</h2>
+                  <p className="text-xs text-white/50 mt-1">
+                    Selecciona cómo se identificarán las secciones o grupos de los cursos en tu institución.
+                  </p>
+                </div>
+                <div className="space-y-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNomenclaturaOption('6A');
+                      setNomenclaturaCursos('6A');
+                      setErrorMsg('');
+                    }}
+                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left font-semibold transition-all ${
+                      nomenclaturaOption === '6A'
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md'
+                        : 'bg-white/3 border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-sm">Alfanumérica (Ej: 6A, 6B)</span>
+                      <span className="block text-[10px] text-white/40 font-normal mt-0.5">Grado número y sección letra consecutiva</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded">Seleccionar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNomenclaturaOption('601');
+                      setNomenclaturaCursos('601');
+                      setErrorMsg('');
+                    }}
+                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left font-semibold transition-all ${
+                      nomenclaturaOption === '601'
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md'
+                        : 'bg-white/3 border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-sm">Numérica Completa (Ej: 601, 602)</span>
+                      <span className="block text-[10px] text-white/40 font-normal mt-0.5">Grado número seguido de sección numérica</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded">Seleccionar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNomenclaturaOption('custom');
+                      setNomenclaturaCursos(customNomenclaturaInput || '');
+                      setErrorMsg('');
+                    }}
+                    className={`flex items-center justify-between w-full p-4 rounded-xl border text-left font-semibold transition-all ${
+                      nomenclaturaOption === 'custom'
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md'
+                        : 'bg-white/3 border-white/10 text-white/70 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div>
+                      <span className="block text-sm">Personalizada</span>
+                      <span className="block text-[10px] text-white/40 font-normal mt-0.5">Escribe la nomenclatura base para tus secciones</span>
+                    </div>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded">Seleccionar</span>
+                  </button>
+
+                  {nomenclaturaOption === 'custom' && (
+                    <div className="space-y-1.5 pt-2 animate-in fade-in duration-200">
+                      <label htmlFor="custom-nomenclatura" className="block text-[10px] font-bold uppercase tracking-wider text-white/40">Escribe la Nomenclatura Base</label>
+                      <input
+                        id="custom-nomenclatura"
+                        type="text"
+                        value={customNomenclaturaInput}
+                        onChange={(e) => {
+                          setCustomNomenclaturaInput(e.target.value);
+                          setNomenclaturaCursos(e.target.value);
+                          setErrorMsg('');
+                        }}
+                        placeholder="Ej: 6-1, Sexto A, Grado 6 Sec 1..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3 to cantPeriodosInt + 2: Specific Period dates */}
+            {currentStep >= 3 && currentStep <= cantPeriodosInt + 2 && (() => {
+              const idx = currentStep - 3;
               const p = periodos[idx];
               return (
                 <div className="space-y-5">
@@ -483,8 +573,8 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
               );
             })()}
 
-            {/* STEP cantPeriodosInt + 2: Active Period choice */}
-            {currentStep === cantPeriodosInt + 2 && (
+            {/* STEP cantPeriodosInt + 3: Active Period choice */}
+            {currentStep === cantPeriodosInt + 3 && (
               <div className="space-y-5">
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight">¿Cuál es el periodo activo actual?</h2>
@@ -507,76 +597,6 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
                       Periodo {p.numero_periodo}
                     </button>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* STEP cantPeriodosInt + 3: Ponderaciones (Saber/Hacer/Ser) */}
-            {currentStep === cantPeriodosInt + 3 && (
-              <div className="space-y-5">
-                <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">Ponderaciones de Evaluación</h2>
-                  <p className="text-xs text-white/50 mt-1">
-                    Distribuye los pesos porcentuales de las tres dimensiones fundamentales del aprendizaje. La suma debe dar 100%.
-                  </p>
-                </div>
-
-                <div className="space-y-4 pt-1">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-white/70">Cognitivo (Saber / Exámenes)</span>
-                      <span className="text-indigo-400">{saber}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={saber}
-                      onChange={(e) => setSaber(parseInt(e.target.value, 10))}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-white/70">Procedimental (Hacer / Proyectos y Tareas)</span>
-                      <span className="text-indigo-400">{hacer}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={hacer}
-                      onChange={(e) => setHacer(parseInt(e.target.value, 10))}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-white/70">Actitudinal (Ser / Convivencia y Asistencia)</span>
-                      <span className="text-indigo-400">{ser}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={ser}
-                      onChange={(e) => setSer(parseInt(e.target.value, 10))}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-white/5 flex justify-between items-center">
-                  <span className="text-xs text-white/40 font-medium">Suma Total de Pesos:</span>
-                  <span className={`text-sm font-extrabold px-3 py-1 rounded-lg ${
-                    totalPonderaciones === 100
-                      ? 'text-teal-400 bg-teal-500/10 border border-teal-500/20'
-                      : 'text-red-400 bg-red-500/10 border border-red-500/20'
-                  }`}>
-                    {totalPonderaciones}% / 100%
-                  </span>
                 </div>
               </div>
             )}

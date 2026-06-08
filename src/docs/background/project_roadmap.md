@@ -40,7 +40,7 @@ graph TD
 **Objetivos:** Permitir que los docentes alimenten el sistema con las clases y notas diarias.
 
 **Componentes clave:**
-- [x] **Configuración de Periodos Escolares (Admin):** Tabla y asistente Onboarding para definir fechas de periodos y ponderaciones (Saber/Hacer/Ser).
+- [x] **Configuración de Periodos Escolares (Admin):** Tabla y asistente Onboarding para definir fechas de periodos.
 - [x] **Planilla de Notas del Docente:** Interfaz interactiva y soporte de exportación/importación offline de planillas de calificaciones en CSV.
 - [x] **Planilla de Control de Asistencia:** Toma de asistencia diaria parametrizada (mapeando faltas justificadas e injustificadas).
 

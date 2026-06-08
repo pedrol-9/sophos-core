@@ -9,7 +9,8 @@ import {
 import {
   getEvidenciasForAsignacion,
   getGradesheetByEvidencias,
-  upsertCalificacionEvidencia,
+  upsertCalificacionesBatch,
+  CalificacionBatchItem,
   EvidenciaConConfig,
   GradesheetStudentEvidencias,
 } from '@/app/actions/evidenciasActions';
@@ -41,9 +42,21 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Guardado asíncrono con debounce
-  const [cellStatus, setCellStatus] = useState<Record<string, SaveStatus>>({});
-  const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  // Cambios pendientes por guardar
+  const [pendingChanges, setPendingChanges] = useState<Record<string, CalificacionBatchItem>>({});
+  const [savingBatch, setSavingBatch] = useState(false);
+
+  // Almacena los valores temporales en string para no perder el separador decimal al escribir (ej: "4.")
+  const [localValues, setLocalValues] = useState<Record<string, string>>({});
+
+  // Modal de confirmación / alerta personalizado
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  } | null>(null);
 
   const activePeriodo = periodos.find((p) => p.activo);
   const isPeriodoClosed = !!(selectedPeriodo && activePeriodo && selectedPeriodo.numero_periodo < activePeriodo.numero_periodo);
@@ -96,13 +109,9 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     loadData();
   }, [idCurso, idAsignacion, selectedPeriodo, refreshTrigger]);
 
-  // ─── LIMPIEZA DE TIMERS ────────────────────────────────────────────────────
-  useEffect(() => {
-    const timeouts = timeoutsRef.current;
-    return () => { Object.values(timeouts).forEach(clearTimeout); };
-  }, []);
 
-  // ─── AUTOGUARDADO CON DEBOUNCE ────────────────────────────────────────────
+
+  // ─── GESTIÓN DE NOTAS LOCALES ──────────────────────────────────────────────
   const handleGradeChange = (
     studentIdx: number,
     studentId: string,
@@ -125,6 +134,12 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
         updated[studentIdx] = student;
         return updated;
       });
+
+      const key = `${matriculaId}-${idEvidencia}`;
+      setPendingChanges((prev) => ({
+        ...prev,
+        [key]: { idMatricula: matriculaId, idEvidencia, nota: null },
+      }));
       return;
     }
 
@@ -150,37 +165,41 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
       return updated;
     });
 
-    // 2. Debounce autosave 500ms
-    const cellKey = `${studentId}-${idEvidencia}`;
-    setCellStatus((prev) => ({ ...prev, [cellKey]: 'saving' }));
+    // 2. Registrar cambio en pendientes
+    const key = `${matriculaId}-${idEvidencia}`;
+    setPendingChanges((prev) => ({
+      ...prev,
+      [key]: { idMatricula: matriculaId, idEvidencia, nota: val },
+    }));
+  };
 
-    if (timeoutsRef.current[cellKey]) clearTimeout(timeoutsRef.current[cellKey]);
+  const handleSaveChanges = async () => {
+    if (Object.keys(pendingChanges).length === 0 || !selectedPeriodo) return;
+    setSavingBatch(true);
+    setErrorMsg('');
 
-    timeoutsRef.current[cellKey] = setTimeout(async () => {
-      const res = await upsertCalificacionEvidencia(
-        idAsignacion,
-        matriculaId,
-        selectedPeriodo!.id_periodo,
-        idEvidencia,
-        val
-      );
+    const items = Object.values(pendingChanges);
+    const res = await upsertCalificacionesBatch(idAsignacion, selectedPeriodo.id_periodo, items);
 
-      if (res.success) {
-        setCellStatus((prev) => ({ ...prev, [cellKey]: 'saved' }));
-        setTimeout(() => {
-          setCellStatus((prev) => {
-            if (prev[cellKey] === 'saved') {
-              const next = { ...prev };
-              delete next[cellKey];
-              return next;
-            }
-            return prev;
-          });
-        }, 2500);
-      } else {
-        setCellStatus((prev) => ({ ...prev, [cellKey]: 'error' }));
-      }
-    }, 500);
+    if (res.success) {
+      setPendingChanges({});
+      setLocalValues({});
+      setRefreshTrigger((prev) => prev + 1);
+      setModalConfig({
+        show: true,
+        title: 'Planilla Guardada',
+        message: '¡Todas las calificaciones se han guardado exitosamente en la base de datos!',
+        type: 'success',
+      });
+    } else {
+      setModalConfig({
+        show: true,
+        title: 'Error al Guardar',
+        message: res.error || 'Ocurrió un error al guardar las calificaciones.',
+        type: 'error',
+      });
+    }
+    setSavingBatch(false);
   };
 
   // ─── NAVEGACIÓN TIPO EXCEL ────────────────────────────────────────────────
@@ -219,16 +238,8 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     if (totalPeso === 0) return 0;
     const rawAverage = total / totalPeso;
     
-    // Redondeo personalizado:
-    // de .00 a .49 = bottom round (truncar hacia abajo)
-    // de .50 a .99 = top round (redondear hacia arriba)
-    const intPart = Math.floor(rawAverage);
-    const decimalPart = rawAverage - intPart;
-    if (decimalPart < 0.50) {
-      return intPart;
-    } else {
-      return Math.ceil(rawAverage);
-    }
+    // Redondeo a un decimal (basado en la segunda cifra decimal)
+    return Math.round(rawAverage * 10) / 10;
   };
 
   const getDesempenoLabel = (nota: number): string => {
@@ -271,7 +282,24 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                   <button
                     key={p.id_periodo}
                     type="button"
-                    onClick={() => setSelectedPeriodo(p)}
+                    onClick={() => {
+                      if (Object.keys(pendingChanges).length > 0) {
+                        setModalConfig({
+                          show: true,
+                          title: 'Cambios sin Guardar',
+                          message: 'Tienes calificaciones modificadas que no se han guardado. ¿Seguro que deseas cambiar de periodo y perder estos cambios?',
+                          type: 'confirm',
+                          onConfirm: () => {
+                            setPendingChanges({});
+                            setLocalValues({});
+                            setSelectedPeriodo(p);
+                          }
+                        });
+                        return;
+                      }
+                      setLocalValues({});
+                      setSelectedPeriodo(p);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                       isSelected
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
@@ -290,6 +318,21 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
 
         {/* Acciones */}
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          {/* Botón Guardar Cambios */}
+          {Object.keys(pendingChanges).length > 0 && (
+            <button
+              type="button"
+              disabled={savingBatch}
+              onClick={handleSaveChanges}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-bold transition-all shadow-lg shadow-amber-500/20 animate-pulse duration-1000 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+              </svg>
+              {savingBatch ? 'Guardando...' : `Guardar Cambios (${Object.keys(pendingChanges).length})`}
+            </button>
+          )}
+
           {/* Botón Evidencias del Periodo */}
           <button
             type="button"
@@ -406,12 +449,11 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                         </span>
                       </td>
 
-                      {/* Celdas por evidencia */}
                       {activasEvidencias.map((ev, evIdx) => {
                         const grade = student.grades[ev.id_evidencia];
                         const notaVal = grade?.nota ?? null;
-                        const cellKey = `${student.id_estudiante}-${ev.id_evidencia}`;
-                        const status = cellStatus[cellKey] || 'idle';
+                        const cellKey = `${student.id_matricula}-${ev.id_evidencia}`;
+                        const displayVal = localValues[cellKey] !== undefined ? localValues[cellKey] : (notaVal !== null ? notaVal.toString() : '');
 
                         return (
                           <td
@@ -419,47 +461,50 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                             className="py-2 px-1 text-center border-r border-white/5 relative group"
                           >
                             <div className="inline-flex flex-col items-center">
-                              <input
-                                id={`grade-${studentIdx}-${evIdx}`}
-                                type="number"
-                                step="0.1"
-                                min="0.0"
-                                max="5.0"
-                                disabled={isPeriodoClosed}
-                                value={notaVal !== null ? notaVal : ''}
-                                onChange={(e) =>
-                                  handleGradeChange(
-                                    studentIdx,
-                                    student.id_estudiante,
-                                    student.id_matricula,
-                                    ev.id_evidencia,
-                                    e.target.value
-                                  )
-                                }
-                                onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
-                                className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-white/5 border rounded-lg focus:outline-none focus:bg-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                                  status === 'saving'
-                                    ? 'border-amber-500/50 text-amber-300'
-                                    : status === 'saved'
-                                    ? 'border-emerald-500/50 text-emerald-400 bg-emerald-500/[0.02]'
-                                    : status === 'error'
-                                    ? 'border-red-500/50 text-red-400 bg-red-500/[0.02]'
-                                    : notaVal !== null && notaVal >= 3.0
-                                    ? 'border-white/10 text-teal-400'
-                                    : notaVal !== null
-                                    ? 'border-white/10 text-red-400'
-                                    : 'border-white/5 text-white/30'
-                                }`}
-                              />
-                              {status === 'saving' && (
-                                <span className="absolute bottom-0 text-[7px] text-amber-500 scale-75">...</span>
-                              )}
-                              {status === 'saved' && (
-                                <span className="absolute bottom-0 text-[7px] text-emerald-500 scale-75">✓</span>
-                              )}
-                              {status === 'error' && (
-                                <span className="absolute bottom-0 text-[7px] text-red-500 scale-75">✗</span>
-                              )}
+                              {(() => {
+                                const hasPending = pendingChanges[cellKey] !== undefined;
+                                return (
+                                  <>
+                                    <input
+                                      id={`grade-${studentIdx}-${evIdx}`}
+                                      type="text"
+                                      disabled={isPeriodoClosed}
+                                      value={displayVal}
+                                      onChange={(e) => {
+                                        const rawStr = e.target.value;
+                                        // Permitir solo números entre 0 y 5, con punto o coma decimal opcional, y máximo 3 caracteres
+                                        if (rawStr !== '' && !/^[0-5]([.,]\d?)?$/.test(rawStr)) {
+                                          return;
+                                        }
+
+                                        const valStr = rawStr.replace(',', '.');
+                                        setLocalValues((prev) => ({ ...prev, [cellKey]: rawStr }));
+
+                                        handleGradeChange(
+                                          studentIdx,
+                                          student.id_estudiante,
+                                          student.id_matricula,
+                                          ev.id_evidencia,
+                                          valStr
+                                        );
+                                      }}
+                                      onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
+                                      className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-white/5 border rounded-lg focus:outline-none focus:bg-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                                        hasPending
+                                          ? 'border-amber-500/60 bg-amber-500/5 text-amber-200 shadow-md shadow-amber-500/5'
+                                          : notaVal !== null && notaVal >= 3.0
+                                          ? 'border-white/10 text-teal-400'
+                                          : notaVal !== null
+                                          ? 'border-white/10 text-red-400'
+                                          : 'border-white/5 text-white/30'
+                                      }`}
+                                    />
+                                    {hasPending && (
+                                      <span className="absolute bottom-0 text-[8px] text-amber-400 font-extrabold scale-75 animate-pulse">*</span>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         );
@@ -507,7 +552,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
 
           {/* FOOTER */}
           <div className="p-4 bg-white/[0.01] border-t border-white/5 text-left text-[10px] text-white/30">
-            Usa las flechas del teclado (▲ ▼ ◀ ▶) para moverte entre celdas. Las notas se guardan automáticamente.
+            Usa las flechas del teclado (▲ ▼ ◀ ▶) para moverte entre celdas.
           </div>
         </div>
       )}
@@ -529,6 +574,73 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
           onClose={() => setShowBulkModal(false)}
           onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
         />
+      )}
+
+      {/* MODAL DIALOG OVERRIDE FOR ALERTS & CONFIRMS */}
+      {modalConfig?.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-[#0c1220]/95 border border-white/10 p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4">
+            {/* Header / Icon */}
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                modalConfig.type === 'error' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
+                'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+              }`}>
+                {modalConfig.type === 'success' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : modalConfig.type === 'error' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )}
+              </div>
+              <h3 className="text-base font-bold text-white leading-none">{modalConfig.title}</h3>
+            </div>
+            
+            {/* Body Message */}
+            <p className="text-xs text-white/60 leading-relaxed">{modalConfig.message}</p>
+            
+            {/* Footer Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              {modalConfig.type === 'confirm' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setModalConfig(null)}
+                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalConfig.onConfirm) modalConfig.onConfirm();
+                      setModalConfig(null);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 transition-all shadow-md shadow-amber-500/15 cursor-pointer"
+                  >
+                    Confirmar
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setModalConfig(null)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+                >
+                  Entendido
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

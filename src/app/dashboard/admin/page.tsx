@@ -46,12 +46,12 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.app_metadata?.id_institucion) {
         const { data, error } = await supabase
-          .from('configuracion_ponderaciones')
-          .select('id_ponderacion')
+          .from('periodos_academicos')
+          .select('id_periodo')
           .eq('id_institucion', user.app_metadata.id_institucion)
-          .maybeSingle();
+          .limit(1);
 
-        if (data && !error) {
+        if (data && data.length > 0 && !error) {
           setIsOnboardingComplete(true);
         } else {
           setIsOnboardingComplete(false);

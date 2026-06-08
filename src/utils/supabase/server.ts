@@ -85,6 +85,14 @@ export async function createClient() {
           }
         },
       },
+      global: {
+        fetch: (input, init) => {
+          return fetch(input, {
+            ...init,
+            cache: 'no-store',
+          });
+        },
+      },
     }
   );
 }

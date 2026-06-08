@@ -5,12 +5,9 @@ import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/supabase';
 import { getEvidenciasForAsignacion, getGradesheetByEvidencias } from '@/app/actions/evidenciasActions';
 
-export type DimensionType = Database["public"]["Enums"]["tipo_dimension_nota"];
-
 export type GradesheetCalificacion = {
   id_calificacion: string;
   nota: number;
-  dimension: DimensionType;
   actividad: string;
   comentario_docente: string | null;
   comentario_ia: string | null;
@@ -24,12 +21,6 @@ export type GradesheetStudent = {
   nombre_completo: string;
   email: string;
   grades: GradesheetCalificacion[];
-};
-
-export type PonderacionInfo = {
-  peso_saber: number;
-  peso_hacer: number;
-  peso_ser: number;
 };
 
 export type EscalaInfo = {
@@ -54,7 +45,6 @@ export async function upsertCalificacionDiaria(
   idAsignacion: string,
   idMatricula: string,
   idPeriodo: string,
-  dimension: DimensionType,
   actividad: string,
   nota: number
 ): Promise<{ success: boolean; data?: { id_calificacion: string }; error?: string }> {
@@ -127,7 +117,6 @@ export async function upsertCalificacionDiaria(
         .from('calificaciones')
         .update({
           nota,
-          dimension,
           fecha_registro: new Date().toISOString()
         })
         .eq('id_calificacion', existing.id_calificacion)
@@ -148,7 +137,6 @@ export async function upsertCalificacionDiaria(
           id_periodo: idPeriodo,
           periodo: numeroPeriodo,
           actividad,
-          dimension,
           nota,
           id_institucion: idInstitucion,
           fecha_registro: new Date().toISOString()
@@ -170,13 +158,12 @@ export async function upsertCalificacionDiaria(
 }
 
 /**
- * Carga los parámetros y configuraciones institucionales (ponderaciones, periodos, escala).
+ * Carga los parámetros y configuraciones institucionales (periodos, escala).
  */
 export async function getParametrizacionDocente(
   idAsignacion: string
 ): Promise<{
   success: boolean;
-  ponderaciones?: PonderacionInfo;
   periodos?: PeriodoInfo[];
   escalas?: EscalaInfo[];
   error?: string;
@@ -196,18 +183,7 @@ export async function getParametrizacionDocente(
     }
     const idInstitucion = asignacion.id_institucion;
 
-    // 2. Cargar ponderaciones
-    const { data: pond, error: pondError } = await supabase
-      .from('configuracion_ponderaciones')
-      .select('peso_saber, peso_hacer, peso_ser')
-      .eq('id_institucion', idInstitucion)
-      .maybeSingle();
-
-    if (pondError) {
-      return { success: false, error: `Error al cargar ponderaciones: ${pondError.message}` };
-    }
-
-    // 3. Cargar periodos
+    // 2. Cargar periodos
     const { data: pers, error: persError } = await supabase
       .from('periodos_academicos')
       .select('id_periodo, numero_periodo, fecha_inicio, fecha_fin, activo')
@@ -218,7 +194,7 @@ export async function getParametrizacionDocente(
       return { success: false, error: `Error al cargar periodos: ${persError.message}` };
     }
 
-    // 4. Cargar escala de valoración
+    // 3. Cargar escala de valoración
     const { data: esc, error: escError } = await supabase
       .from('escala_valoracion')
       .select('nombre_desempeno, nota_minima, nota_maxima')
@@ -230,13 +206,6 @@ export async function getParametrizacionDocente(
 
     return {
       success: true,
-      ponderaciones: pond
-        ? {
-            peso_saber: Number(pond.peso_saber),
-            peso_hacer: Number(pond.peso_hacer),
-            peso_ser: Number(pond.peso_ser),
-          }
-        : { peso_saber: 0.4, peso_hacer: 0.4, peso_ser: 0.2 }, // Fallback legal
       periodos: pers || [],
       escalas: esc || [],
     };
@@ -280,7 +249,7 @@ export async function getGradesheetStudents(
     // 2. Obtener calificaciones registradas para esta asignación y este periodo específico
     const { data: calificaciones, error: calError } = await supabase
       .from('calificaciones')
-      .select('id_calificacion, nota, dimension, actividad, comentario_docente, comentario_ia, id_periodo, periodo, id_matricula')
+      .select('id_calificacion, nota, actividad, comentario_docente, comentario_ia, id_periodo, periodo, id_matricula')
       .eq('id_asignacion', idAsignacion)
       .eq('id_periodo', idPeriodo);
 
@@ -295,7 +264,6 @@ export async function getGradesheetStudents(
         .map((c) => ({
           id_calificacion: c.id_calificacion,
           nota: Number(c.nota),
-          dimension: c.dimension as DimensionType,
           actividad: c.actividad,
           comentario_docente: c.comentario_docente,
           comentario_ia: c.comentario_ia,
@@ -632,7 +600,6 @@ export async function importPlanillaDocente(
           periodo: numeroPeriodo,
           id_evidencia: idEvidencia,
           actividad: 'evidencia',
-          dimension: 'SABER',
           nota: score,
           comentario_docente: observaciones,
           id_institucion: idInstitucion,

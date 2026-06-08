@@ -17,12 +17,6 @@ export type EscalaParam = {
   nota_maxima: number;
 };
 
-export type PonderacionParam = {
-  peso_saber: number;
-  peso_hacer: number;
-  peso_ser: number;
-};
-
 export type LogroParam = {
   id_asignacion: string;
   numero_periodo: number;
@@ -32,8 +26,8 @@ export type LogroParam = {
 export type OnboardingData = {
   periodos: PeriodoParam[];
   escalas: EscalaParam[];
-  ponderaciones: PonderacionParam;
   logros: LogroParam[];
+  nomenclaturaCursos: string;
 };
 
 export type ActionResponse = {
@@ -68,6 +62,16 @@ export async function saveOnboardingParametrizacion(
       };
     }
 
+    // ── Paso 0: Guardar nomenclatura de cursos en la tabla instituciones ─────────
+    const { error: instError } = await supabase
+      .from('instituciones')
+      .update({ nomenclatura_cursos: data.nomenclaturaCursos })
+      .eq('id_institucion', idInstitucion);
+
+    if (instError) {
+      throw new Error(`Error al guardar nomenclatura de cursos: ${instError.message}`);
+    }
+
     // ── Paso A: Limpieza previa (Idempotencia) ──────────────────────────────────
     // Eliminamos registros previos de esta institución para evitar llaves duplicadas.
     // Esto asegura que si una inserción falló a medias, podamos volver a intentar limpiamente.
@@ -75,13 +79,13 @@ export async function saveOnboardingParametrizacion(
       .from('evidencias_logros')
       .delete()
       .in(
-        'id_asignacion',
-        (
-          await supabase
-            .from('asignaciones_academicas')
-            .select('id_asignacion')
-            .eq('id_institucion', idInstitucion)
-        ).data?.map((a) => a.id_asignacion) || []
+         'id_asignacion',
+         (
+           await supabase
+             .from('asignaciones_academicas')
+             .select('id_asignacion')
+             .eq('id_institucion', idInstitucion)
+         ).data?.map((a) => a.id_asignacion) || []
       );
 
     await supabase
@@ -93,25 +97,6 @@ export async function saveOnboardingParametrizacion(
       .from('escala_valoracion')
       .delete()
       .eq('id_institucion', idInstitucion);
-
-    await supabase
-      .from('configuracion_ponderaciones')
-      .delete()
-      .eq('id_institucion', idInstitucion);
-
-    // ── Paso B: Guardar configuracion_ponderaciones ─────────────────────────────
-    const { error: pondError } = await supabase
-      .from('configuracion_ponderaciones')
-      .insert({
-        id_institucion: idInstitucion,
-        peso_saber: data.ponderaciones.peso_saber,
-        peso_hacer: data.ponderaciones.peso_hacer,
-        peso_ser: data.ponderaciones.peso_ser,
-      });
-
-    if (pondError) {
-      throw new Error(`Error al guardar ponderaciones: ${pondError.message}`);
-    }
 
     // ── Paso C: Guardar periodos_academicos ─────────────────────────────────────
     const { data: savedPeriods, error: periodsError } = await supabase

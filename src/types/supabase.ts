@@ -127,10 +127,10 @@ export type Database = {
           actividad: string
           comentario_docente: string | null
           comentario_ia: string | null
-          dimension: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro: string | null
           id_asignacion: string
           id_calificacion: string
+          id_evidencia: string | null
           id_institucion: string
           id_matricula: string
           id_periodo: string | null
@@ -141,10 +141,10 @@ export type Database = {
           actividad?: string
           comentario_docente?: string | null
           comentario_ia?: string | null
-          dimension?: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro?: string | null
           id_asignacion: string
           id_calificacion?: string
+          id_evidencia?: string | null
           id_institucion: string
           id_matricula: string
           id_periodo?: string | null
@@ -155,10 +155,10 @@ export type Database = {
           actividad?: string
           comentario_docente?: string | null
           comentario_ia?: string | null
-          dimension?: Database["public"]["Enums"]["tipo_dimension_nota"]
           fecha_registro?: string | null
           id_asignacion?: string
           id_calificacion?: string
+          id_evidencia?: string | null
           id_institucion?: string
           id_matricula?: string
           id_periodo?: string | null
@@ -189,41 +189,7 @@ export type Database = {
           },
         ]
       }
-      configuracion_ponderaciones: {
-        Row: {
-          fecha_creacion: string | null
-          id_institucion: string
-          id_ponderacion: string
-          peso_hacer: number
-          peso_saber: number
-          peso_ser: number
-        }
-        Insert: {
-          fecha_creacion?: string | null
-          id_institucion: string
-          id_ponderacion?: string
-          peso_hacer?: number
-          peso_saber?: number
-          peso_ser?: number
-        }
-        Update: {
-          fecha_creacion?: string | null
-          id_institucion?: string
-          id_ponderacion?: string
-          peso_hacer?: number
-          peso_saber?: number
-          peso_ser?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "configuracion_ponderaciones_id_institucion_fkey"
-            columns: ["id_institucion"]
-            isOneToOne: true
-            referencedRelation: "instituciones"
-            referencedColumns: ["id_institucion"]
-          }
-        ]
-      }
+
       cursos: {
         Row: {
           id_curso: string
@@ -381,6 +347,7 @@ export type Database = {
           id_institucion: string
           id_suscripcion: number | null
           nit: string
+          nomenclatura_cursos: string | null
           nombre_legal: string
         }
         Insert: {
@@ -390,6 +357,7 @@ export type Database = {
           id_institucion?: string
           id_suscripcion?: number | null
           nit: string
+          nomenclatura_cursos?: string | null
           nombre_legal: string
         }
         Update: {
@@ -399,6 +367,7 @@ export type Database = {
           id_institucion?: string
           id_suscripcion?: number | null
           nit?: string
+          nomenclatura_cursos?: string | null
           nombre_legal?: string
         }
         Relationships: [
@@ -695,7 +664,6 @@ export type Database = {
     }
     Enums: {
       tipo_desempeno_escala: "SUPERIOR" | "ALTO" | "BASICO" | "BAJO"
-      tipo_dimension_nota: "SABER" | "HACER" | "SER"
       tipo_estado_asistencia:
         | "PRESENTE"
         | "FALTA_JUSTIFICADA"

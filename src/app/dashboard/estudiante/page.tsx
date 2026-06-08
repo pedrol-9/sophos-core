@@ -154,7 +154,7 @@ export default function EstudianteDashboard() {
 
           periodRawGrades.forEach(g => {
             const conf = (configs || []).find(
-              c => c.id_asignacion === ass.id_asignacion && c.id_evidencia === g.id_evidencia
+              (c: any) => c.id_asignacion === ass.id_asignacion && c.id_evidencia === g.id_evidencia
             );
 
             if (conf && conf.activo) {
@@ -172,12 +172,8 @@ export default function EstudianteDashboard() {
             rawAverage = sum / periodRawGrades.length;
           }
 
-          // Custom Rounding:
-          // .00 to .49 -> floor
-          // .50 to .99 -> ceil
-          const intPart = Math.floor(rawAverage);
-          const decimalPart = rawAverage - intPart;
-          const roundedNota = decimalPart < 0.50 ? intPart : Math.ceil(rawAverage);
+          // Redondeo a un decimal (basado en la segunda cifra decimal)
+          const roundedNota = Math.round(rawAverage * 10) / 10;
 
           const commentsDocente = periodRawGrades
             .map(g => g.comentario_docente)

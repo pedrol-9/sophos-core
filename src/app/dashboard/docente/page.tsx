@@ -102,6 +102,15 @@ export default function DocenteDashboard() {
   const [newObsText, setNewObsText] = useState('');
   const [savingObs, setSavingObs] = useState(false);
 
+  // Modal de confirmación / alerta personalizado
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  } | null>(null);
+
   // Load teacher profile & assignments
   useEffect(() => {
     async function loadData() {
@@ -130,7 +139,12 @@ export default function DocenteDashboard() {
     setStudentsLoading(true);
     const res = await getCourseStudents(assignment.id_curso, assignment.id_asignacion);
     if (res.error) {
-      alert(`Error al cargar alumnos: ${res.error}`);
+      setModalConfig({
+        show: true,
+        title: 'Error de Carga',
+        message: `Error al cargar alumnos: ${res.error}`,
+        type: 'error'
+      });
     } else if (res.data) {
       setStudents(res.data);
       
@@ -187,7 +201,12 @@ export default function DocenteDashboard() {
 
     const nota = parseFloat(gradeValue);
     if (isNaN(nota) || nota < 0 || nota > 5) {
-      alert('Por favor ingresa una nota válida entre 0.0 y 5.0');
+      setModalConfig({
+        show: true,
+        title: 'Calificación Inválida',
+        message: 'Por favor ingresa una nota válida entre 0.0 y 5.0',
+        type: 'warning'
+      });
       return;
     }
 
@@ -201,7 +220,12 @@ export default function DocenteDashboard() {
     );
 
     if (res.error) {
-      alert(`Error al guardar la calificación: ${res.error}`);
+      setModalConfig({
+        show: true,
+        title: 'Error al Guardar',
+        message: `Error al guardar la calificación: ${res.error}`,
+        type: 'error'
+      });
       setSavingGrade(false);
     } else if (res.data) {
       const savedGradeId = res.data.id_calificacion;
@@ -272,9 +296,19 @@ export default function DocenteDashboard() {
     );
 
     if (res.error) {
-      alert(`Error al registrar asistencia: ${res.error}`);
+      setModalConfig({
+        show: true,
+        title: 'Error de Asistencia',
+        message: `Error al registrar asistencia: ${res.error}`,
+        type: 'error'
+      });
     } else {
-      alert('¡Asistencia guardada correctamente!');
+      setModalConfig({
+        show: true,
+        title: 'Reporte Guardado',
+        message: '¡Asistencia guardada correctamente!',
+        type: 'success'
+      });
       // Refresh students details (re-fetch absences counts)
       await loadStudents(selectedAssignment);
     }
@@ -286,7 +320,12 @@ export default function DocenteDashboard() {
     setLoadingObs(true);
     const res = await getStudentObservations(student.id_estudiante);
     if (res.error) {
-      alert(`Error al cargar observador: ${res.error}`);
+      setModalConfig({
+        show: true,
+        title: 'Error de Carga',
+        message: `Error al cargar observador: ${res.error}`,
+        type: 'error'
+      });
     } else if (res.data) {
       setObservations(res.data);
     }
@@ -308,7 +347,12 @@ export default function DocenteDashboard() {
     );
 
     if (res.error) {
-      alert(`Error al registrar novedad: ${res.error}`);
+      setModalConfig({
+        show: true,
+        title: 'Error al Registrar',
+        message: `Error al registrar novedad: ${res.error}`,
+        type: 'error'
+      });
     } else {
       // Re-load observations for list
       const updated = await getStudentObservations(selectedStudent.id_estudiante);
@@ -1040,6 +1084,73 @@ export default function DocenteDashboard() {
           </div>
         )}
       </main>
+
+      {/* MODAL DIALOG OVERRIDE FOR ALERTS & CONFIRMS */}
+      {modalConfig?.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-[#0c1220]/95 border border-white/10 p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4">
+            {/* Header / Icon */}
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                modalConfig.type === 'error' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
+                'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+              }`}>
+                {modalConfig.type === 'success' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : modalConfig.type === 'error' ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )}
+              </div>
+              <h3 className="text-base font-bold text-white leading-none">{modalConfig.title}</h3>
+            </div>
+            
+            {/* Body Message */}
+            <p className="text-xs text-white/60 leading-relaxed">{modalConfig.message}</p>
+            
+            {/* Footer Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              {modalConfig.type === 'confirm' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setModalConfig(null)}
+                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (modalConfig.onConfirm) modalConfig.onConfirm();
+                      setModalConfig(null);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 transition-all shadow-md shadow-amber-500/15 cursor-pointer"
+                  >
+                    Confirmar
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setModalConfig(null)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+                >
+                  Entendido
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
