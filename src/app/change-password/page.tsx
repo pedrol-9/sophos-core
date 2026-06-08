@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useActionState } from 'react';
-import Link from 'next/link';
 import { changeUserPassword } from '@/app/actions/auth-actions';
 
 function IconEye({ open }: { open: boolean }) {

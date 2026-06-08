@@ -121,6 +121,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
 
   // ─── DRAFT PERSISTENCE (localStorage) ──────────────────────────────────────
   // Load draft on mount
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = localStorage.getItem('sophos_onboarding_draft');
     if (saved) {
@@ -140,6 +141,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
     }
     setIsLoaded(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Save draft on changes (only after mounting and loading completes)
   useEffect(() => {
@@ -171,6 +173,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
         .eq('id_institucion', idInstitucion);
 
       if (data && !error) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const list: AssignmentItem[] = data.map((item: any) => ({
           id_asignacion: item.id_asignacion,
           materia: item.materias?.nombre || 'General',

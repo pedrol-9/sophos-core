@@ -185,8 +185,16 @@ export default function AcudienteDashboard() {
       // C. Fetch grades
       const { data: grades } = await supabase
         .from('calificaciones')
-        .select('id_calificacion, nota, periodo, comentario_docente, comentario_ia, id_asignacion')
+        .select('id_calificacion, nota, periodo, comentario_docente, comentario_ia, id_asignacion, id_evidencia')
         .eq('id_matricula', matricula.id_matricula);
+
+      // Fetch evidence configurations to calculate weighted averages
+      const assignmentIds = assignments.map(a => a.id_asignacion);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: configs } = await (supabase as any)
+        .from('configuracion_evidencias_periodo')
+        .select('id_asignacion, id_periodo, id_evidencia, activo, peso')
+        .in('id_asignacion', assignmentIds);
 
       // D. Fetch absences
       const { data: DBabsences } = await supabase
@@ -202,6 +210,7 @@ export default function AcudienteDashboard() {
         .eq('id_matricula', matricula.id_matricula)
         .in('estado', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA']);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsedAbsences: AbsenceRecord[] = (DBabsences || []).map((a: any) => ({
         id_asistencia: a.id_asistencia,
         fecha: a.fecha,
@@ -211,16 +220,73 @@ export default function AcudienteDashboard() {
       setAbsences(parsedAbsences);
 
       // E. Map subjects list
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsedSubjects: StudentSubject[] = assignments.map((ass: any) => {
-        const studentGrades = (grades || [])
-          .filter(g => g.id_asignacion === ass.id_asignacion)
-          .map(g => ({
-            id_calificacion: g.id_calificacion,
-            nota: Number(g.nota),
-            periodo: g.periodo,
-            comentario_docente: g.comentario_docente,
-            comentario_ia: g.comentario_ia
-          }));
+        const studentGradesRaw = (grades || []).filter(g => g.id_asignacion === ass.id_asignacion);
+
+        // Group raw grades by period
+        const gradesByPeriod: Record<number, typeof studentGradesRaw> = {};
+        studentGradesRaw.forEach(g => {
+          if (!gradesByPeriod[g.periodo]) {
+            gradesByPeriod[g.periodo] = [];
+          }
+          gradesByPeriod[g.periodo].push(g);
+        });
+
+        // Compute definitive grade for each period (1, 2, 3, 4)
+        const periodGrades: SubjectGrade[] = Object.keys(gradesByPeriod).map(periodStr => {
+          const periodNum = parseInt(periodStr, 10);
+          const periodRawGrades = gradesByPeriod[periodNum];
+
+          let totalWeighted = 0;
+          let totalWeight = 0;
+          let hasWeightedGrade = false;
+
+          periodRawGrades.forEach(g => {
+            const conf = (configs || []).find(
+              c => c.id_asignacion === ass.id_asignacion && c.id_evidencia === g.id_evidencia
+            );
+
+            if (conf && conf.activo) {
+              totalWeighted += Number(g.nota) * Number(conf.peso);
+              totalWeight += Number(conf.peso);
+              hasWeightedGrade = true;
+            }
+          });
+
+          let rawAverage = 0;
+          if (hasWeightedGrade && totalWeight > 0) {
+            rawAverage = totalWeighted / totalWeight;
+          } else {
+            const sum = periodRawGrades.reduce((acc, curr) => acc + Number(curr.nota), 0);
+            rawAverage = sum / periodRawGrades.length;
+          }
+
+          // Custom Rounding:
+          // .00 to .49 -> floor
+          // .50 to .99 -> ceil
+          const intPart = Math.floor(rawAverage);
+          const decimalPart = rawAverage - intPart;
+          const roundedNota = decimalPart < 0.50 ? intPart : Math.ceil(rawAverage);
+
+          const commentsDocente = periodRawGrades
+            .map(g => g.comentario_docente)
+            .filter(Boolean)
+            .join(' | ');
+
+          const commentsIa = periodRawGrades
+            .map(g => g.comentario_ia)
+            .filter(Boolean)
+            .join(' | ');
+
+          return {
+            id_calificacion: periodRawGrades[0].id_calificacion,
+            nota: roundedNota,
+            periodo: periodNum,
+            comentario_docente: commentsDocente || null,
+            comentario_ia: commentsIa || null
+          };
+        });
 
         const studentAbsencesCount = parsedAbsences.filter(
           a => a.materiaNombre === ass.materias.nombre
@@ -231,7 +297,7 @@ export default function AcudienteDashboard() {
           materiaNombre: ass.materias.nombre,
           materiaArea: ass.materias.area,
           docenteNombre: ass.usuarios?.nombre_completo || 'Docente Asignado',
-          grades: studentGrades,
+          grades: periodGrades,
           absencesCount: studentAbsencesCount
         };
       });
@@ -255,6 +321,7 @@ export default function AcudienteDashboard() {
         .eq('id_estudiante', selectedKid.id_estudiante)
         .order('fecha_registro', { ascending: false });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsedObservador: ObservadorRecord[] = (DBobservador || []).map((o: any) => ({
         id_observador: o.id_observador,
         tipo_nota: o.tipo_nota,
@@ -301,6 +368,7 @@ export default function AcudienteDashboard() {
           .eq('id_estudiante', selectedKid.id_estudiante)
           .order('fecha_registro', { ascending: false });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parsedObservador: ObservadorRecord[] = (DBobservador || []).map((o: any) => ({
           id_observador: o.id_observador,
           tipo_nota: o.tipo_nota,
@@ -659,7 +727,7 @@ export default function AcudienteDashboard() {
                                               {sub.grades.filter(g => g.comentario_docente).length > 0 ? (
                                                 sub.grades.map(g => g.comentario_docente && (
                                                   <p key={g.id_calificacion} className="mb-2 last:mb-0">
-                                                    <strong>Periodo {g.periodo}:</strong> "{g.comentario_docente}"
+                                                    <strong>Periodo {g.periodo}:</strong> &ldquo;{g.comentario_docente}&rdquo;
                                                   </p>
                                                 ))
                                               ) : (
@@ -836,13 +904,13 @@ export default function AcudienteDashboard() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-white/5 text-xs">
                             <div className="space-y-1.5">
                               <span className="block text-[9px] font-bold uppercase tracking-wider text-white/40">Observación Original del Docente</span>
-                              <p className="text-white/70 italic leading-relaxed">"{obs.observacion_informal}"</p>
+                              <p className="text-white/70 italic leading-relaxed">&ldquo;{obs.observacion_informal}&rdquo;</p>
                             </div>
                             
                             {obs.observacion_formal_ia && (
                               <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-1.5 text-indigo-200/90 leading-relaxed italic">
                                 <span className="block text-[9px] font-bold uppercase tracking-wider text-indigo-400">Transcripción Formal / Pedagógica (IA)</span>
-                                <p>"{obs.observacion_formal_ia}"</p>
+                                <p>&ldquo;{obs.observacion_formal_ia}&rdquo;</p>
                               </div>
                             )}
                           </div>

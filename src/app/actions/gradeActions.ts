@@ -1,4 +1,5 @@
 'use server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/supabase';
@@ -513,6 +514,19 @@ export async function importPlanillaDocente(
     if (perError || !per) {
       return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'El período académico especificado no es válido.' };
     }
+
+    // Verificar si el periodo está cerrado
+    const { data: activePer } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo')
+      .eq('id_institucion', idInstitucion)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (activePer && per.numero_periodo < activePer.numero_periodo) {
+      return { success: false, successCount: 0, errorCount: 0, errors: [], error: 'No se permite importar calificaciones para periodos académicos cerrados.' };
+    }
+
     const numeroPeriodo = per.numero_periodo ?? 1;
 
     // 6. Obtener calificaciones previas registradas para esta asignación y período para optimizar en memoria

@@ -1,4 +1,5 @@
 'use server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/utils/supabase/server';
 import { GoogleGenAI } from '@google/genai';

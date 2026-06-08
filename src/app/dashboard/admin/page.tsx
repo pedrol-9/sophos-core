@@ -20,14 +20,12 @@ export default function DashboardPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEvidencias, setShowEvidencias] = useState(false);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
-  const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
-
-  useEffect(() => {
-    const isDismissed = sessionStorage.getItem('onboarding_dismissed') === 'true';
-    if (isDismissed) {
-      setDismissedOnboarding(true);
+  const [dismissedOnboarding, setDismissedOnboarding] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('onboarding_dismissed') === 'true';
     }
-  }, []);
+    return false;
+  });
 
   // ─── CUSTOM HOOK ─────────────────────────────────────────────────────────────
   const {

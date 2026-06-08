@@ -15,7 +15,7 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
   const [importResult, setImportResult] = useState<{
     successCount: number;
     errorCount: number;
-    errors: any[];
+    errors: { row: number; error: string }[];
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   
@@ -177,7 +177,7 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
                 <div className="w-full text-left bg-black/30 rounded-xl p-4 border border-white/5 max-h-48 overflow-y-auto mb-2">
                   <p className="text-xs font-semibold text-rose-400 mb-2">Detalles de errores ({importResult.errors.length}):</p>
                   <ul className="space-y-1.5 text-[10px] text-white/60 list-disc pl-4 font-mono">
-                    {importResult.errors.slice(0, 20).map((err: any, idx: number) => (
+                    {importResult.errors.slice(0, 20).map((err, idx: number) => (
                       <li key={idx}>
                         Fila {err.row}: {err.error}
                       </li>

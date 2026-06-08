@@ -1,4 +1,5 @@
 'use server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * @file src/app/actions/auth-actions.ts

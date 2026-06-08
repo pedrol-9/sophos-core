@@ -1,4 +1,5 @@
 'use server';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createClient } from '@/utils/supabase/server';
 
@@ -305,6 +306,28 @@ export async function saveConfigEvidenciasPeriodo(
       return { success: false, error: 'Solo docentes pueden configurar evidencias.' };
     }
 
+    // Verificar que el periodo no esté cerrado
+    const { data: per } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo, id_institucion')
+      .eq('id_periodo', idPeriodo)
+      .maybeSingle();
+
+    if (!per) {
+      return { success: false, error: 'El período académico no es válido.' };
+    }
+
+    const { data: activePer } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo')
+      .eq('id_institucion', per.id_institucion)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (activePer && per.numero_periodo < activePer.numero_periodo) {
+      return { success: false, error: 'No se permite modificar la configuración de evidencias en periodos cerrados.' };
+    }
+
     // Verificar propiedad de la asignación
     const { data: asig } = await supabase
       .from('asignaciones_academicas')
@@ -368,6 +391,28 @@ export async function upsertCalificacionEvidencia(
 
     const idInstitucion = user.app_metadata?.id_institucion as string;
 
+    // Verificar que el periodo no esté cerrado
+    const { data: per } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo')
+      .eq('id_periodo', idPeriodo)
+      .maybeSingle();
+
+    if (!per) {
+      return { success: false, error: 'El período académico no es válido.' };
+    }
+
+    const { data: activePer } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo')
+      .eq('id_institucion', idInstitucion)
+      .eq('activo', true)
+      .maybeSingle();
+
+    if (activePer && per.numero_periodo < activePer.numero_periodo) {
+      return { success: false, error: 'No se permite registrar o modificar calificaciones en periodos cerrados.' };
+    }
+
     // Verificar propiedad
     const { data: asig } = await supabase
       .from('asignaciones_academicas')
@@ -378,14 +423,7 @@ export async function upsertCalificacionEvidencia(
 
     if (!asig) return { success: false, error: 'No tienes permisos sobre esta asignación.' };
 
-    // Número de periodo para compatibilidad
-    const { data: per } = await supabase
-      .from('periodos_academicos')
-      .select('numero_periodo')
-      .eq('id_periodo', idPeriodo)
-      .maybeSingle();
-
-    const numeroPeriodo = per?.numero_periodo ?? 1;
+    const numeroPeriodo = per.numero_periodo ?? 1;
 
     // Buscar calificación existente por evidencia
     const { data: existing } = await supabase

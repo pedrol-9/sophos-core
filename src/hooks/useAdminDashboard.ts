@@ -37,6 +37,7 @@ export function useAdminDashboard() {
           .eq('rol', 'ESTUDIANTE');
 
         if (dbStudents && dbStudents.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const mappedStudents: Student[] = dbStudents.map((s: any) => {
             const cursoNombre = s.estudiantes_matriculados?.[0]?.cursos?.nombre || 'Sin curso asignado';
             

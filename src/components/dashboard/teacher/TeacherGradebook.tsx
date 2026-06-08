@@ -45,6 +45,9 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   const [cellStatus, setCellStatus] = useState<Record<string, SaveStatus>>({});
   const timeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
 
+  const activePeriodo = periodos.find((p) => p.activo);
+  const isPeriodoClosed = !!(selectedPeriodo && activePeriodo && selectedPeriodo.numero_periodo < activePeriodo.numero_periodo);
+
   // ─── CARGA DE PARAMETRIZACIÓN ─────────────────────────────────────────────
   useEffect(() => {
     async function loadConfig() {
@@ -107,7 +110,30 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     idEvidencia: string,
     valStr: string
   ) => {
-    const val = valStr === '' ? NaN : parseFloat(valStr);
+    // Permitir campo vacío para limpiar nota localmente
+    if (valStr === '') {
+      setStudents((prev) => {
+        const updated = [...prev];
+        const student = { ...updated[studentIdx] };
+        student.grades = {
+          ...student.grades,
+          [idEvidencia]: {
+            ...(student.grades[idEvidencia] || { id_calificacion: null, id_evidencia: idEvidencia, comentario_docente: null }),
+            nota: null,
+          },
+        };
+        updated[studentIdx] = student;
+        return updated;
+      });
+      return;
+    }
+
+    const val = parseFloat(valStr);
+
+    // Bloquear si el valor está fuera del rango legal de 0.0 a 5.0
+    if (isNaN(val) || val < 0.0 || val > 5.0) {
+      return;
+    }
 
     // 1. Actualizar estado local inmediatamente para la UI
     setStudents((prev) => {
@@ -117,14 +143,12 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
         ...student.grades,
         [idEvidencia]: {
           ...(student.grades[idEvidencia] || { id_calificacion: null, id_evidencia: idEvidencia, comentario_docente: null }),
-          nota: isNaN(val) ? null : val,
+          nota: val,
         },
       };
       updated[studentIdx] = student;
       return updated;
     });
-
-    if (isNaN(val) || val < 0.0 || val > 5.0) return;
 
     // 2. Debounce autosave 500ms
     const cellKey = `${studentId}-${idEvidencia}`;
@@ -193,7 +217,18 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     });
 
     if (totalPeso === 0) return 0;
-    return parseFloat((total / totalPeso).toFixed(2));
+    const rawAverage = total / totalPeso;
+    
+    // Redondeo personalizado:
+    // de .00 a .49 = bottom round (truncar hacia abajo)
+    // de .50 a .99 = top round (redondear hacia arriba)
+    const intPart = Math.floor(rawAverage);
+    const decimalPart = rawAverage - intPart;
+    if (decimalPart < 0.50) {
+      return intPart;
+    } else {
+      return Math.ceil(rawAverage);
+    }
   };
 
   const getDesempenoLabel = (nota: number): string => {
@@ -224,20 +259,32 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
         <div className="flex items-center gap-3">
           <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Periodo:</label>
           <div className="flex gap-2">
-            {periodos.map((p) => (
-              <button
-                key={p.id_periodo}
-                type="button"
-                onClick={() => setSelectedPeriodo(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                  selectedPeriodo?.id_periodo === p.id_periodo
-                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                P{p.numero_periodo} {p.activo && '•'}
-              </button>
-            ))}
+            {(() => {
+              const maxPeriodoNum = activePeriodo ? activePeriodo.numero_periodo : 1;
+              const visiblePeriodos = periodos.filter((p) => p.numero_periodo <= maxPeriodoNum);
+
+              return visiblePeriodos.map((p) => {
+                const isSelected = selectedPeriodo?.id_periodo === p.id_periodo;
+                const isConcluido = activePeriodo && p.numero_periodo < activePeriodo.numero_periodo;
+
+                return (
+                  <button
+                    key={p.id_periodo}
+                    type="button"
+                    onClick={() => setSelectedPeriodo(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20'
+                        : isConcluido
+                        ? 'bg-zinc-800/40 border-zinc-700/30 text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-400'
+                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    P{p.numero_periodo} {p.activo && '•'} {isConcluido && '(Cerrado)'}
+                  </button>
+                );
+              });
+            })()}
           </div>
         </div>
 
@@ -246,8 +293,9 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
           {/* Botón Evidencias del Periodo */}
           <button
             type="button"
+            disabled={isPeriodoClosed}
             onClick={() => setShowEvidenciasModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600/20 border border-indigo-500/30 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -258,8 +306,9 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
           {/* Botón Carga Masiva CSV */}
           <button
             type="button"
+            disabled={isPeriodoClosed}
             onClick={() => setShowBulkModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-xs font-semibold transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -376,6 +425,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                                 step="0.1"
                                 min="0.0"
                                 max="5.0"
+                                disabled={isPeriodoClosed}
                                 value={notaVal !== null ? notaVal : ''}
                                 onChange={(e) =>
                                   handleGradeChange(
@@ -387,7 +437,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                                   )
                                 }
                                 onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
-                                className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-white/5 border rounded-lg focus:outline-none focus:bg-white/10 transition-all ${
+                                className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-white/5 border rounded-lg focus:outline-none focus:bg-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                                   status === 'saving'
                                     ? 'border-amber-500/50 text-amber-300'
                                     : status === 'saved'

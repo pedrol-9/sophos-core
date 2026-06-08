@@ -41,14 +41,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const studentName = (grade as any).estudiantes_matriculados?.usuarios?.nombre_completo || 'Estudiante';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subjectName = (grade as any).asignaciones_academicas?.materias?.nombre || 'Asignatura';
     const currentGrade = grade.nota;
     const currentPeriod = grade.periodo;
     const teacherComment = grade.comentario_docente;
 
     // 2. Obtener el conteo de faltas acumuladas del estudiante para esta asignatura
-    const { count: absencesCount, error: asistError } = await adminClient
+    const { count: absencesCount } = await adminClient
       .from('asistencias')
       .select('*', { count: 'exact', head: true })
       .eq('id_matricula', grade.id_matricula)
