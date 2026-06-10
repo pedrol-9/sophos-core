@@ -121,7 +121,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   // Load draft on mount
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const saved = localStorage.getItem('sophos_onboarding_draft');
+    const saved = localStorage.getItem(`sophos_onboarding_draft_${idInstitucion}`);
     if (saved) {
       try {
         const draft = JSON.parse(saved);
@@ -138,10 +138,9 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
       }
     }
     setIsLoaded(true);
-  }, []);
+  }, [idInstitucion]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Save draft on changes (only after mounting and loading completes)
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -155,8 +154,8 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
       nomenclaturaOption,
       customNomenclaturaInput,
     };
-    localStorage.setItem('sophos_onboarding_draft', JSON.stringify(draft));
-  }, [cantPeriodos, periodos, escalas, logros, currentStep, nomenclaturaCursos, nomenclaturaOption, customNomenclaturaInput, isLoaded]);
+    localStorage.setItem(`sophos_onboarding_draft_${idInstitucion}`, JSON.stringify(draft));
+  }, [cantPeriodos, periodos, escalas, logros, currentStep, nomenclaturaCursos, nomenclaturaOption, customNomenclaturaInput, isLoaded, idInstitucion]);
 
   useEffect(() => {
     async function fetchAssignments() {
@@ -310,7 +309,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
 
     setLoading(false);
     if (res.success) {
-      localStorage.removeItem('sophos_onboarding_draft'); // Clean up draft on success
+      localStorage.removeItem(`sophos_onboarding_draft_${idInstitucion}`); // Clean up draft on success
       onComplete();
     } else {
       setErrorMsg(res.error || 'Ocurrió un error al guardar la configuración.');
