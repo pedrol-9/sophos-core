@@ -13,6 +13,7 @@ import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
 import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
 import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
 import { SubscriptionManager } from '@/components/dashboard/admin/SubscriptionManager';
+import { CierrePeriodoManager } from '@/components/dashboard/admin/CierrePeriodoManager';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -183,6 +184,8 @@ export default function DashboardPage() {
 
         {activeTab === 'settings' ? (
           <SubscriptionManager />
+        ) : activeTab === 'cierre' ? (
+          <CierrePeriodoManager students={students} />
         ) : (
           <>
             {/* ─── STATS GRID ────────────────────────────────────────────────────── */}

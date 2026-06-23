@@ -16,6 +16,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 // Mapping de rol a workspace de destino
 const ROL_WORKSPACE: Record<string, string> = {
+  SUPER_ADMIN: '/dashboard/super-admin',
   ADMIN: '/dashboard/admin',
   DOCENTE: '/dashboard/docente',
   ESTUDIANTE: '/dashboard/estudiante',
@@ -149,6 +150,7 @@ export async function updateSession(request: NextRequest) {
     // Permite rutas que empiecen con el workspace correcto o rutas compartidas (/dashboard/profile, etc.)
     const isInOwnWorkspace = pathname.startsWith(targetWorkspace);
     const isSharedDashboardRoute =
+      !pathname.startsWith('/dashboard/super-admin') &&
       !pathname.startsWith('/dashboard/admin') &&
       !pathname.startsWith('/dashboard/docente') &&
       !pathname.startsWith('/dashboard/estudiante') &&
