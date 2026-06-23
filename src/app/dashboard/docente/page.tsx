@@ -379,7 +379,7 @@ export default function DocenteDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <svg className="animate-spin w-8 h-8 text-teal-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -392,7 +392,7 @@ export default function DocenteDashboard() {
   }
 
   return (
-    <div className="h-screen bg-[#090d16] text-white/90 font-sans flex overflow-hidden relative">
+    <div className="h-screen bg-background text-white/90 font-sans flex overflow-hidden relative">
       {/* Ambient Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full" />
@@ -513,7 +513,7 @@ export default function DocenteDashboard() {
       <main className="flex-1 overflow-y-auto relative z-10">
         
         {/* Header */}
-        <header className="px-8 py-6 border-b border-white/5 flex items-center justify-between sticky top-0 bg-[#090d16]/80 backdrop-blur-md z-20">
+        <header className="px-8 py-6 border-b border-white/5 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
               {!selectedAssignment 
@@ -564,11 +564,11 @@ export default function DocenteDashboard() {
                         id="filter-grade"
                         value={filterGrade}
                         onChange={(e) => setFilterGrade(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-[#090d16]/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-[#0c1220] transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-background/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-background transition-all cursor-pointer"
                       >
-                        <option value="" className="bg-[#090d16] text-white">Todos los grados</option>
+                        <option value="" className="bg-background text-white">Todos los grados</option>
                         {availableGrades.map(grade => (
-                          <option key={grade} value={grade} className="bg-[#090d16] text-white">
+                          <option key={grade} value={grade} className="bg-background text-white">
                             {grade}
                           </option>
                         ))}
@@ -584,11 +584,11 @@ export default function DocenteDashboard() {
                         id="filter-subject"
                         value={filterSubject}
                         onChange={(e) => setFilterSubject(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-[#090d16]/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-[#0c1220] transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-background/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-background transition-all cursor-pointer"
                       >
-                        <option value="" className="bg-[#090d16] text-white">Todas las materias</option>
+                        <option value="" className="bg-background text-white">Todas las materias</option>
                         {availableSubjects.map(subject => (
-                          <option key={subject} value={subject} className="bg-[#090d16] text-white">
+                          <option key={subject} value={subject} className="bg-background text-white">
                             {subject}
                           </option>
                         ))}

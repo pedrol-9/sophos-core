@@ -1,92 +1,91 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════════════
+   BLOQUE A — TEMA ACTIVO
+   Solo edita este bloque para cambiar toda la gama de colores del sitio.
+   ════════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* Modo Claro - Slate Elegante */
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  
-  --primary: #4f46e5; /* Indigo */
-  --primary-foreground: #ffffff;
-  
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  
-  --accent: #0891b2; /* Cian */
-  --accent-foreground: #ffffff;
-  
-  --destructive: #ef4444;
+  /* ── Fondos ─────────────────────────────────────────────────────────────── */
+  --bg-base:        #1a1f35;   /* Fondo principal de pantalla  */
+  --bg-surface:     #1e2540;   /* Tarjetas, sidebar, modales   */
+  --bg-overlay:     #252b4a;   /* Hover de filas, dropdowns    */
+
+  /* ── Color primario (botones, links activos, anillos de foco) ─────────── */
+  --clr-primary:    #6366f1;   /* Indigo                        */
+  --clr-primary-h:  #818cf8;   /* Hover del primario            */
+
+  /* ── Color acento (badges IA, highlights) ──────────────────────────────── */
+  --clr-accent:     #06b6d4;   /* Cyan                          */
+
+  /* ── Texto ──────────────────────────────────────────────────────────────── */
+  --clr-text:       #f1f5f9;
+  --clr-text-muted: #94a3b8;
+
+  /* ── Bordes ─────────────────────────────────────────────────────────────── */
+  --clr-border:     rgba(255, 255, 255, 0.10);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BLOQUE B — TOKENS SEMÁNTICOS
+   Se derivan del Bloque A automáticamente. No los toques.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background:           var(--bg-base);
+  --foreground:           var(--clr-text);
+
+  --card:                 var(--bg-surface);
+  --card-foreground:      var(--clr-text);
+
+  --popover:              var(--bg-surface);
+  --popover-foreground:   var(--clr-text);
+
+  --primary:              var(--clr-primary);
+  --primary-foreground:   #ffffff;
+
+  --secondary:            var(--bg-overlay);
+  --secondary-foreground: var(--clr-text);
+
+  --muted:                var(--bg-overlay);
+  --muted-foreground:     var(--clr-text-muted);
+
+  --accent:               var(--clr-accent);
+  --accent-foreground:    var(--bg-base);
+
+  --destructive:          #f87171;
   --destructive-foreground: #ffffff;
-  
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #6366f1;
+
+  --border:               var(--clr-border);
+  --input:                var(--clr-border);
+  --ring:                 var(--clr-primary-h);
 
   --radius: 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Modo Oscuro - Midnight Iris */
-    --background: #090d16; /* Deep dark blue-slate */
-    --foreground: #f1f5f9;
-    
-    --card: #0e1322; /* Card oscuro */
-    --card-foreground: #f1f5f9;
-    
-    --popover: #0e1322;
-    --popover-foreground: #f1f5f9;
-    
-    --primary: #6366f1; /* Indigo vibrante */
-    --primary-foreground: #ffffff;
-    
-    --secondary: #1e293b;
-    --secondary-foreground: #f1f5f9;
-    
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    
-    --accent: #06b6d4; /* Cian vibrante */
-    --accent-foreground: #090d16;
-    
-    --destructive: #f87171;
-    --destructive-foreground: #ffffff;
-    
-    --border: #1b2336;
-    --input: #1b2336;
-    --ring: #818cf8;
-  }
-}
-
+/* ════════════════════════════════════════════════════════════════════════════
+   BLOQUE C — MAPEO TAILWIND v4
+   Expone las variables como clases de utilidad (bg-background, text-primary…)
+   No lo toques.
+   ════════════════════════════════════════════════════════════════════════════ */
 @theme {
-  /* Mapeo de colores del tema de Tailwind v4 */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
+  --color-background:          var(--background);
+  --color-foreground:          var(--foreground);
+  --color-card:                var(--card);
+  --color-card-foreground:     var(--card-foreground);
+  --color-popover:             var(--popover);
+  --color-popover-foreground:  var(--popover-foreground);
+  --color-primary:             var(--primary);
+  --color-primary-foreground:  var(--primary-foreground);
+  --color-secondary:           var(--secondary);
+  --color-secondary-foreground:var(--secondary-foreground);
+  --color-muted:               var(--muted);
+  --color-muted-foreground:    var(--muted-foreground);
+  --color-accent:              var(--accent);
+  --color-accent-foreground:   var(--accent-foreground);
+  --color-destructive:         var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-border:              var(--border);
+  --color-input:               var(--input);
+  --color-ring:                var(--ring);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;

@@ -71,14 +71,14 @@ export default function DashboardPage() {
 
   if (isOnboardingComplete === null) {
     return (
-      <div className="flex h-screen bg-[#090d16] items-center justify-center text-white">
+      <div className="flex h-screen bg-background items-center justify-center text-white">
         <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#090d16] text-white overflow-hidden">
+    <div className="flex h-screen bg-background text-white overflow-hidden">
       {!isOnboardingComplete && !dismissedOnboarding && user?.app_metadata?.id_institucion && (
         <OnboardingWizard
           idInstitucion={user.app_metadata.id_institucion}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                 sessionStorage.removeItem('onboarding_dismissed');
                 setDismissedOnboarding(false);
               }}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-[#090d16] font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-background font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer"
             >
               Configurar Ahora
             </button>

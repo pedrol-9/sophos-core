@@ -17,7 +17,7 @@ export default function RootLayout({
       lang="en"
       className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col bg-[#090d16] text-white font-sans">
+      <body className="min-h-full flex flex-col bg-background text-white font-sans">
         <InactivityProvider>
           {children}
         </InactivityProvider>

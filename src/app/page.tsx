@@ -155,7 +155,7 @@ function FeatureCard({ icon, title, description, accent }: {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#090d16] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-background text-white overflow-x-hidden">
 
       {/* ── Ambient glow ── */}
       <div className="fixed inset-0 pointer-events-none">
@@ -165,7 +165,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── NAVBAR ── */}
-      <header className="relative z-50 border-b border-white/5 bg-[#090d16]/80 backdrop-blur-xl">
+      <header className="relative z-50 border-b border-white/5 bg-background/80 backdrop-blur-xl">
         <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">

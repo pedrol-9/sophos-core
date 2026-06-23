@@ -56,7 +56,7 @@ export function StudentList({ students, search, setSearch, selectedStudent, setS
                       (e.target as HTMLElement).style.display = 'none';
                     }} />
                   </div>
-                  <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-[#090d16] ${
+                  <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-background ${
                     student.status === 'excellent' ? 'bg-emerald-500' :
                     student.status === 'good' ? 'bg-indigo-400' :
                     student.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'

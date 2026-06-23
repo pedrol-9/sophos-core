@@ -426,7 +426,7 @@ export default function AcudienteDashboard() {
 
   if (loadingUser) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <svg className="animate-spin w-8 h-8 text-indigo-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -439,7 +439,7 @@ export default function AcudienteDashboard() {
   }
 
   return (
-    <div className="h-screen bg-[#090d16] text-white/90 font-sans flex overflow-hidden relative">
+    <div className="h-screen bg-background text-white/90 font-sans flex overflow-hidden relative">
       {/* Ambient Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full" />
@@ -525,7 +525,7 @@ export default function AcudienteDashboard() {
       <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
         
         {/* Header containing Kid Selector */}
-        <header className="px-8 py-6 border-b border-white/5 sticky top-0 bg-[#090d16]/80 backdrop-blur-md z-20 space-y-5">
+        <header className="px-8 py-6 border-b border-white/5 sticky top-0 bg-background/80 backdrop-blur-md z-20 space-y-5">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">Seguimiento de Acudidos</h1>

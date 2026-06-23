@@ -74,7 +74,7 @@ export default function LoginPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none">
