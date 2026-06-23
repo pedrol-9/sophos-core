@@ -170,3 +170,147 @@ export async function saveOnboardingParametrizacion(
     return { success: false, error: msg };
   }
 }
+
+export type SubscriptionInfo = {
+  nombreLegal: string;
+  nit: string;
+  planId: number | null;
+  planNombre: string;
+  planLimit: number;
+  planPrecio: number;
+  estadoSuscripcion: string;
+  totalUsersUsed: number;
+};
+
+/**
+ * Obtiene la información de suscripción y límites de la institución del usuario.
+ */
+export async function getSubscriptionInfo(): Promise<{ success: boolean; data?: SubscriptionInfo; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: 'Usuario no autenticado o sesión expirada.' };
+    }
+
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) {
+      return { success: false, error: 'El perfil de usuario no tiene una institución vinculada.' };
+    }
+
+    // Obtener la institución con su plan
+    const { data: inst, error: instError } = await supabase
+      .from('instituciones')
+      .select('nombre_legal, nit, estado_suscripcion, id_suscripcion, planes_suscripcion(nombre, limite_usuarios, precio)')
+      .eq('id_institucion', idInstitucion)
+      .single();
+
+    if (instError || !inst) {
+      return { success: false, error: `Error al obtener la institución: ${instError?.message || 'No encontrada'}` };
+    }
+
+    // Contar usuarios registrados en la institución
+    const { count, error: countError } = await supabase
+      .from('usuarios')
+      .select('*', { count: 'exact', head: true })
+      .eq('id_institucion', idInstitucion);
+
+    if (countError) {
+      return { success: false, error: `Error al contar usuarios: ${countError.message}` };
+    }
+
+    const planNombre = (inst.planes_suscripcion as any)?.nombre || 'Sin Plan';
+    const planLimit = (inst.planes_suscripcion as any)?.limite_usuarios ?? 0;
+    const planPrecio = (inst.planes_suscripcion as any)?.precio ?? 0;
+
+    return {
+      success: true,
+      data: {
+        nombreLegal: inst.nombre_legal,
+        nit: inst.nit,
+        planId: inst.id_suscripcion,
+        planNombre,
+        planLimit,
+        planPrecio,
+        estadoSuscripcion: inst.estado_suscripcion,
+        totalUsersUsed: count ?? 0,
+      }
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error interno del servidor.' };
+  }
+}
+
+/**
+ * Permite cambiar el plan de suscripción de la institución.
+ */
+export async function updateSubscriptionPlan(planId: number): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: 'Usuario no autenticado o sesión expirada.' };
+    }
+
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) {
+      return { success: false, error: 'El perfil de usuario no tiene una institución vinculada.' };
+    }
+
+    if (user.app_metadata?.rol !== 'ADMIN') {
+      return { success: false, error: 'Solo administradores pueden gestionar suscripciones.' };
+    }
+
+    // Obtener detalles del plan seleccionado
+    const { data: plan, error: planError } = await supabase
+      .from('planes_suscripcion')
+      .select('id_suscripcion, nombre, limite_usuarios')
+      .eq('id_suscripcion', planId)
+      .single();
+
+    if (planError || !plan) {
+      return { success: false, error: `El plan seleccionado no es válido: ${planError?.message || 'No encontrado'}` };
+    }
+
+    // Contar usuarios actuales para asegurar que el nuevo plan pueda soportarlos
+    const { count, error: countError } = await supabase
+      .from('usuarios')
+      .select('*', { count: 'exact', head: true })
+      .eq('id_institucion', idInstitucion);
+
+    if (countError) {
+      return { success: false, error: `Error al contar usuarios: ${countError.message}` };
+    }
+
+    const currentUsers = count ?? 0;
+    if (currentUsers > plan.limite_usuarios) {
+      return {
+        success: false,
+        error: `No puedes cambiar al plan '${plan.nombre}' porque tu institución tiene ${currentUsers} usuarios registrados y este plan solo permite un máximo de ${plan.limite_usuarios}.`
+      };
+    }
+
+    // Determinar nuevo estado (PRUEBA si es el plan de ID 1, de lo contrario ACTIVO)
+    const nuevoEstado = plan.id_suscripcion === 1 ? 'PRUEBA' : 'ACTIVO';
+
+    // Actualizar institución
+    const { error: updateError } = await supabase
+      .from('instituciones')
+      .update({
+        id_suscripcion: planId,
+        estado_suscripcion: nuevoEstado
+      })
+      .eq('id_institucion', idInstitucion);
+
+    if (updateError) {
+      return { success: false, error: `Error al actualizar la suscripción: ${updateError.message}` };
+    }
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error interno del servidor.' };
+  }
+}

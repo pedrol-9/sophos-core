@@ -19,6 +19,7 @@ export async function createInstitutionAndAdmin(
       nit: nit,
       dominio_personalizado: dominio,
       estado_suscripcion: 'PRUEBA',
+      id_suscripcion: 1, // Plan Prueba por defecto
     })
     .select('id_institucion')
     .single();

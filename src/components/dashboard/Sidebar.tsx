@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import {
@@ -103,8 +104,69 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
         </nav>
       </div>
 
+      {/* Subscription Limit Visualizer */}
+      {user?.app_metadata?.rol === 'ADMIN' && (() => {
+        // Local state query inside the render loop using a small helper hook or local render component would be ideal,
+        // but here we just render the subInfo state that we fetch in the Sidebar component.
+        return null; // will be handled by the subInfo render below
+      })()}
+
       {/* Profile Card / Logout */}
       <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
+        {/* Subscription Info Card */}
+        {(() => {
+          // We define local state inside Sidebar
+          // const [subInfo, setSubInfo] = useState(...)
+          // Let's declare it in the main body.
+          return null;
+        })()}
+
+        {user?.app_metadata?.rol === 'ADMIN' && (() => {
+          const [subInfo, setSubInfo] = useState<{ planNombre: string; totalUsersUsed: number; planLimit: number } | null>(null);
+
+          useEffect(() => {
+            async function fetchSub() {
+              const { getSubscriptionInfo } = await import('@/app/actions/config-actions');
+              const res = await getSubscriptionInfo();
+              if (res.success && res.data) {
+                setSubInfo({
+                  planNombre: res.data.planNombre,
+                  totalUsersUsed: res.data.totalUsersUsed,
+                  planLimit: res.data.planLimit
+                });
+              }
+            }
+            fetchSub();
+          }, []);
+
+          if (!subInfo) return null;
+
+          return (
+            <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-2">
+              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-white/40">
+                <span>Plan Actual</span>
+                <span className="text-indigo-400">{subInfo.planNombre}</span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-[11px] font-semibold text-white/80">Usuarios</span>
+                <span className="text-xs font-bold text-white">
+                  {subInfo.totalUsersUsed} <span className="text-white/40 font-normal">/ {subInfo.planLimit}</span>
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${
+                    subInfo.totalUsersUsed / subInfo.planLimit > 0.85 
+                      ? 'from-red-500 to-rose-400' 
+                      : 'from-indigo-500 to-cyan-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (subInfo.totalUsersUsed / subInfo.planLimit) * 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/35 flex items-center justify-center text-indigo-300 font-bold uppercase">
             {user?.email?.charAt(0) ?? 'U'}

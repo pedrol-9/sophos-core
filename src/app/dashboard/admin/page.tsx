@@ -12,6 +12,7 @@ import { StudentList } from '@/components/dashboard/admin/StudentList';
 import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
 import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
 import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
+import { SubscriptionManager } from '@/components/dashboard/admin/SubscriptionManager';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -180,30 +181,34 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ─── STATS GRID ────────────────────────────────────────────────────── */}
-        <StatsGrid totalStudents={students.length} />
+        {activeTab === 'settings' ? (
+          <SubscriptionManager />
+        ) : (
+          <>
+            {/* ─── STATS GRID ────────────────────────────────────────────────────── */}
+            <StatsGrid totalStudents={students.length} />
 
-        {/* ─── WORK AREA (FLEX LAYOUT) ────────────────────────────────────────── */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          
-          {/* LEFT: STUDENT TABLE */}
-          <StudentList 
-            students={students}
-            search={search}
-            setSearch={setSearch}
-            selectedStudent={selectedStudent}
-            setSelectedStudent={setSelectedStudent}
-          />
+            {/* ─── WORK AREA (FLEX LAYOUT) ────────────────────────────────────────── */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+              {/* LEFT: STUDENT TABLE */}
+              <StudentList 
+                students={students}
+                search={search}
+                setSearch={setSearch}
+                selectedStudent={selectedStudent}
+                setSelectedStudent={setSelectedStudent}
+              />
 
-          {/* RIGHT: DETAIL PANEL */}
-          <StudentDetail 
-            selectedStudent={selectedStudent}
-            isGenerating={isGenerating}
-            generatingProgress={generatingProgress}
-            onGenerateAIComment={handleGenerateAIComment}
-          />
-
-        </div>
+              {/* RIGHT: DETAIL PANEL */}
+              <StudentDetail 
+                selectedStudent={selectedStudent}
+                isGenerating={isGenerating}
+                generatingProgress={generatingProgress}
+                onGenerateAIComment={handleGenerateAIComment}
+              />
+            </div>
+          </>
+        )}
 
         {/* ─── SLIDE-OVER MODAL: BULK IMPORT CSV ──────────────────────────── */}
         {showAddForm && (

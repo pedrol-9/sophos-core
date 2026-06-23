@@ -199,6 +199,44 @@ export async function processBulkImport(
     }
   }
 
+  // 2.1 Verificar límites del plan de suscripción de la institución
+  const { data: instData, error: instFetchErr } = await adminClient
+    .from('instituciones')
+    .select('id_suscripcion, estado_suscripcion, planes_suscripcion(nombre, limite_usuarios)')
+    .eq('id_institucion', idInstitucion)
+    .single();
+
+  if (instFetchErr || !instData) {
+    return { error: `Error al verificar la suscripción de la institución: ${instFetchErr?.message || 'No encontrada'}` };
+  }
+
+  const planLimit = (instData.planes_suscripcion as any)?.limite_usuarios ?? 50;
+  const planNombre = (instData.planes_suscripcion as any)?.nombre || 'Plan Prueba';
+
+  // Contar los usuarios actualmente registrados en la institución
+  const { count: currentUsersCount, error: countErr } = await adminClient
+    .from('usuarios')
+    .select('*', { count: 'exact', head: true })
+    .eq('id_institucion', idInstitucion);
+
+  if (countErr) {
+    return { error: `Error al verificar el número actual de usuarios: ${countErr.message}` };
+  }
+
+  // Calcular cuántos usuarios NUEVOS se crearían a partir del CSV
+  let newUsersToCreateCount = 0;
+  for (const email of uniqueRows.keys()) {
+    if (!existingUsersMap.has(email)) {
+      newUsersToCreateCount++;
+    }
+  }
+
+  if ((currentUsersCount ?? 0) + newUsersToCreateCount > planLimit) {
+    return {
+      error: `Límite de plan superado. Tu plan (${planNombre}) permite un máximo de ${planLimit} usuarios. Actualmente tienes ${currentUsersCount ?? 0} registrados e intentas cargar ${newUsersToCreateCount} nuevos, superando el límite permitido.`,
+    };
+  }
+
   // Separar registros por roles
   const studentsList: UniqueRow[] = [];
   const teachersList: UniqueRow[] = [];
