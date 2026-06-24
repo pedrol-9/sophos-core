@@ -116,6 +116,24 @@ export async function updateSession(request: NextRequest) {
   const rol = (user?.app_metadata?.rol as string | undefined)?.toUpperCase();
   const targetWorkspace = rol ? (ROL_WORKSPACE[rol] ?? '/dashboard/admin') : '/dashboard/admin';
 
+  // ─── CONTROL DE EXPIRACIÓN DE SUSCRIPCIÓN (Wompi) ────────────────────────
+  // Solo aplica a ADMIN con colegio, SUPER_ADMIN nunca es bloqueado
+  if (user && rol === 'ADMIN' && pathname.startsWith('/dashboard/admin')) {
+    const fechaExpiracionRaw = user.app_metadata?.fecha_expiracion as string | undefined;
+    if (fechaExpiracionRaw) {
+      const expiracion = new Date(fechaExpiracionRaw);
+      const estaVencida = new Date() > expiracion;
+      const isRenovacionRoute = request.nextUrl.searchParams.has('suscripcion');
+
+      if (estaVencida && !isRenovacionRoute && pathname !== '/dashboard/admin') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/dashboard/admin';
+        url.searchParams.set('suscripcion', 'vencida');
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // Clasificar la ruta actual
   const isProtectedRoute = pathname.startsWith('/dashboard');
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/signup');
