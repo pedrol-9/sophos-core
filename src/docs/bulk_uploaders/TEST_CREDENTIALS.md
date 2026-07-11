@@ -6,7 +6,8 @@ Este archivo contiene los accesos rápidos para probar todos los roles del siste
 
 | Rol | Email | Notas |
 |---|---|---|
-| **ADMIN** | `santiago.garcia@gmail.com` | Tiene acceso al panel de carga masiva y métricas globales. |
+| **SUPER ADMIN** | `superadmin@sophos.com` | Administrador global del SaaS (tiene acceso a métricas globales de colegios). |
+| **ADMIN** | `contacto@jm-carbonell.edu.co` | Correo del administrador oficial del colegio demo (Carbonell). |
 | **DOCENTE** | `mariana.fuentes@edu.co` | Tiene la mayor cantidad de asignaciones (todas las matemáticas). |
 | **DOCENTE** | `jorge.ruiz@edu.co` | Tiene asignaciones de Ciencias Naturales y Biología. |
 | **ESTUDIANTE** | `mateo.silva@edu.co` | Estudiante de 10-A. |

@@ -5,6 +5,8 @@ import { User } from '@supabase/supabase-js';
 export interface Student {
   id: string;
   name: string;
+  email?: string;
+  id_matricula?: string;
   avatar: string;
   subject: string;
   grade: number;
@@ -32,18 +34,21 @@ export function useAdminDashboard() {
       if (user?.app_metadata?.id_institucion) {
         const { data: dbStudents } = await supabase
           .from('usuarios')
-          .select('*, estudiantes_matriculados(cursos(nombre))')
+          .select('*, estudiantes_matriculados(id_matricula, cursos(nombre))')
           .eq('id_institucion', user.app_metadata.id_institucion)
           .eq('rol', 'ESTUDIANTE');
 
         if (dbStudents && dbStudents.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const mappedStudents: Student[] = dbStudents.map((s: any) => {
+            const matriculaId = s.estudiantes_matriculados?.[0]?.id_matricula || '';
             const cursoNombre = s.estudiantes_matriculados?.[0]?.cursos?.nombre || 'Sin curso asignado';
             
             return {
               id: s.id_usuario,
               name: s.nombre_completo,
+              email: s.email,
+              id_matricula: matriculaId,
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.nombre_completo)}&background=1e293b&color=cbd5e1`,
               subject: cursoNombre,
               grade: 0.0,

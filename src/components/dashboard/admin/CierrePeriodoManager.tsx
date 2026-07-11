@@ -18,6 +18,7 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeriodForBulletins, setSelectedPeriodForBulletins] = useState<string>('');
+  const [confirmModal, setConfirmModal] = useState<{ periodId: string; numero: number } | null>(null);
 
   // Cargar datos
   const loadData = async () => {
@@ -50,11 +51,16 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
     loadData();
   }, []);
 
-  // Manejar el cierre de un período
-  const handleClosePeriod = async (periodId: string, numero: number) => {
-    if (!window.confirm(`¿Estás seguro de que deseas CERRAR el Período ${numero}? Esta acción calculará promedios ponderados, guardará copias históricas de los boletines de todos los estudiantes y activará el siguiente período. No podrás modificar notas de este período una vez cerrado.`)) {
-      return;
-    }
+  // Manejar el cierre de un período (abrir modal)
+  const handleClosePeriod = (periodId: string, numero: number) => {
+    setConfirmModal({ periodId, numero });
+  };
+
+  // Ejecutar el cierre real tras la confirmación
+  const executeClosePeriod = async () => {
+    if (!confirmModal) return;
+    const { periodId, numero } = confirmModal;
+    setConfirmModal(null); // Cerrar modal inmediatamente
 
     setClosingId(periodId);
     setErrorMsg(null);
@@ -77,7 +83,7 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
 
   // Filtrar estudiantes por búsqueda
   const filteredStudents = students.filter(student =>
-    student.nombre_completo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -390,9 +396,9 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
                     const isPeriodClosed = periodos.find(p => p.id_periodo === selectedPeriodForBulletins)?.cerrado;
                     
                     return (
-                      <tr key={stud.id_usuario} className="hover:bg-white/[0.01] transition-all">
-                        <td className="py-3.5 px-5 font-semibold text-white/90">{stud.nombre_completo}</td>
-                        <td className="py-3.5 px-5 text-white/40">{stud.email}</td>
+                      <tr key={stud.id} className="hover:bg-white/[0.01] transition-all">
+                        <td className="py-3.5 px-5 font-semibold text-white/90">{stud.name}</td>
+                        <td className="py-3.5 px-5 text-white/40">{stud.email || 'Sin correo'}</td>
                         <td className="py-3.5 px-5">
                           {isPeriodClosed ? (
                             <span className="px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-400 font-bold text-[10px] uppercase">
@@ -406,7 +412,7 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
                         </td>
                         <td className="py-3.5 px-5 text-right">
                           <button
-                            onClick={() => handleOpenBulletin(stud.id_matricula || stud.id_usuario)}
+                            onClick={() => handleOpenBulletin(stud.id_matricula || stud.id)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-indigo-600 border border-white/10 hover:border-indigo-500 text-white font-semibold transition-all cursor-pointer text-[11px]"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -429,6 +435,59 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
           </div>
         )}
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN DE CIERRE */}
+      {confirmModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(null)}
+        >
+          <div 
+            className="bg-[#0c1220] border border-white/10 rounded-2xl w-full max-w-md p-6 relative shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera / Warning Icon */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">¿Cerrar Período Académico {confirmModal.numero}?</h3>
+                <p className="text-[11px] text-white/40">Esta es una acción inmutable y administrativa.</p>
+              </div>
+            </div>
+
+            {/* Detalles / Advertencias */}
+            <div className="space-y-3 my-4 bg-white/[0.02] border border-white/5 rounded-xl p-4 text-xs text-white/60 leading-relaxed">
+              <p>Al confirmar el cierre de este período se realizarán los siguientes procesos:</p>
+              <ul className="list-disc list-inside space-y-1.5 text-white/70">
+                <li>Se calcularán los <strong>promedios ponderados</strong> por asignatura.</li>
+                <li>Se guardarán copias históricas inmutables de los boletines.</li>
+                <li><strong>Se congelarán las planillas</strong>; los docentes no podrán modificar calificaciones.</li>
+                <li>Se activará de forma automática el siguiente período académico.</li>
+              </ul>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 border border-white/10 hover:bg-white/5 text-white/80 hover:text-white rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeClosePeriod}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+              >
+                Confirmar y Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
