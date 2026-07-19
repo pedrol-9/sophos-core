@@ -16,17 +16,31 @@ interface SidebarProps {
 }
 
 export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProps) {
+  const [subInfo, setSubInfo] = useState<{ planNombre: string; totalUsersUsed: number; planLimit: number } | null>(null);
+
+  useEffect(() => {
+    if (user?.app_metadata?.rol !== 'ADMIN') return;
+    async function fetchSub() {
+      const { getSubscriptionInfo } = await import('@/app/actions/config-actions');
+      const res = await getSubscriptionInfo();
+      if (res.success && res.data) {
+        setSubInfo({
+          planNombre: res.data.planNombre,
+          totalUsersUsed: res.data.totalUsersUsed,
+          planLimit: res.data.planLimit
+        });
+      }
+    }
+    fetchSub();
+  }, [user]);
+
   return (
     <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md h-full">
       <div className="flex flex-col flex-1 min-h-0">
         {/* Logo */}
         <div className="p-6 border-b border-white/10 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
-                <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-              </svg>
-            </div>
+            <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-indigo-500/20" />
             <span className="text-lg font-bold tracking-tight text-white">
               Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Core</span>
             </span>
@@ -124,58 +138,30 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
       {/* Profile Card / Logout */}
       <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
         {/* Subscription Info Card */}
-        {(() => {
-          // We define local state inside Sidebar
-          // const [subInfo, setSubInfo] = useState(...)
-          // Let's declare it in the main body.
-          return null;
-        })()}
-
-        {user?.app_metadata?.rol === 'ADMIN' && (() => {
-          const [subInfo, setSubInfo] = useState<{ planNombre: string; totalUsersUsed: number; planLimit: number } | null>(null);
-
-          useEffect(() => {
-            async function fetchSub() {
-              const { getSubscriptionInfo } = await import('@/app/actions/config-actions');
-              const res = await getSubscriptionInfo();
-              if (res.success && res.data) {
-                setSubInfo({
-                  planNombre: res.data.planNombre,
-                  totalUsersUsed: res.data.totalUsersUsed,
-                  planLimit: res.data.planLimit
-                });
-              }
-            }
-            fetchSub();
-          }, []);
-
-          if (!subInfo) return null;
-
-          return (
-            <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-2">
-              <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-white/40">
-                <span>Plan Actual</span>
-                <span className="text-indigo-400">{subInfo.planNombre}</span>
-              </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-[11px] font-semibold text-white/80">Usuarios</span>
-                <span className="text-xs font-bold text-white">
-                  {subInfo.totalUsersUsed} <span className="text-white/40 font-normal">/ {subInfo.planLimit}</span>
-                </span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div 
-                  className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${
-                    subInfo.totalUsersUsed / subInfo.planLimit > 0.85 
-                      ? 'from-red-500 to-rose-400' 
-                      : 'from-indigo-500 to-cyan-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (subInfo.totalUsersUsed / subInfo.planLimit) * 100)}%` }}
-                />
-              </div>
+        {user?.app_metadata?.rol === 'ADMIN' && subInfo && (
+          <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm space-y-2">
+            <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-white/40">
+              <span>Plan Actual</span>
+              <span className="text-indigo-400">{subInfo.planNombre}</span>
             </div>
-          );
-        })()}
+            <div className="flex justify-between items-baseline">
+              <span className="text-[11px] font-semibold text-white/80">Usuarios</span>
+              <span className="text-xs font-bold text-white">
+                {subInfo.totalUsersUsed} <span className="text-white/40 font-normal">/ {subInfo.planLimit}</span>
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div 
+                className={`h-full rounded-full bg-gradient-to-r transition-all duration-500 ${
+                  subInfo.totalUsersUsed / subInfo.planLimit > 0.85 
+                    ? 'from-red-500 to-rose-400' 
+                    : 'from-indigo-500 to-cyan-500'
+                }`}
+                style={{ width: `${Math.min(100, (subInfo.totalUsersUsed / subInfo.planLimit) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/35 flex items-center justify-center text-indigo-300 font-bold uppercase">

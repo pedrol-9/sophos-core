@@ -41,11 +41,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
-                <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-              </svg>
-            </div>
+            <img src="/favicon.png" alt="Sophos Core Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-indigo-500/25" />
             <span className="text-xl font-bold tracking-tight text-white">
               Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Core</span>
             </span>

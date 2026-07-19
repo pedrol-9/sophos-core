@@ -405,11 +405,7 @@ export default function DocenteDashboard() {
           {/* Logo */}
           <div className="p-6 border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
-                <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
-                  <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-                </svg>
-              </div>
+              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-teal-500/20" />
               <span className="text-lg font-bold tracking-tight text-white">
                 Portal<span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent"> Docente</span>
               </span>
