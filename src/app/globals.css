@@ -119,3 +119,8 @@ input:-webkit-autofill:active {
   -webkit-text-fill-color: #f1f5f9 !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Forzar que el cursor de texto sea blanco en todos los inputs y áreas de texto */
+input, textarea {
+  caret-color: #ffffff !important;
+}
