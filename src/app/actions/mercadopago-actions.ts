@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { headers } from 'next/headers';
 
 // Precios en COP por plan (valores unitarios por mes)
 const PLAN_PRECIOS_COP: Record<number, number> = {
@@ -110,7 +111,10 @@ export async function generateMercadoPagoPreference(
       return { success: false, error: `Error al registrar la transacción en base de datos: ${dbError.message}` };
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const headersList = await headers();
+    const host = headersList.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
     const mpClient = getMercadoPagoClient();
     const preference = new Preference(mpClient);
 
