@@ -357,11 +357,11 @@ export function SubscriptionManager() {
             </div>
 
             {/* Selector de meses */}
-            <div className="space-y-3 mb-6">
-              <label className="text-xs font-bold text-white/60 uppercase tracking-wider">
+            <div className="space-y-4 mb-6">
+              <label className="block text-[10px] font-bold text-white/50 uppercase tracking-widest">
                 Duración de la suscripción
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-3">
                 {MESES_OPCIONES.map((m) => {
                   const desc = getDescuento(m);
                   const isSelected = selectedMeses === m;
@@ -369,18 +369,18 @@ export function SubscriptionManager() {
                     <button
                       key={m}
                       onClick={() => setSelectedMeses(m)}
-                      className={`relative py-3 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                      className={`relative py-4 px-2 rounded-xl border text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                         isSelected
-                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/25'
-                          : 'bg-white/3 border-white/8 text-white/60 hover:border-white/20 hover:text-white'
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20 scale-[1.02]'
+                          : 'bg-white/3 border-white/8 text-white/60 hover:border-white/20 hover:text-white hover:bg-white/5 hover:scale-[1.01]'
                       }`}
                     >
-                      <span className="block text-sm font-black">{m}</span>
-                      <span className="block text-[9px] font-semibold opacity-70">
+                      <span className="block text-lg font-black leading-none">{m}</span>
+                      <span className="block text-[10px] font-bold uppercase tracking-wider opacity-60">
                         {m === 1 ? 'mes' : 'meses'}
                       </span>
                       {desc > 0 && (
-                        <span className="absolute -top-2 -right-1 text-[8px] font-black bg-teal-500 text-white px-1.5 py-0.5 rounded-full">
+                        <span className="absolute -top-1.5 -right-1 text-[8px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-full shadow-sm leading-none border border-[#0d1526]">
                           -{desc}%
                         </span>
                       )}
@@ -391,20 +391,20 @@ export function SubscriptionManager() {
             </div>
 
             {/* Resumen de precio */}
-            <div className="rounded-xl bg-white/3 border border-white/8 p-4 mb-6 space-y-2">
+            <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 mb-6 space-y-3">
               <div className="flex justify-between text-xs text-white/50">
-                <span>{formatCOP(selectedPlan.precioCOP * 100)} × {selectedMeses} mes{selectedMeses > 1 ? 'es' : ''}</span>
+                <span>Precio base ({selectedPlan.name})</span>
                 <span>{formatCOP(precioBase * 100)}</span>
               </div>
               {descuento > 0 && (
-                <div className="flex justify-between text-xs text-teal-400">
-                  <span>Descuento por volumen ({descuento}%)</span>
+                <div className="flex justify-between text-xs text-emerald-400 font-semibold">
+                  <span>Descuento por volumen (-{descuento}%)</span>
                   <span>-{formatCOP((precioBase - precioFinal) * 100)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-black text-base text-white pt-2 border-t border-white/8">
-                <span>Total a pagar</span>
-                <span>{formatCOP(precioFinal * 100)}</span>
+              <div className="pt-3 border-t border-white/5 flex justify-between items-baseline">
+                <span className="text-sm font-semibold text-white/70">Total a pagar</span>
+                <span className="text-xl font-black text-white">{formatCOP(precioFinal * 100)}</span>
               </div>
             </div>
 
@@ -417,7 +417,7 @@ export function SubscriptionManager() {
             <button
               onClick={handleInitiatePayment}
               disabled={generatingParams}
-              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 rounded-xl text-sm font-black text-white transition-all shadow-lg shadow-indigo-600/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 rounded-xl text-sm font-black text-white transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
             >
               {generatingParams ? (
                 <>
