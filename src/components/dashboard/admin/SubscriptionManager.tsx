@@ -213,10 +213,10 @@ export function SubscriptionManager() {
                   </span>
                   <h3 className="text-lg font-bold text-white pt-1">{status.planNombre}</h3>
                   <p className="text-xs text-white/40">
-                    {status.planId === 2
-                      ? '$199.000 COP / mes'
-                      : status.planId === 3
-                      ? '$599.000 COP / mes'
+                    {Number(status.planId) === 2
+                      ? '$3.000 COP / mes'
+                      : Number(status.planId) === 3
+                      ? '$5.000 COP / mes'
                       : 'Gratuito'}
                   </p>
                 </div>
@@ -252,7 +252,7 @@ export function SubscriptionManager() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {PLANES.map((plan) => {
-                    const isActive = status.planId === plan.id && !status.estaVencida;
+                    const isActive = Number(status.planId) === Number(plan.id) && !status.estaVencida;
                     const isPremium = plan.id === 3;
                     return (
                       <div
