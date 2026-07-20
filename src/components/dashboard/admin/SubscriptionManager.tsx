@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Script from 'next/script';
-import { getSubscriptionStatus } from '@/app/actions/wompi-actions';
-import { generateWompiParams } from '@/app/actions/wompi-actions';
+import { getSubscriptionStatus, generateMercadoPagoPreference } from '@/app/actions/mercadopago-actions';
 
 // Tipos del estado de suscripción
 type SubscriptionStatus = {
@@ -58,7 +56,6 @@ export function SubscriptionManager() {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [wompiReady, setWompiReady] = useState(false);
 
   // Estado del modal de compra
   const [showBuyModal, setShowBuyModal] = useState(false);
@@ -104,43 +101,21 @@ export function SubscriptionManager() {
   };
 
   const handleInitiatePayment = async () => {
-    if (!selectedPlan || !wompiReady) return;
+    if (!selectedPlan) return;
     setGeneratingParams(true);
     setPaymentError(null);
 
     try {
-      const res = await generateWompiParams(selectedPlan.id, selectedMeses);
+      const res = await generateMercadoPagoPreference(selectedPlan.id, selectedMeses);
 
-      if (!res.success || !res.data) {
+      if (!res.success || !res.initPoint) {
         setPaymentError(res.error || 'Error preparando el pago.');
         setGeneratingParams(false);
         return;
       }
 
-      const { publicKey, referencia, valorCentavos, moneda, firma, redirectUrl } = res.data;
-
-      // ─── Abrir el Widget de Wompi ──────────────────────────────────────────
-      // La librería de Wompi expone un constructor global `WidgetCheckout`
-      const checkout = new (window as any).WidgetCheckout({
-        currency: moneda,
-        amountInCents: valorCentavos,
-        reference: referencia,
-        publicKey: publicKey,
-        signature: { integrity: firma },
-        redirectUrl: redirectUrl,
-      });
-
-      checkout.open((result: any) => {
-        const { transaction } = result;
-        if (transaction?.status === 'APPROVED') {
-          // El webhook procesará la extensión de suscripción en background.
-          // Mostramos feedback inmediato al usuario.
-          setShowBuyModal(false);
-          setError(null);
-          // Recargar el estado con un pequeño delay para que el webhook procese
-          setTimeout(() => loadStatus(), 3000);
-        }
-      });
+      // Redirigir al Checkout Pro de Mercado Pago
+      window.location.href = res.initPoint;
     } catch (err: any) {
       setPaymentError('Error inesperado al iniciar el pago.');
     } finally {
@@ -210,12 +185,6 @@ export function SubscriptionManager() {
 
   return (
     <>
-      {/* SDK de Wompi - se carga una sola vez de forma segura */}
-      <Script
-        src="https://checkout.wompi.co/widget.js"
-        strategy="lazyOnload"
-        onLoad={() => setWompiReady(true)}
-      />
 
       <div className="space-y-6 animate-in fade-in duration-200">
         {error && (
@@ -383,7 +352,7 @@ export function SubscriptionManager() {
             <div className="mb-6">
               <h3 className="text-base font-extrabold text-white">Adquirir {selectedPlan.name}</h3>
               <p className="text-xs text-white/40 mt-0.5">
-                Pago seguro con Wompi — Bancolombia
+                Pago seguro procesado por Mercado Pago
               </p>
             </div>
 
@@ -447,28 +416,26 @@ export function SubscriptionManager() {
 
             <button
               onClick={handleInitiatePayment}
-              disabled={generatingParams || !wompiReady}
+              disabled={generatingParams}
               className="w-full py-3 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 rounded-xl text-sm font-black text-white transition-all shadow-lg shadow-indigo-600/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {generatingParams ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Preparando pago...
+                  Redirigiendo a Mercado Pago...
                 </>
-              ) : !wompiReady ? (
-                'Cargando pasarela...'
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 003 12c0 6.627 5.373 12 12 12s12-5.373 12-12c0-2.092-.535-4.06-1.475-5.774M15 6.75a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Pagar {formatCOP(precioFinal * 100)} con Wompi
+                  Pagar {formatCOP(precioFinal * 100)} con Mercado Pago
                 </>
               )}
             </button>
 
             <p className="text-center text-[10px] text-white/20 mt-3">
-              Pago procesado de forma segura por Wompi · Grupo Bancolombia
+              Pago procesado de forma segura por Mercado Pago
             </p>
           </div>
         </div>

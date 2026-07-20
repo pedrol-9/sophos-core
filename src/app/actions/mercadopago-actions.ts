@@ -2,14 +2,13 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 
-// ─── Precios en COP (centavos) por plan y duración ───────────────────────────
-// Plan 1: Prueba ($0), Plan 2: Básico ($199.000/mes), Plan 3: Premium ($599.000/mes)
+// Precios en COP por plan (valores unitarios por mes)
 const PLAN_PRECIOS_COP: Record<number, number> = {
   1: 0,
-  2: 19900000, // $199.000 en centavos
-  3: 59900000, // $599.000 en centavos
+  2: 199000, // $199.000 COP
+  3: 599000, // $599.000 COP
 };
 
 const PLAN_NOMBRES: Record<number, string> = {
@@ -19,26 +18,35 @@ const PLAN_NOMBRES: Record<number, string> = {
 };
 
 /**
- * Genera los parámetros seguros para inicializar el Widget de Wompi en el cliente.
- * La firma de integridad SHA-256 se calcula ÚNICAMENTE en el servidor para
- * prevenir manipulación de precios desde el navegador.
+ * Calcula el porcentaje de descuento por volumen según la cantidad de meses contratada
  */
-export async function generateWompiParams(
+function getDescuento(meses: number): number {
+  if (meses >= 12) return 20;
+  if (meses >= 6) return 10;
+  if (meses >= 3) return 5;
+  return 0;
+}
+
+/**
+ * Inicializa de forma segura el cliente de Mercado Pago
+ */
+function getMercadoPagoClient() {
+  return new MercadoPagoConfig({
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || 'placeholder-access-token',
+  });
+}
+
+/**
+ * Genera una preferencia de Mercado Pago y registra la transacción en estado PENDIENTE.
+ * Retorna la URL (init_point) del Checkout Pro para redirigir al usuario.
+ */
+export async function generateMercadoPagoPreference(
   planId: number,
   meses: number
 ): Promise<{
   success: boolean;
   error?: string;
-  data?: {
-    publicKey: string;
-    referencia: string;
-    valorCentavos: number;
-    moneda: string;
-    firma: string;
-    redirectUrl: string;
-    planNombre: string;
-    meses: number;
-  };
+  initPoint?: string;
 }> {
   try {
     const supabase = await createClient();
@@ -70,7 +78,9 @@ export async function generateWompiParams(
     }
 
     const valorUnitario = PLAN_PRECIOS_COP[planId];
-    const valorTotal = valorUnitario * meses;
+    const precioBase = valorUnitario * meses;
+    const descuento = getDescuento(meses);
+    const valorTotal = Math.round(precioBase * (1 - descuento / 100));
 
     if (valorTotal === 0) {
       return { success: false, error: 'El Plan Prueba es gratuito, no requiere pago.' };
@@ -80,55 +90,65 @@ export async function generateWompiParams(
     const timestamp = Date.now();
     const referencia = `REF-${idInstitucion.slice(0, 8).toUpperCase()}-P${planId}-M${meses}-${timestamp}`;
 
-    // ─── Firma de integridad SHA-256 (requerida por Wompi) ───────────────────
-    // Formato: SHA256(referencia + valorEnCentavos + moneda + secretoIntegridad)
-    const wompiIntegritySecret = process.env.WOMPI_INTEGRITY_SECRET;
-    if (!wompiIntegritySecret) {
-      return { success: false, error: 'Error de configuración del servidor de pagos.' };
-    }
-
-    const cadenaFirma = `${referencia}${valorTotal}COP${wompiIntegritySecret}`;
-    const firma = crypto.createHash('sha256').update(cadenaFirma).digest('hex');
-
     // Registrar transacción pendiente para auditoría
     const adminSupabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    await adminSupabase.from('transacciones_wompi').insert({
+    const { error: dbError } = await adminSupabase.from('transacciones_mercadopago').insert({
       id_institucion: idInstitucion,
-      referencia_wompi: referencia,
+      referencia_mercadopago: referencia,
       id_suscripcion: planId,
       meses_adquiridos: meses,
       valor_cop: valorTotal,
       estado: 'PENDIENTE',
     });
 
+    if (dbError) {
+      console.error('[mercadopago-actions] DB Insert Error:', dbError);
+      return { success: false, error: 'Error al registrar la transacción.' };
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const mpClient = getMercadoPagoClient();
+    const preference = new Preference(mpClient);
+
+    // Crear preferencia en Mercado Pago
+    const response = await preference.create({
+      body: {
+        items: [
+          {
+            id: `plan-${planId}`,
+            title: `${PLAN_NOMBRES[planId]} - ${meses} ${meses === 1 ? 'mes' : 'meses'}`,
+            quantity: 1,
+            unit_price: valorTotal,
+            currency_id: 'COP',
+          },
+        ],
+        external_reference: referencia,
+        back_urls: {
+          success: `${baseUrl}/dashboard/admin?pago=completado`,
+          failure: `${baseUrl}/dashboard/admin?pago=fallido`,
+          pending: `${baseUrl}/dashboard/admin?pago=pendiente`,
+        },
+        auto_return: 'approved',
+        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+      },
+    });
 
     return {
       success: true,
-      data: {
-        publicKey: process.env.WOMPI_PUBLIC_KEY!,
-        referencia,
-        valorCentavos: valorTotal,
-        moneda: 'COP',
-        firma,
-        redirectUrl: `${baseUrl}/dashboard/admin?pago=completado`,
-        planNombre: PLAN_NOMBRES[planId],
-        meses,
-      },
+      initPoint: response.init_point,
     };
   } catch (err: any) {
-    console.error('[wompi-actions] generateWompiParams error:', err);
+    console.error('[mercadopago-actions] generateMercadoPagoPreference error:', err);
     return { success: false, error: 'Error interno al preparar el pago.' };
   }
 }
 
 /**
  * Obtiene el estado actual de la suscripción de la institución del admin logueado.
- * Retorna días restantes, estado y si está vencida.
  */
 export async function getSubscriptionStatus(): Promise<{
   success: boolean;
