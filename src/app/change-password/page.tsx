@@ -105,7 +105,7 @@ export default function ChangePasswordPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors"
                 >
                   <IconEye open={showPwd} />
                 </button>
@@ -130,7 +130,7 @@ export default function ChangePasswordPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors"
                 >
                   <IconEye open={showConfirmPwd} />
                 </button>
