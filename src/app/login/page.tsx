@@ -64,7 +64,7 @@ export default function LoginPage({
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      setError('Credenciales incorrectas. Verifica tu correo y contraseña.');
+      setError(`Error de autenticación: ${authError.message}`);
       setLoading(false);
       return;
     }
