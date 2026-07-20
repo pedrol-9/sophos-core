@@ -92,6 +92,12 @@ export async function updateSession(request: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
       });
     }
+  } else {
+    // Si no hay usuario autenticado, eliminar la cookie de última actividad
+    // para evitar que se herede un valor obsoleto en el próximo inicio de sesión.
+    if (lastActiveCookie) {
+      supabaseResponse.cookies.delete('sophos_last_active');
+    }
   }
 
   const pathname = request.nextUrl.pathname;

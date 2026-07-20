@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import {
   IconHome, IconBuilding, IconNotebook, IconSparkles, 
-  IconChecklist, IconSettings, IconLogout
+  IconSettings, IconLogout, IconUser, IconCreditCard,
+  IconRocket, IconUsers, IconArrowLeft
 } from '@/components/icons';
 
 interface SidebarProps {
@@ -40,7 +41,14 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
         {/* Logo */}
         <div className="p-6 border-b border-white/10 shrink-0">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-indigo-500/20" />
+            <img 
+              src={user?.app_metadata?.id_institucion ? `https://gxtuarqsfqrdvksmuioe.supabase.co/storage/v1/object/public/logos/${user.app_metadata.id_institucion}/logo.png` : "/favicon.png"} 
+              onError={(e) => {
+                e.currentTarget.src = "/favicon.png";
+              }}
+              alt="Sophos Core Logo" 
+              className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-indigo-500/20" 
+            />
             <span className="text-lg font-bold tracking-tight text-white">
               Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Core</span>
             </span>
@@ -49,82 +57,129 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
 
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto flex-1">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'dashboard'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <IconHome /> Panel General
-          </button>
-          <button
-            onClick={() => setActiveTab('institutions')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'institutions'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <IconBuilding /> Sedes e Institutos
-            </div>
-            <span className="text-[10px] bg-indigo-500/25 text-indigo-300 font-semibold px-2 py-0.5 rounded-full">3</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('courses')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'courses'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <IconNotebook /> Cursos y Materias
-          </button>
-          <button
-            onClick={() => setActiveTab('ai')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'ai'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <IconSparkles /> IA Académica
-            </div>
-            <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-2 py-0.5 rounded-full">Activo</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('attendance')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'attendance'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <IconChecklist /> Asistencia
-          </button>
-          <button
-            onClick={() => setActiveTab('cierre')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'cierre'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <IconNotebook /> Boletines y Cierre
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'settings'
-                ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <IconSettings /> Configuración
-          </button>
+          {activeTab.startsWith('settings') ? (
+            <>
+              <div className="px-3 py-1.5 text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">
+                Configuración
+              </div>
+              <button
+                onClick={() => setActiveTab('settings_profile')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'settings_profile'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconUser /> Perfil Institucional
+              </button>
+              <button
+                onClick={() => setActiveTab('settings_plans')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'settings_plans'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconCreditCard /> Planes y Facturación
+              </button>
+              <button
+                onClick={() => setActiveTab('settings_academic')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'settings_academic'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconRocket /> Configuración Inicial
+              </button>
+              <button
+                onClick={() => setActiveTab('settings_admins')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'settings_admins'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconUsers /> Administradores
+              </button>
+              <div className="pt-4 mt-4 border-t border-white/5">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <IconArrowLeft /> Volver al Panel
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'dashboard'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconHome /> Panel General
+              </button>
+              <button
+                onClick={() => setActiveTab('institutions')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'institutions'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <IconBuilding /> Sedes e Institutos
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('courses')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'courses'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconNotebook /> Cursos y Materias
+              </button>
+              <button
+                onClick={() => setActiveTab('ai')}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'ai'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <IconSparkles /> IA Académica
+                </div>
+                <span className="text-[10px] bg-cyan-500/20 text-cyan-300 font-bold px-2 py-0.5 rounded-full">Activo</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('cierre')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === 'cierre'
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconNotebook /> Boletines y Cierre
+              </button>
+              <button
+                onClick={() => setActiveTab('settings_profile')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  activeTab.startsWith('settings')
+                    ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <IconSettings /> Configuración
+              </button>
+            </>
+          )}
         </nav>
       </div>
 
