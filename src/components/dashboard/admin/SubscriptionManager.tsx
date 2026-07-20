@@ -21,7 +21,7 @@ const PLANES = [
     id: 2,
     name: 'Plan Básico',
     limit: 200,
-    precioCOP: 3000,
+    precioCOP: 199000,
     desc: 'Para colegios pequeños y medianos. Gestión completa con IA incluida.',
     color: 'indigo',
   },
@@ -29,7 +29,7 @@ const PLANES = [
     id: 3,
     name: 'Plan Premium',
     limit: 1000,
-    precioCOP: 5000,
+    precioCOP: 599000,
     desc: 'Sin límites. Sedes múltiples, análisis avanzado y soporte prioritario.',
     color: 'amber',
   },
@@ -214,9 +214,9 @@ export function SubscriptionManager() {
                   <h3 className="text-lg font-bold text-white pt-1">{status.planNombre}</h3>
                   <p className="text-xs text-white/40">
                     {Number(status.planId) === 2
-                      ? '$3.000 COP / mes'
+                      ? '$199.000 COP / mes'
                       : Number(status.planId) === 3
-                      ? '$5.000 COP / mes'
+                      ? '$599.000 COP / mes'
                       : 'Gratuito'}
                   </p>
                 </div>
