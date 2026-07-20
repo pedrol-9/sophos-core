@@ -107,7 +107,7 @@ export async function generateMercadoPagoPreference(
 
     if (dbError) {
       console.error('[mercadopago-actions] DB Insert Error:', dbError);
-      return { success: false, error: 'Error al registrar la transacción.' };
+      return { success: false, error: `Error al registrar la transacción en base de datos: ${dbError.message}` };
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -143,7 +143,7 @@ export async function generateMercadoPagoPreference(
     };
   } catch (err: any) {
     console.error('[mercadopago-actions] generateMercadoPagoPreference error:', err);
-    return { success: false, error: 'Error interno al preparar el pago.' };
+    return { success: false, error: `Error interno al preparar el pago: ${err.message || err}` };
   }
 }
 
