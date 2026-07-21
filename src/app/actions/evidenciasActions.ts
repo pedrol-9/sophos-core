@@ -15,6 +15,16 @@ export type EvidenciaRow = {
   ano_lectivo: number;
   orden: number;
   activo: boolean;
+  estado_aprobacion?: 'APROBADA' | 'PENDIENTE' | 'RECHAZADA';
+  id_docente_sugerido?: string | null;
+};
+
+export type EvidenciaAdminDetail = EvidenciaRow & {
+  periodo_asignado?: string | null;
+  peso_periodo?: number | null;
+  docente_nombre?: string | null;
+  usadaEnPeriodoAnterior?: boolean;
+  periodoAnteriorNombre?: string | null;
 };
 
 export type ConfigEvidenciaPeriodo = {
@@ -29,6 +39,9 @@ export type EvidenciaConConfig = EvidenciaRow & {
   activaEnPeriodo: boolean;
   /** 0.0–1.0 */
   peso: number;
+  /** true si ya fue activada en un periodo previo del mismo año lectivo */
+  usadaEnPeriodoAnterior?: boolean;
+  periodoAnteriorNombre?: string;
 };
 
 export type GradesheetEvidenciaRow = {
@@ -90,7 +103,7 @@ export async function getEvidenciasAdmin(opts?: {
 
     let query = supabase
       .from('evidencias')
-      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo')
+      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo, estado_aprobacion, id_docente_sugerido')
       .eq('id_institucion', idInstitucion)
       .eq('ano_lectivo', anoLectivo)
       .order('grado', { ascending: true })
@@ -103,6 +116,284 @@ export async function getEvidenciasAdmin(opts?: {
     if (error) return { success: false, error: error.message };
 
     return { success: true, data: (data as EvidenciaRow[]) || [] };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
+  }
+}
+
+/**
+ * Obtiene las evidencias para el admin con información extendida de uso por docentes y resumen estadístico.
+ */
+export async function getEvidenciasAdminFull(opts: {
+  idMateria: string;
+  grado: string;
+  anoLectivo?: number;
+}): Promise<{
+  success: boolean;
+  data?: EvidenciaAdminDetail[];
+  stats?: {
+    totalBanco: number;
+    totalActivasPeriodo: number;
+    totalPendientesAprobacion: number;
+    totalUsadasAnteriores: number;
+  };
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata?.rol !== 'ADMIN') {
+      return { success: false, error: 'Acceso restringido. Solo administradores.' };
+    }
+
+    const idInstitucion = user.app_metadata?.id_institucion as string;
+    const anoLectivo = opts.anoLectivo ?? new Date().getFullYear();
+
+    // 1. Obtener todas las evidencias del banco para esta materia + grado
+    const { data: evidencias, error: evErr } = await supabase
+      .from('evidencias')
+      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo, estado_aprobacion, id_docente_sugerido')
+      .eq('id_institucion', idInstitucion)
+      .eq('id_materia', opts.idMateria)
+      .eq('grado', opts.grado)
+      .eq('ano_lectivo', anoLectivo)
+      .order('orden', { ascending: true });
+
+    if (evErr) return { success: false, error: evErr.message };
+    const list = (evidencias as EvidenciaRow[]) || [];
+
+    // 2. Obtener periodo activo y todos los periodos
+    const { data: periodos } = await supabase
+      .from('periodos_academicos')
+      .select('id_periodo, numero_periodo, activo')
+      .eq('id_institucion', idInstitucion)
+      .order('numero_periodo', { ascending: true });
+
+    const activePeriod = (periodos || []).find((p) => p.activo);
+
+    // 3. Obtener asignaciones para este grado y materia
+    const { data: cursos } = await supabase
+      .from('cursos')
+      .select('id_curso, nombre')
+      .eq('id_institucion', idInstitucion);
+
+    const cursoIdsForGrado = (cursos || [])
+      .filter((c) => extractGrado(c.nombre) === opts.grado)
+      .map((c) => c.id_curso);
+
+    let configRecords: any[] = [];
+    if (cursoIdsForGrado.length > 0) {
+      const { data: asignaciones } = await supabase
+        .from('asignaciones_academicas')
+        .select('id_asignacion, usuarios(nombre_completo)')
+        .eq('id_materia', opts.idMateria)
+        .in('id_curso', cursoIdsForGrado);
+
+      const asigIds = (asignaciones || []).map((a) => a.id_asignacion);
+      if (asigIds.length > 0) {
+        const { data: cfgs } = await supabase
+          .from('configuracion_evidencias_periodo')
+          .select('id_asignacion, id_periodo, id_evidencia, activo, peso')
+          .in('id_asignacion', asigIds);
+
+        configRecords = cfgs || [];
+      }
+    }
+
+    // Mapa de uso en periodo activo y periodos anteriores
+    let totalActivasPeriodo = 0;
+    let totalUsadasAnteriores = 0;
+    let totalPendientesAprobacion = 0;
+
+    const result: EvidenciaAdminDetail[] = list.map((ev) => {
+      const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
+      if (isPendiente) totalPendientesAprobacion++;
+
+      // Buscar si está activa en el periodo actual
+      let pesoPeriodo: number | null = null;
+      let periodoAsignado: string | null = null;
+      let usadaAnterior = false;
+      let periodoAnteriorNombre: string | null = null;
+
+      for (const cfg of configRecords) {
+        if (cfg.id_evidencia === ev.id_evidencia && cfg.activo) {
+          const per = (periodos || []).find((p) => p.id_periodo === cfg.id_periodo);
+          if (per) {
+            if (activePeriod && per.id_periodo === activePeriod.id_periodo) {
+              pesoPeriodo = Number(cfg.peso);
+              periodoAsignado = `P${per.numero_periodo} (Activo)`;
+            } else if (activePeriod && per.numero_periodo < activePeriod.numero_periodo) {
+              usadaAnterior = true;
+              periodoAnteriorNombre = `P${per.numero_periodo}`;
+            }
+          }
+        }
+      }
+
+      if (pesoPeriodo !== null) totalActivasPeriodo++;
+      if (usadaAnterior) totalUsadasAnteriores++;
+
+      return {
+        ...ev,
+        periodo_asignado: periodoAsignado,
+        peso_periodo: pesoPeriodo,
+        usadaEnPeriodoAnterior: usadaAnterior,
+        periodoAnteriorNombre: periodoAnteriorNombre,
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+      stats: {
+        totalBanco: list.filter((e) => e.activo !== false && e.estado_aprobacion !== 'RECHAZADA').length,
+        totalActivasPeriodo,
+        totalPendientesAprobacion,
+        totalUsadasAnteriores,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
+  }
+}
+
+/**
+ * Aprueba una evidencia sugerida por docente. Solo Admin.
+ */
+export async function aprobarEvidenciaAdmin(idEvidencia: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata?.rol !== 'ADMIN') {
+      return { success: false, error: 'Acceso restringido. Solo administradores.' };
+    }
+
+    const { data: ev, error: evErr } = await supabase
+      .from('evidencias')
+      .update({ estado_aprobacion: 'APROBADA', activo: true })
+      .eq('id_evidencia', idEvidencia)
+      .select('*, id_docente_sugerido')
+      .single();
+
+    if (evErr || !ev) return { success: false, error: evErr?.message || 'No se encontró la evidencia.' };
+
+    // Si fue sugerida por un docente, activarla en su asignación para el periodo activo
+    if (ev.id_docente_sugerido) {
+      const { data: per } = await supabase
+        .from('periodos_academicos')
+        .select('id_periodo')
+        .eq('id_institucion', ev.id_institucion)
+        .eq('activo', true)
+        .maybeSingle();
+
+      if (per) {
+        const { data: asig } = await supabase
+          .from('asignaciones_academicas')
+          .select('id_asignacion')
+          .eq('id_docente', ev.id_docente_sugerido)
+          .eq('id_materia', ev.id_materia)
+          .limit(1)
+          .maybeSingle();
+
+        if (asig) {
+          await supabase.from('configuracion_evidencias_periodo').upsert({
+            id_asignacion: asig.id_asignacion,
+            id_periodo: per.id_periodo,
+            id_evidencia: idEvidencia,
+            activo: true,
+            peso: 0.5,
+          });
+        }
+      }
+    }
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
+  }
+}
+
+/**
+ * Rechaza una evidencia sugerida por docente. Solo Admin.
+ */
+export async function rechazarEvidenciaAdmin(idEvidencia: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata?.rol !== 'ADMIN') {
+      return { success: false, error: 'Acceso restringido. Solo administradores.' };
+    }
+
+    const { error } = await supabase
+      .from('evidencias')
+      .update({ estado_aprobacion: 'RECHAZADA', activo: false })
+      .eq('id_evidencia', idEvidencia);
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
+  }
+}
+
+/**
+ * Sugiere una nueva evidencia por parte del docente para su materia/grado.
+ */
+export async function sugerirEvidenciaDocente(opts: {
+  idAsignacion: string;
+  nombre: string;
+  descripcion?: string;
+}): Promise<{ success: boolean; data?: EvidenciaRow; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata?.rol !== 'DOCENTE') {
+      return { success: false, error: 'Solo los docentes pueden sugerir evidencias.' };
+    }
+
+    const { data: asig } = await supabase
+      .from('asignaciones_academicas')
+      .select('id_materia, id_curso, id_institucion')
+      .eq('id_asignacion', opts.idAsignacion)
+      .single();
+
+    if (!asig) return { success: false, error: 'No se encontró la asignación académica.' };
+
+    const { data: curso } = await supabase
+      .from('cursos')
+      .select('nombre')
+      .eq('id_curso', asig.id_curso)
+      .single();
+
+    const grado = curso ? extractGrado(curso.nombre) : '6';
+
+    const payload = {
+      id_institucion: asig.id_institucion,
+      id_materia: asig.id_materia,
+      grado: grado,
+      nombre: opts.nombre.trim(),
+      descripcion: opts.descripcion?.trim() || null,
+      orden: 99,
+      activo: true,
+      estado_aprobacion: 'PENDIENTE',
+      id_docente_sugerido: user.id,
+      ano_lectivo: new Date().getFullYear(),
+    };
+
+    const { data, error } = await supabase
+      .from('evidencias')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data as EvidenciaRow };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
   }
@@ -138,6 +429,7 @@ export async function upsertEvidencia(evidencia: {
       descripcion: evidencia.descripcion?.trim() || null,
       orden: evidencia.orden ?? 1,
       activo: evidencia.activo ?? true,
+      estado_aprobacion: 'APROBADA',
       ano_lectivo: new Date().getFullYear(),
     };
 
@@ -250,7 +542,37 @@ export async function getEvidenciasForAsignacion(
       return { success: true, data: [] };
     }
 
-    // 4. Cargar la configuración ya guardada por el docente para este periodo
+    // 4. Cargar periodos para determinar cuales son periodos anteriores
+    const { data: periodos } = await supabase
+      .from('periodos_academicos')
+      .select('id_periodo, numero_periodo')
+      .eq('id_institucion', asignacion.id_institucion)
+      .order('numero_periodo', { ascending: true });
+
+    const currentPeriod = (periodos || []).find((p) => p.id_periodo === idPeriodo);
+    const previousPeriodIds = (periodos || [])
+      .filter((p) => currentPeriod && p.numero_periodo < currentPeriod.numero_periodo)
+      .map((p) => p.id_periodo);
+
+    // 5. Cargar configuraciones de periodos anteriores para esta asignación
+    const usedInPreviousMap = new Map<string, string>(); // id_evidencia -> "P1"
+    if (previousPeriodIds.length > 0) {
+      const { data: prevConfigs } = await supabase
+        .from('configuracion_evidencias_periodo')
+        .select('id_evidencia, id_periodo, activo')
+        .eq('id_asignacion', idAsignacion)
+        .in('id_periodo', previousPeriodIds)
+        .eq('activo', true);
+
+      (prevConfigs || []).forEach((c) => {
+        const per = (periodos || []).find((p) => p.id_periodo === c.id_periodo);
+        if (per) {
+          usedInPreviousMap.set(c.id_evidencia, `P${per.numero_periodo}`);
+        }
+      });
+    }
+
+    // 6. Cargar la configuración ya guardada por el docente para este periodo
     const { data: configs } = await supabase
       .from('configuracion_evidencias_periodo')
       .select('id_evidencia, activo, peso')
@@ -263,24 +585,34 @@ export async function getEvidenciasForAsignacion(
       configMap.set(c.id_evidencia, { activo: c.activo, peso: Number(c.peso) });
     });
 
-    // 5. Si no hay configuración previa → calcular pesos equitativos
     const hasSavedConfig = configMap.size > 0;
-    const pesoEquitativo = evidencias.length > 0 ? 1 / evidencias.length : 1;
+
+    // Evidencias disponibles (que no hayan sido usadas en periodos anteriores)
+    const disponiblesParaPeriodo = evidencias.filter((e) => !usedInPreviousMap.has(e.id_evidencia));
+    const pesoEquitativo = disponiblesParaPeriodo.length > 0 ? 1 / disponiblesParaPeriodo.length : 1;
 
     const result: EvidenciaConConfig[] = evidencias.map((ev) => {
       const saved = configMap.get(ev.id_evidencia);
+      const usadaAnterior = usedInPreviousMap.has(ev.id_evidencia);
+      const periodoAnteriorNombre = usedInPreviousMap.get(ev.id_evidencia);
+
+      // Si fue usada en periodo anterior, el docente no puede activarla de nuevo
+      const activaEnPeriodo = usadaAnterior ? false : saved ? saved.activo : true;
+
       return {
         ...(ev as EvidenciaRow),
-        activaEnPeriodo: saved ? saved.activo : true,
-        peso: saved ? saved.peso : pesoEquitativo,
+        activaEnPeriodo: activaEnPeriodo,
+        peso: saved ? saved.peso : activaEnPeriodo ? pesoEquitativo : 0,
+        usadaEnPeriodoAnterior: usadaAnterior,
+        periodoAnteriorNombre: periodoAnteriorNombre,
       };
     });
 
-    // Si había configuración guardada, normalizar pesos de las activas
-    if (!hasSavedConfig) {
-      // Normalizar para que sumen exactamente 1.0
-      const total = result.reduce((acc, e) => acc + e.peso, 0);
-      if (total > 0) result.forEach((e) => (e.peso = e.peso / total));
+    // Normalizar pesos de las activas en el periodo actual
+    const activas = result.filter((e) => e.activaEnPeriodo);
+    if (!hasSavedConfig && activas.length > 0) {
+      const total = activas.reduce((acc, e) => acc + e.peso, 0);
+      if (total > 0) activas.forEach((e) => (e.peso = e.peso / total));
     }
 
     return { success: true, data: result };

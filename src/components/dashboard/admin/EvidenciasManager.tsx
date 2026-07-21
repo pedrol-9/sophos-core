@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  getEvidenciasAdmin,
+  getEvidenciasAdminFull,
   upsertEvidencia,
   deleteEvidencia,
-  EvidenciaRow,
+  aprobarEvidenciaAdmin,
+  rechazarEvidenciaAdmin,
+  EvidenciaAdminDetail,
 } from '@/app/actions/evidenciasActions';
 import { createClient } from '@/utils/supabase/client';
 
@@ -16,14 +18,19 @@ export function EvidenciasManager() {
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [selectedMateria, setSelectedMateria] = useState('');
   const [selectedGrado, setSelectedGrado] = useState('6');
-  const [evidencias, setEvidencias] = useState<EvidenciaRow[]>([]);
+  const [evidencias, setEvidencias] = useState<EvidenciaAdminDetail[]>([]);
+  const [stats, setStats] = useState({
+    totalBanco: 0,
+    totalActivasPeriodo: 0,
+    totalPendientesAprobacion: 0,
+    totalUsadasAnteriores: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activePeriod, setActivePeriod] = useState<{ numero_periodo: number; fecha_inicio: string; fecha_fin: string } | null>(null);
 
   // Form de creación/edición
   const [showForm, setShowForm] = useState(false);
-  const [editTarget, setEditTarget] = useState<EvidenciaRow | null>(null);
+  const [editTarget, setEditTarget] = useState<EvidenciaAdminDetail | null>(null);
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formOrden, setFormOrden] = useState(1);
@@ -32,7 +39,7 @@ export function EvidenciasManager() {
 
   const GRADOS = ['1','2','3','4','5','6','7','8','9','10','11'];
 
-  // Cargar materias y periodo activo al montar
+  // Cargar materias al montar
   useEffect(() => {
     async function loadInitialData() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -44,19 +51,10 @@ export function EvidenciasManager() {
         .select('id_materia, nombre')
         .eq('id_institucion', idInst)
         .order('nombre');
+
       if (data && data.length > 0) {
         setMaterias(data);
         setSelectedMateria(data[0].id_materia);
-      }
-
-      const { data: periodData } = await supabase
-        .from('periodos_academicos')
-        .select('numero_periodo, fecha_inicio, fecha_fin')
-        .eq('id_institucion', idInst)
-        .eq('activo', true)
-        .maybeSingle();
-      if (periodData) {
-        setActivePeriod(periodData);
       }
     }
     loadInitialData();
@@ -66,25 +64,35 @@ export function EvidenciasManager() {
     if (!selectedMateria) return;
     setLoading(true);
     setError('');
-    getEvidenciasAdmin({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
+    getEvidenciasAdminFull({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
       setLoading(false);
-      if (res.success) setEvidencias(res.data || []);
-      else setError(res.error || 'Error al cargar evidencias.');
+      if (res.success) {
+        setEvidencias(res.data || []);
+        if (res.stats) setStats(res.stats);
+      } else {
+        setError(res.error || 'Error al cargar evidencias.');
+      }
     });
   }, [selectedMateria, selectedGrado]);
 
   useEffect(() => {
     let active = true;
     if (!selectedMateria) return;
-    getEvidenciasAdmin({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
+    setLoading(true);
+    getEvidenciasAdminFull({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
       if (!active) return;
       setLoading(false);
-      setError(res.success ? '' : (res.error || 'Error al cargar evidencias.'));
-      setEvidencias(res.success ? (res.data || []) : []);
+      if (res.success) {
+        setError('');
+        setEvidencias(res.data || []);
+        if (res.stats) setStats(res.stats);
+      } else {
+        setError(res.error || 'Error al cargar evidencias.');
+        setEvidencias([]);
+      }
     });
     return () => { active = false; };
   }, [selectedMateria, selectedGrado]);
-
 
   function openCreateForm() {
     setEditTarget(null);
@@ -95,7 +103,7 @@ export function EvidenciasManager() {
     setShowForm(true);
   }
 
-  function openEditForm(ev: EvidenciaRow) {
+  function openEditForm(ev: EvidenciaAdminDetail) {
     setEditTarget(ev);
     setFormNombre(ev.nombre);
     setFormDescripcion(ev.descripcion || '');
@@ -104,7 +112,7 @@ export function EvidenciasManager() {
     setShowForm(true);
   }
 
-  async function handleToggleActivo(ev: EvidenciaRow) {
+  async function handleToggleActivo(ev: EvidenciaAdminDetail) {
     const res = await upsertEvidencia({
       id_evidencia: ev.id_evidencia,
       id_materia: ev.id_materia,
@@ -118,6 +126,25 @@ export function EvidenciasManager() {
       loadEvidencias();
     } else {
       setError(res.error || 'Error al cambiar estado de la evidencia.');
+    }
+  }
+
+  async function handleAprobar(idEvidencia: string) {
+    const res = await aprobarEvidenciaAdmin(idEvidencia);
+    if (res.success) {
+      loadEvidencias();
+    } else {
+      setError(res.error || 'Error al aprobar la evidencia sugerida.');
+    }
+  }
+
+  async function handleRechazar(idEvidencia: string) {
+    if (!confirm('¿Rechazar esta evidencia sugerida por el docente?')) return;
+    const res = await rechazarEvidenciaAdmin(idEvidencia);
+    if (res.success) {
+      loadEvidencias();
+    } else {
+      setError(res.error || 'Error al rechazar la evidencia.');
     }
   }
 
@@ -152,65 +179,97 @@ export function EvidenciasManager() {
 
   return (
     <div className="space-y-6">
-      {/* INDICADOR DE PERIODO ACTIVO */}
-      {activePeriod ? (
-        <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 px-4 py-3 rounded-2xl animate-in fade-in duration-300">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <p className="text-xs text-primary font-medium">
-            Registrando evidencias para el <strong className="text-foreground text-sm font-bold">Periodo {activePeriod.numero_periodo}</strong> ({activePeriod.fecha_inicio} al {activePeriod.fecha_fin})
-          </p>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/20 px-4 py-3 rounded-2xl">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-          <p className="text-xs text-amber-600 dark:text-amber-300 font-medium">
-            No se encontró un periodo académico activo para esta institución.
-          </p>
-        </div>
-      )}
+      {/* FILTROS Y ACCIÓN */}
+      <div className="flex flex-wrap gap-4 items-end justify-between">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Materia</label>
+            <select
+              value={selectedMateria}
+              onChange={(e) => setSelectedMateria(e.target.value)}
+              className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[200px]"
+            >
+              {materias.map((m) => (
+                <option key={m.id_materia} value={m.id_materia} className="bg-card text-foreground">
+                  {m.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {/* FILTROS */}
-      <div className="flex flex-wrap gap-4 items-end">
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Materia</label>
-          <select
-            value={selectedMateria}
-            onChange={(e) => setSelectedMateria(e.target.value)}
-            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[200px]"
-          >
-            {materias.map((m) => (
-              <option key={m.id_materia} value={m.id_materia} className="bg-card text-foreground">
-                {m.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Grado</label>
-          <select
-            value={selectedGrado}
-            onChange={(e) => setSelectedGrado(e.target.value)}
-            className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            {GRADOS.map((g) => (
-              <option key={g} value={g} className="bg-card text-foreground">{g}°</option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Grado</label>
+            <select
+              value={selectedGrado}
+              onChange={(e) => setSelectedGrado(e.target.value)}
+              className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              {GRADOS.map((g) => (
+                <option key={g} value={g} className="bg-card text-foreground">{g}°</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
           onClick={openCreateForm}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md cursor-pointer shrink-0"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          Nueva Evidencia
+          Nueva Evidencia Máster
         </button>
+      </div>
+
+      {/* TARJETAS DE RESUMEN DE ESTADO (RESPONSIVAS - MODO CLARO / OSCURO) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Banco Disponible</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          </div>
+          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalBanco}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Evidencias en el catálogo</p>
+        </div>
+
+        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Activas Periodo</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+          </div>
+          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalActivasPeriodo}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Seleccionadas para evaluar</p>
+        </div>
+
+        <div className={`border rounded-xl p-3.5 flex flex-col justify-between shadow-xs transition-all ${
+          stats.totalPendientesAprobacion > 0
+            ? 'bg-amber-500/10 border-amber-500/30'
+            : 'bg-card/70 border-border'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-300 tracking-wider">Sugeridas Pendientes</span>
+            {stats.totalPendientesAprobacion > 0 ? (
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+            ) : (
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400/40" />
+            )}
+          </div>
+          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalPendientesAprobacion}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Esperando aprobación admin</p>
+        </div>
+
+        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Usadas Anteriores</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+          </div>
+          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalUsadasAnteriores}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-0.5">En periodos pasados</p>
+        </div>
       </div>
 
       {error && (
@@ -219,7 +278,7 @@ export function EvidenciasManager() {
         </div>
       )}
 
-      {/* LISTA DE EVIDENCIAS */}
+      {/* TABLA UNIFICADA DE EVIDENCIAS */}
       {loading ? (
         <div className="text-sm text-muted-foreground py-8 text-center font-medium">Cargando evidencias...</div>
       ) : evidencias.length === 0 ? (
@@ -236,62 +295,135 @@ export function EvidenciasManager() {
         </div>
       ) : (
         <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs custom-scrollbar overflow-x-auto">
-          <table className="w-full text-sm min-w-[500px]">
+          <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-secondary/50 border-b border-border">
               <tr>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-10">#</th>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Nombre de la Evidencia</th>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Descripción</th>
-                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-24">Estado</th>
-                <th className="py-3 px-4 w-24"></th>
+                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estado Banco</th>
+                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Uso en Periodo</th>
+                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-20">Peso</th>
+                <th className="py-3 px-4 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-36">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {evidencias.map((ev) => (
-                <tr key={ev.id_evidencia} className="hover:bg-secondary/40 transition-colors">
-                  <td className="py-3 px-4 text-muted-foreground text-xs font-mono">{ev.orden}</td>
-                  <td className="py-3 px-4 font-semibold text-foreground">{ev.nombre}</td>
-                  <td className="py-3 px-4 text-muted-foreground text-xs hidden md:table-cell">
-                    {ev.descripcion || <span className="italic text-muted-foreground/50">Sin descripción</span>}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActivo(ev)}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105 ${
-                        ev.activo
-                          ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25'
-                          : 'bg-secondary text-muted-foreground border border-border hover:bg-secondary/80'
-                      }`}
-                      title="Clic para cambiar estado de la evidencia"
-                    >
-                      {ev.activo ? 'Activa' : 'Inactiva'}
-                    </button>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => openEditForm(ev)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                        title="Editar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ev.id_evidencia)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all"
-                        title="Eliminar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {evidencias.map((ev) => {
+                const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
+
+                return (
+                  <tr key={ev.id_evidencia} className={`hover:bg-secondary/40 transition-colors ${
+                    isPendiente ? 'bg-amber-500/5' : ''
+                  }`}>
+                    <td className="py-3 px-4 text-muted-foreground text-xs font-mono">{ev.orden}</td>
+                    <td className="py-3 px-4 font-semibold text-foreground">
+                      {ev.nombre}
+                      {isPendiente && (
+                        <span className="block text-[10px] text-amber-500 font-normal">
+                          ⚡ Sugerida por docente (Pendiente de revisión)
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs hidden md:table-cell max-w-xs truncate">
+                      {ev.descripcion || <span className="italic text-muted-foreground/50">Sin descripción</span>}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {isPendiente ? (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20">
+                          Pendiente
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActivo(ev)}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                            ev.activo
+                              ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25'
+                              : 'bg-secondary text-muted-foreground border border-border hover:bg-secondary/80'
+                          }`}
+                          title="Clic para cambiar estado en el banco"
+                        >
+                          {ev.activo ? 'Disponible' : 'Inactiva'}
+                        </button>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {ev.periodo_asignado ? (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/20">
+                          Seleccionada {ev.periodo_asignado}
+                        </span>
+                      ) : ev.usadaEnPeriodoAnterior ? (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/20">
+                          Usada en {ev.periodoAnteriorNombre}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-normal text-muted-foreground/60 italic">
+                          Sin seleccionar
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center text-xs font-mono font-bold text-foreground">
+                      {ev.peso_periodo !== null && ev.peso_periodo !== undefined ? (
+                        <span className="text-emerald-500 font-bold">{(ev.peso_periodo * 100).toFixed(0)}%</span>
+                      ) : (
+                        <span className="text-muted-foreground/40">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex justify-end items-center gap-1.5">
+                        {isPendiente ? (
+                          <>
+                            <button
+                              onClick={() => handleAprobar(ev.id_evidencia)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-background font-bold text-[10px] transition-all shadow-xs cursor-pointer"
+                              title="Aprobar e integrar al banco"
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              onClick={() => openEditForm(ev)}
+                              className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                              title="Editar antes de aprobar"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleRechazar(ev.id_evidencia)}
+                              className="px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-semibold transition-all cursor-pointer"
+                              title="Rechazar solicitud"
+                            >
+                              Rechazar
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => openEditForm(ev)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
+                              title="Editar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(ev.id_evidencia)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -305,7 +437,7 @@ export function EvidenciasManager() {
             className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 text-foreground"
           >
             <h3 className="text-sm font-bold text-foreground">
-              {editTarget ? 'Editar Evidencia' : 'Nueva Evidencia'}
+              {editTarget ? 'Editar Evidencia' : 'Nueva Evidencia Máster'}
             </h3>
 
             <div className="space-y-3">
@@ -353,7 +485,7 @@ export function EvidenciasManager() {
 
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
-                    Estado
+                    Estado en Banco
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer mt-2">
                     <input
@@ -363,7 +495,7 @@ export function EvidenciasManager() {
                       className="rounded border-border text-primary focus:ring-primary h-4 w-4"
                     />
                     <span className="text-xs font-semibold text-foreground">
-                      {formActivo ? 'Evidencia Activa' : 'Inactiva'}
+                      {formActivo ? 'Disponible' : 'Inactiva'}
                     </span>
                   </label>
                 </div>
@@ -378,14 +510,14 @@ export function EvidenciasManager() {
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setError(''); }}
-                className="px-4 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground text-sm font-semibold transition-all"
+                className="px-4 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground text-sm font-semibold transition-all cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-all"
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-all cursor-pointer"
               >
                 {saving ? 'Guardando...' : editTarget ? 'Actualizar' : 'Crear Evidencia'}
               </button>

@@ -763,31 +763,32 @@ function extractGrado(nombreCurso) {
   return nombreCurso;
 }
 
-function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
+function getEvidenciasPorMateria(materiaNombre, numeroPeriodo, gradoStr) {
   const normalized = (materiaNombre || '').toLowerCase().trim();
-  
+  const gradoNum = parseInt(gradoStr || '6', 10);
+  const esCiclo67 = gradoNum === 6 || gradoNum === 7;
+  const esCiclo89 = gradoNum === 8 || gradoNum === 9;
+
   if (normalized.includes('lectura') || normalized.includes('español') || normalized.includes('lengua') || normalized.includes('castellana')) {
     if (numeroPeriodo === 1) {
       return [
-        {
-          nombre: "Comprensión Literal",
-          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión LITERAL del mismo."
-        },
-        {
-          nombre: "Comprensión Inferencial",
-          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión INFERENCIAL del mismo."
-        }
+        { nombre: "Comprensión Literal", descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión LITERAL del mismo." },
+        { nombre: "Comprensión Inferencial", descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión INFERENCIAL del mismo." }
+      ];
+    } else if (numeroPeriodo === 2) {
+      return [
+        { nombre: "Comprensión Crítica", descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión CRÍTICA e INTERTEXTUAL del mismo." },
+        { nombre: "Escritura de Reseña", descripcion: "Escribo una RESEÑA a partir de la interpretación coherente del plan lector." }
+      ];
+    } else if (numeroPeriodo === 3) {
+      return [
+        { nombre: esCiclo67 ? "Análisis Gramatical" : "Análisis Sintáctico y Estilístico", descripcion: "Identifico las estructuras gramaticales y recursos de cohesión en textos narrativos." },
+        { nombre: "Producción de Texto Argumentativo", descripcion: "Redacto ensayos cortos argumentando posturas sobre temas socioculturales." }
       ];
     } else {
       return [
-        {
-          nombre: "Comprensión Crítica",
-          descripcion: "Llevo a cabo una lectura continua del plan lector haciendo una comprensión CRÍTICA e INTERTEXTUAL del mismo."
-        },
-        {
-          nombre: "Escritura de Reseña",
-          descripcion: "Escribo una RESEÑA a partir de la interpretación coherente del plan lector."
-        }
+        { nombre: "Exposición Oral sobre Autores", descripcion: "Sustento verbalmente un análisis literario comparando diversas corrientes." },
+        { nombre: "Evaluación Final de Plan Lector", descripcion: "Evaluación acumulativa del componente lector del ciclo académico." }
       ];
     }
   }
@@ -795,25 +796,23 @@ function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
   if (normalized.includes('historia') || normalized.includes('sociales') || normalized.includes('geografía')) {
     if (numeroPeriodo === 1) {
       return [
-        {
-          nombre: "Conquista y Colonización",
-          descripcion: "Periodizo y caracterizo los procesos de conquista y colonización de América, siendo consciente de su impacto demográfico y social para la conformación del mundo actual."
-        },
-        {
-          nombre: "Geopolítica de Oriente",
-          descripcion: "Establezco la relación entre la geopolítica actual y la historia de Oriente, Asia y China durante la dinastía Ming."
-        }
+        { nombre: "Conquista y Colonización", descripcion: "Periodizo y caracterizo los procesos de conquista y colonización de América." },
+        { nombre: "Geopolítica de Oriente", descripcion: "Establezco la relación entre la geopolítica actual y la historia regional." }
+      ];
+    } else if (numeroPeriodo === 2) {
+      return [
+        { nombre: "Independencia de Colombia", descripcion: "Defino y comprendo el proceso de Independencia de Colombia y la transición a la República." },
+        { nombre: "Cimentación de la República", descripcion: "Entiendo y caracterizo el periodo de cimentación de la Gran Colombia hasta el siglo XIX." }
+      ];
+    } else if (numeroPeriodo === 3) {
+      return [
+        { nombre: esCiclo67 ? "Geografía Física de Colombia" : esCiclo89 ? "Revolución Industrial y Siglo XX" : "Constitución y Democracia Participativa", descripcion: "Analizo los procesos territoriales, económicos y democráticos clave del ciclo." },
+        { nombre: "Cartografía y Análisis Espacial", descripcion: "Elaboro e interpreto mapas temáticos y gráficos sociodemográficos." }
       ];
     } else {
       return [
-        {
-          nombre: "Independencia de Colombia",
-          descripcion: "Defino y comprendo el proceso de Independencia de Colombia, la transición hacía la República y la construcción del estado-nación, indagando en el origen multiétnico y pluricultural de la sociedad colombiana."
-        },
-        {
-          nombre: "Cimentación de la República",
-          descripcion: "Entiendo, esbozo y caracterizo el periodo de cimentación de la Gran Colombia hasta la etapa de regeneración y federalismo durante el siglo XIX."
-        }
+        { nombre: "Conflicto Armado y Paz", descripcion: "Debato los procesos de paz y memoria histórica en el contexto contemporáneo." },
+        { nombre: "Evaluación Final de Ciencias Sociales", descripcion: "Evaluación integral de competencias ciudadanas y sociales." }
       ];
     }
   }
@@ -821,25 +820,23 @@ function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
   if (normalized.includes('matemáticas') || normalized.includes('álgebra') || normalized.includes('geometría') || normalized.includes('cálculo')) {
     if (numeroPeriodo === 1) {
       return [
-        {
-          nombre: "Operaciones de Conjuntos",
-          descripcion: "Resuelvo problemas utilizando operaciones de conjuntos y diagramas de Venn de manera lógica."
-        },
-        {
-          nombre: "Propiedades Numéricas",
-          descripcion: "Reconozco y utilizo las propiedades de los números enteros y racionales para solucionar situaciones cotidianas."
-        }
+        { nombre: "Operaciones de Conjuntos", descripcion: "Resuelvo problemas utilizando operaciones de conjuntos y diagramas de Venn de manera lógica." },
+        { nombre: "Propiedades Numéricas", descripcion: "Reconozco y utilizo las propiedades numéricas para solucionar situaciones cotidianas." }
+      ];
+    } else if (numeroPeriodo === 2) {
+      return [
+        { nombre: "Factorización Algebraica", descripcion: "Identifico y simplifico expresiones algebraicas complejas utilizando diversos métodos." },
+        { nombre: "Sistemas de Ecuaciones", descripcion: "Planteo y resuelvo sistemas de ecuaciones lineales aplicados a situaciones del entorno." }
+      ];
+    } else if (numeroPeriodo === 3) {
+      return [
+        { nombre: esCiclo67 ? "Fracciones y Porcentajes" : esCiclo89 ? "Funciones Cuadráticas" : "Cálculo Limites y Funciones", descripcion: "Analizo representaciones gráficas y modelos funcionales aplicados." },
+        { nombre: "Razonamiento Geométrico", descripcion: "Demuestro teoremas geométricos y calculo áreas/volúmenes de cuerpos tridimensionales." }
       ];
     } else {
       return [
-        {
-          nombre: "Factorización Algebraica",
-          descripcion: "Identifico y simplifico expresiones algebraicas complejas utilizando diversos métodos de factorización."
-        },
-        {
-          nombre: "Sistemas de Ecuaciones",
-          descripcion: "Planteo y resuelvo sistemas de ecuaciones lineales aplicados a situaciones del entorno."
-        }
+        { nombre: "Estadística y Probabilidad", descripcion: "Organizo conjuntos de datos y calculo medidas de tendencia central y variabilidad." },
+        { nombre: "Resolución de Problemas ICFES/SABER", descripcion: "Resuelvo situaciones problema de alta complejidad razonando matemáticamente." }
       ];
     }
   }
@@ -847,25 +844,23 @@ function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
   if (normalized.includes('inglés') || normalized.includes('english')) {
     if (numeroPeriodo === 1) {
       return [
-        {
-          nombre: "Reading Comprehension",
-          descripcion: "Extracts main ideas and specific details from medium-length texts about academic and familiar topics."
-        },
-        {
-          nombre: "Oral Debate",
-          descripcion: "Participates in active conversations and debates about current events using fluent grammar."
-        }
+        { nombre: "Reading Comprehension", descripcion: "Extracts main ideas and specific details from medium-length academic texts." },
+        { nombre: "Oral Debate", descripcion: "Participates in active conversations and debates using fluent grammar." }
+      ];
+    } else if (numeroPeriodo === 2) {
+      return [
+        { nombre: "Written Essay", descripcion: "Writes structured and coherent essays using transition words and connectors." },
+        { nombre: "Listening Ability", descripcion: "Understands main points of standard spoken English on academic matters." }
+      ];
+    } else if (numeroPeriodo === 3) {
+      return [
+        { nombre: "Vocabulary Expansion", descripcion: "Applies specialized B2/C1 vocabulary in contextualized group workshops." },
+        { nombre: "Grammar & Syntax Project", descripcion: "Constructs complex conditional and passive voice sentences accurately." }
       ];
     } else {
       return [
-        {
-          nombre: "Written Essay",
-          descripcion: "Writes structured and coherent essays using transition words and advanced sentence connectors."
-        },
-        {
-          nombre: "Listening Ability",
-          descripcion: "Understands main points of standard spoken English on familiar and academic matters."
-        }
+        { nombre: "Final Oral Presentation", descripcion: "Delivers an individual monologue on a global issues topic." },
+        { nombre: "Standardized Test Review", descripcion: "Completes mocks and exercises based on international proficiency frameworks." }
       ];
     }
   }
@@ -873,53 +868,38 @@ function getEvidenciasPorMateria(materiaNombre, numeroPeriodo) {
   if (normalized.includes('biología') || normalized.includes('naturales') || normalized.includes('química') || normalized.includes('física') || normalized.includes('ciencias')) {
     if (numeroPeriodo === 1) {
       return [
-        {
-          nombre: "Estructura Celular",
-          descripcion: "Explico y relaciono la estructura y funciones de los orgánulos de la célula animal y vegetal."
-        },
-        {
-          nombre: "Diseño Experimental",
-          descripcion: "Formulo hipótesis coherentes y diseño montajes experimentales sencillos para registrar datos."
-        }
+        { nombre: "Estructura Celular", descripcion: "Explico y relaciono la estructura y funciones de los orgánulos de la célula." },
+        { nombre: "Diseño Experimental", descripcion: "Formulo hipótesis coherentes y diseño montajes experimentales sencillos." }
+      ];
+    } else if (numeroPeriodo === 2) {
+      return [
+        { nombre: "Leyes del Movimiento", descripcion: "Analizo y describo situaciones de equilibrio y movimiento mediante la dinámica." },
+        { nombre: "Modelos Atómicos", descripcion: "Relaciono las propiedades químicas de los elementos con su configuración electrónica." }
+      ];
+    } else if (numeroPeriodo === 3) {
+      return [
+        { nombre: esCiclo67 ? "Ecosistemas y Cadenas Tróficas" : esCiclo89 ? "Estequiometría y Gases" : "Termodinámica y Fluidos", descripcion: "Modela las interacciones ecológicas o físico-químicas del entorno natural." },
+        { nombre: "Informe de Laboratorio", descripcion: "Presenta informes científicos estructurados con análisis de gráficos y conclusiones." }
       ];
     } else {
       return [
-        {
-          nombre: "Leyes del Movimiento",
-          descripcion: "Analizo y describo situaciones de equilibrio y movimiento utilizando las leyes de la dinámica de Newton."
-        },
-        {
-          nombre: "Modelos Atómicos",
-          descripcion: "Relaciono las propiedades químicas de los elementos con su configuración electrónica y evolución histórica."
-        }
+        { nombre: "Genética y Herencia", descripcion: "Resuelvo problemas de genética mendeliana y biotecnología moderna." },
+        { nombre: "Proyecto de Educación Ambiental (PRAE)", descripcion: "Desarrolla iniciativas de sostenibilidad y conservación ecológica en la sede." }
       ];
     }
   }
 
   // Genéricas por defecto para otras asignaturas
-  if (numeroPeriodo === 1) {
-    return [
-      {
-        nombre: "Apropiación Teórica P1",
-        descripcion: `Demuestra comprensión y apropiación conceptual de los contenidos fundamentales de ${materiaNombre} durante el Periodo 1.`
-      },
-      {
-        nombre: "Ejecución Práctica P1",
-        descripcion: `Desarrolla con rigor metodológico los talleres, laboratorios y actividades prácticas en clase para el Periodo 1.`
-      }
-    ];
-  } else {
-    return [
-      {
-        nombre: "Pensamiento Crítico P2",
-        descripcion: `Aplica el análisis crítico y la resolución de problemas para abordar situaciones complejas en ${materiaNombre} del Periodo 2.`
-      },
-      {
-        nombre: "Proyecto Integrador P2",
-        descripcion: `Presenta y sustenta de manera creativa y coherente el proyecto de síntesis del Periodo 2.`
-      }
-    ];
-  }
+  return [
+    {
+      nombre: `Evidencia Teórica P${numeroPeriodo}`,
+      descripcion: `Demuestra comprensión y apropiación conceptual de los contenidos del Periodo ${numeroPeriodo}.`
+    },
+    {
+      nombre: `Evidencia Práctica P${numeroPeriodo}`,
+      descripcion: `Desarrolla talleres y actividades prácticas aplicadas para el Periodo ${numeroPeriodo}.`
+    }
+  ];
 }
 
 runSeed().catch(err => {

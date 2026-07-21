@@ -504,8 +504,8 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
 
       {/* ── SECCIÓN 4: BANCO DE EVIDENCIAS ────────────────────────────────────── */}
       <SectionCard
-        title="Gestión de Banco de Evidencias de Aprendizaje"
-        description="Define la lista de evidencias disponibles por grado y materia para el año lectivo. Los docentes seleccionarán cuáles trabajar en cada periodo."
+        title="Gestión Evidencias de Aprendizaje"
+        description="Catálogo máster de evidencias por grado y materia. Revisa solicitudes de docentes y consulta la selección por periodo."
       >
         <EvidenciasManager />
       </SectionCard>
