@@ -23,6 +23,7 @@ import {
   getInstitutionAdmins,
   createAdditionalAdmin
 } from '@/app/actions/admin-actions';
+import { getOnboardingConfig, ExistingOnboardingConfig } from '@/app/actions/config-actions';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -48,7 +49,13 @@ export default function DashboardPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdminPwd, setShowAdminPwd] = useState(false);
   const [logoTimestamp, setLogoTimestamp] = useState(Date.now());
+  // ─── ESTADOS WIZARD ONBOARDING ─────────────────────────────────────────────
+  /** Controla la visibilidad del wizard SIN alterar isOnboardingComplete */
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+  /** Config actual leída de la DB para pre-popular el wizard en modo edición */
+  const [existingConfig, setExistingConfig] = useState<ExistingOnboardingConfig | undefined>(undefined);
 
   // ─── CUSTOM HOOK ─────────────────────────────────────────────────────────────
   const {
@@ -153,8 +160,14 @@ export default function DashboardPage() {
       loadInstitutionInfo();
     } else if (activeTab === 'settings_admins') {
       loadAdmins();
+    } else if (activeTab === 'settings_academic' && isOnboardingComplete) {
+      // Cargar la config actual para mostrar los badges/resumen sin necesidad de clic extra
+      getOnboardingConfig().then((r) => {
+        if (r.success && r.data) setExistingConfig(r.data);
+      });
     }
   }, [activeTab, idInstitucion]);
+
 
   if (isOnboardingComplete === null) {
     return (
@@ -166,13 +179,27 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden">
-      {!isOnboardingComplete && !dismissedOnboarding && user?.app_metadata?.id_institucion && (
+      {/* Wizard: se muestra si (a) onboarding incompleto y no dismissed, o (b) el admin lo abrió manualmente */}
+      {((!isOnboardingComplete && !dismissedOnboarding) || showOnboardingWizard) && user?.app_metadata?.id_institucion && (
         <OnboardingWizard
           idInstitucion={user.app_metadata.id_institucion}
-          onComplete={() => setIsOnboardingComplete(true)}
+          initialData={showOnboardingWizard ? existingConfig : undefined}
+          isEditing={showOnboardingWizard && isOnboardingComplete}
+          onComplete={() => {
+            setIsOnboardingComplete(true);
+            setShowOnboardingWizard(false);
+            // Recargar config para que los badges se actualicen
+            getOnboardingConfig().then((r) => { if (r.success && r.data) setExistingConfig(r.data); });
+          }}
           onDismiss={() => {
-            sessionStorage.setItem('onboarding_dismissed', 'true');
-            setDismissedOnboarding(true);
+            if (showOnboardingWizard) {
+              // El admin lo abrió desde settings: solo cerrar, no alterar el estado
+              setShowOnboardingWizard(false);
+            } else {
+              // Flujo inicial de onboarding: marcar como dismissed
+              sessionStorage.setItem('onboarding_dismissed', 'true');
+              setDismissedOnboarding(true);
+            }
           }}
         />
       )}
@@ -725,8 +752,11 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <h4 className="text-sm font-bold text-indigo-200">
+                  <h4 className="text-sm font-bold text-indigo-200 flex items-center gap-2">
                     {isOnboardingComplete ? 'Configuración Completa' : 'Configuración Pendiente'}
+                    {isOnboardingComplete && (
+                      <span className="text-[10px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/25 px-2 py-0.5 rounded-full">Config. Actual</span>
+                    )}
                   </h4>
                   <p className="text-xs text-white/50 leading-relaxed mt-1">
                     La parametrización inicial del año lectivo (como el número de periodos, las escalas de valoración de desempeño, y los logros institucionales) se define mediante el asistente interactivo.
@@ -735,8 +765,71 @@ export default function DashboardPage() {
               </div>
 
               {isOnboardingComplete ? (
-                <div className="p-4 bg-teal-500/5 border border-teal-500/25 rounded-2xl text-xs text-teal-300 leading-relaxed">
-                  ✅ Tu año académico ya ha sido configurado y las planillas de los docentes están operativas. Si necesitas volver a configurar o modificar los rangos de notas y periodos, puedes reiniciar el asistente.
+                <div className="space-y-3">
+                  <div className="p-4 bg-teal-500/5 border border-teal-500/25 rounded-2xl text-xs text-teal-300 leading-relaxed">
+                    ✅ Tu año académico ya ha sido configurado y las planillas de los docentes están operativas. Puedes editarlo en cualquier momento — los cambios se guardan al finalizar el asistente.
+                  </div>
+
+                  {/* Resumen de configuración actual */}
+                  {existingConfig ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Periodos */}
+                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Periodos Académicos</p>
+                        <div className="space-y-1.5">
+                          {existingConfig.periodos.map((p) => (
+                            <div key={p.numero_periodo} className="flex items-center justify-between text-xs">
+                              <span className="text-white/70">Periodo {p.numero_periodo}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white/40">{p.fecha_inicio} → {p.fecha_fin}</span>
+                                {p.activo && (
+                                  <span className="text-[9px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 px-1.5 py-0.5 rounded-full">ACTIVO</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Escala */}
+                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Escala de Valoración</p>
+                        <div className="space-y-1.5">
+                          {existingConfig.escalas.map((e) => (
+                            <div key={e.nombre_desempeno} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  e.nombre_desempeno === 'SUPERIOR' ? 'bg-emerald-400' :
+                                  e.nombre_desempeno === 'ALTO' ? 'bg-indigo-400' :
+                                  e.nombre_desempeno === 'BASICO' ? 'bg-cyan-400' : 'bg-red-400'
+                                }`} />
+                                <span className="text-white/70">{e.nombre_desempeno}</span>
+                              </div>
+                              <span className="text-white/40">{e.nota_minima.toFixed(1)} – {e.nota_maxima.toFixed(1)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Nomenclatura */}
+                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 sm:col-span-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1">Nomenclatura de Cursos</p>
+                        <span className="text-sm font-bold text-indigo-300">{existingConfig.nomenclaturaCursos}</span>
+                        <span className="text-xs text-white/40 ml-2">(patrón base de identificación de cursos)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const r = await getOnboardingConfig();
+                        if (r.success && r.data) setExistingConfig(r.data);
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      Ver configuración actual →
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="p-4 bg-amber-500/5 border border-amber-500/25 rounded-2xl text-xs text-amber-300 leading-relaxed">
@@ -744,16 +837,20 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              <div className="pt-4 border-t border-white/5">
+              <div className="pt-4 border-t border-white/5 flex gap-3">
                 <button
-                  onClick={() => {
-                    sessionStorage.removeItem('onboarding_dismissed');
-                    setDismissedOnboarding(false);
-                    setIsOnboardingComplete(false);
+                  onClick={async () => {
+                    // Cargar config existente (si hay) para pre-popular el wizard
+                    if (isOnboardingComplete && !existingConfig) {
+                      const r = await getOnboardingConfig();
+                      if (r.success && r.data) setExistingConfig(r.data);
+                    }
+                    // Abrir wizard SIN alterar isOnboardingComplete
+                    setShowOnboardingWizard(true);
                   }}
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
                 >
-                  {isOnboardingComplete ? 'Reiniciar Asistente (Onboarding)' : 'Iniciar Configuración'}
+                  {isOnboardingComplete ? 'Editar Configuración' : 'Iniciar Configuración'}
                 </button>
               </div>
             </div>
@@ -795,7 +892,35 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-white/40 mb-1">Contraseña Provisional</label>
-                  <input name="contrasena" type="password" required placeholder="Mínimo 8 caracteres" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                  <div className="relative">
+                    <input
+                      name="contrasena"
+                      type={showAdminPwd ? 'text' : 'password'}
+                      required
+                      placeholder="Mínimo 8 caracteres"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPwd(!showAdminPwd)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                      aria-label="Mostrar u ocultar contraseña"
+                    >
+                      {showAdminPwd ? (
+                        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+                          <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                          <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+                          <path d="m2 2 20 20" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <button type="submit" disabled={isSubmitting} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-md shadow-indigo-600/20 cursor-pointer">
                   {isSubmitting ? 'Registrando...' : 'Registrar Administrador'}

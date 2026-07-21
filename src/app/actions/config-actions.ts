@@ -171,6 +171,86 @@ export async function saveOnboardingParametrizacion(
   }
 }
 
+export type ExistingOnboardingConfig = {
+  periodos: PeriodoParam[];
+  escalas: EscalaParam[];
+  nomenclaturaCursos: string;
+};
+
+/**
+ * Lee la configuración de onboarding ya guardada (periodos, escala, nomenclatura).
+ * Se usa para pre-popular el wizard cuando el admin quiere editar una config existente.
+ */
+export async function getOnboardingConfig(): Promise<{ success: boolean; data?: ExistingOnboardingConfig; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { success: false, error: 'Usuario no autenticado o sesión expirada.' };
+    }
+
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) {
+      return { success: false, error: 'El perfil de usuario no tiene una institución vinculada.' };
+    }
+
+    // Leer periodos
+    const { data: periodos, error: periodosError } = await supabase
+      .from('periodos_academicos')
+      .select('numero_periodo, fecha_inicio, fecha_fin, activo')
+      .eq('id_institucion', idInstitucion)
+      .order('numero_periodo');
+
+    if (periodosError) {
+      return { success: false, error: `Error al leer periodos: ${periodosError.message}` };
+    }
+
+    // Leer escala
+    const { data: escalas, error: escalasError } = await supabase
+      .from('escala_valoracion')
+      .select('nombre_desempeno, nota_minima, nota_maxima')
+      .eq('id_institucion', idInstitucion)
+      .order('nota_minima');
+
+    if (escalasError) {
+      return { success: false, error: `Error al leer escala de valoración: ${escalasError.message}` };
+    }
+
+    // Leer nomenclatura de cursos
+    const { data: inst, error: instError } = await supabase
+      .from('instituciones')
+      .select('nomenclatura_cursos')
+      .eq('id_institucion', idInstitucion)
+      .single();
+
+    if (instError) {
+      return { success: false, error: `Error al leer nomenclatura: ${instError.message}` };
+    }
+
+    return {
+      success: true,
+      data: {
+        periodos: (periodos || []).map((p) => ({
+          numero_periodo: p.numero_periodo,
+          fecha_inicio: p.fecha_inicio,
+          fecha_fin: p.fecha_fin,
+          activo: p.activo,
+        })),
+        escalas: (escalas || []).map((e) => ({
+          nombre_desempeno: e.nombre_desempeno as EscalaParam['nombre_desempeno'],
+          nota_minima: e.nota_minima,
+          nota_maxima: e.nota_maxima,
+        })),
+        nomenclaturaCursos: inst?.nomenclatura_cursos || '6A',
+      },
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error desconocido al leer la configuración.';
+    return { success: false, error: msg };
+  }
+}
+
 export type SubscriptionInfo = {
   nombreLegal: string;
   nit: string;

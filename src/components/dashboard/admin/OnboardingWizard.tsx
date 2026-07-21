@@ -2,12 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { saveOnboardingParametrizacion, OnboardingData, PeriodoParam, EscalaParam, LogroParam } from '@/app/actions/config-actions';
+import { saveOnboardingParametrizacion, OnboardingData, PeriodoParam, EscalaParam, LogroParam, ExistingOnboardingConfig } from '@/app/actions/config-actions';
 
 interface OnboardingWizardProps {
   idInstitucion: string;
   onComplete: () => void;
   onDismiss?: () => void;
+  /** Datos pre-cargados desde la DB para modo edición */
+  initialData?: ExistingOnboardingConfig;
+  /** Si true: el wizard está editando una config existente (oculta el botón Omitir) */
+  isEditing?: boolean;
 }
 
 type AssignmentItem = {
@@ -17,7 +21,7 @@ type AssignmentItem = {
   docente: string;
 };
 
-export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: OnboardingWizardProps) {
+export function OnboardingWizard({ idInstitucion, onComplete, onDismiss, initialData, isEditing }: OnboardingWizardProps) {
   const supabase = createClient();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -26,18 +30,31 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   const [showConfirmSkip, setShowConfirmSkip] = useState(false);
 
   // ─── PASO DE NOMENCLATURA ──────────────────────────────────────────────────
-  const [nomenclaturaOption, setNomenclaturaOption] = useState<'6A' | '601' | 'custom'>('6A');
-  const [nomenclaturaCursos, setNomenclaturaCursos] = useState('6A');
-  const [customNomenclaturaInput, setCustomNomenclaturaInput] = useState('');
+  // Resolver nomenclatura inicial: si viene initialData, intentar mapear a opción conocida
+  const resolveNomenclaturaOption = (nom: string): '6A' | '601' | 'custom' => {
+    if (nom === '6A') return '6A';
+    if (nom === '601') return '601';
+    return 'custom';
+  };
+  const initNom = initialData?.nomenclaturaCursos ?? '6A';
+  const [nomenclaturaOption, setNomenclaturaOption] = useState<'6A' | '601' | 'custom'>(resolveNomenclaturaOption(initNom));
+  const [nomenclaturaCursos, setNomenclaturaCursos] = useState(initNom);
+  const [customNomenclaturaInput, setCustomNomenclaturaInput] = useState(
+    resolveNomenclaturaOption(initNom) === 'custom' ? initNom : ''
+  );
 
   // ─── PASO 1: ESTRUCTURA TEMPORAL ───────────────────────────────────────────
-  const [cantPeriodos, setCantPeriodos] = useState<3 | 4>(4);
-  const [periodos, setPeriodos] = useState<PeriodoParam[]>([
-    { numero_periodo: 1, fecha_inicio: '2026-02-01', fecha_fin: '2026-04-15', activo: true },
-    { numero_periodo: 2, fecha_inicio: '2026-04-16', fecha_fin: '2026-06-30', activo: false },
-    { numero_periodo: 3, fecha_inicio: '2026-07-01', fecha_fin: '2026-09-15', activo: false },
-    { numero_periodo: 4, fecha_inicio: '2026-09-16', fecha_fin: '2026-11-30', activo: false },
-  ]);
+  const initPeriodos: PeriodoParam[] = initialData?.periodos?.length
+    ? initialData.periodos
+    : [
+        { numero_periodo: 1, fecha_inicio: '2026-02-01', fecha_fin: '2026-04-15', activo: true },
+        { numero_periodo: 2, fecha_inicio: '2026-04-16', fecha_fin: '2026-06-30', activo: false },
+        { numero_periodo: 3, fecha_inicio: '2026-07-01', fecha_fin: '2026-09-15', activo: false },
+        { numero_periodo: 4, fecha_inicio: '2026-09-16', fecha_fin: '2026-11-30', activo: false },
+      ];
+  const initCantPeriodos = (initialData?.periodos?.length === 3 ? 3 : 4) as 3 | 4;
+  const [cantPeriodos, setCantPeriodos] = useState<3 | 4>(initCantPeriodos);
+  const [periodos, setPeriodos] = useState<PeriodoParam[]>(initPeriodos);
 
   const handlePeriodCountChange = (count: 3 | 4) => {
     setCantPeriodos(count);
@@ -72,12 +89,15 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
   };
 
   // ─── PASO 3: ESCALA DE VALORACIÓN ──────────────────────────────────────────
-  const [escalas, setEscalas] = useState<EscalaParam[]>([
-    { nombre_desempeno: 'BAJO', nota_minima: 0.0, nota_maxima: 2.9 },
-    { nombre_desempeno: 'BASICO', nota_minima: 3.0, nota_maxima: 3.9 },
-    { nombre_desempeno: 'ALTO', nota_minima: 4.0, nota_maxima: 4.5 },
-    { nombre_desempeno: 'SUPERIOR', nota_minima: 4.6, nota_maxima: 5.0 },
-  ]);
+  const initEscalas: EscalaParam[] = initialData?.escalas?.length
+    ? initialData.escalas
+    : [
+        { nombre_desempeno: 'BAJO', nota_minima: 0.0, nota_maxima: 2.9 },
+        { nombre_desempeno: 'BASICO', nota_minima: 3.0, nota_maxima: 3.9 },
+        { nombre_desempeno: 'ALTO', nota_minima: 4.0, nota_maxima: 4.5 },
+        { nombre_desempeno: 'SUPERIOR', nota_minima: 4.6, nota_maxima: 5.0 },
+      ];
+  const [escalas, setEscalas] = useState<EscalaParam[]>(initEscalas);
 
   const handleEscalaChange = (index: number, field: 'nota_minima' | 'nota_maxima', value: number) => {
     const updated = [...escalas];
@@ -761,8 +781,17 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
               Atrás
             </button>
 
-            {/* Middle Omit/Skip Button */}
-            {onDismiss && (
+            {/* Middle Cancel/Skip Button */}
+            {isEditing ? (
+              <button
+                type="button"
+                onClick={() => { if (onDismiss) onDismiss(); }}
+                disabled={loading}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white/30 hover:text-white/60 hover:bg-white/5 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+            ) : onDismiss ? (
               <button
                 type="button"
                 onClick={() => setShowConfirmSkip(true)}
@@ -771,7 +800,7 @@ export function OnboardingWizard({ idInstitucion, onComplete, onDismiss }: Onboa
               >
                 Omitir configuración
               </button>
-            )}
+            ) : null}
 
             {/* Right Next/Finish Button */}
             {currentStep < totalSteps ? (

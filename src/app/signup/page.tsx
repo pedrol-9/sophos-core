@@ -31,6 +31,17 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Back button */}
+      <Link
+        href="/"
+        id="btn-back"
+        className="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors group z-10"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 transition-transform group-hover:-translate-x-0.5">
+          <path d="M19 12H5M12 5l-7 7 7 7" />
+        </svg>
+        Volver
+      </Link>
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/12 blur-[100px] rounded-full" />
