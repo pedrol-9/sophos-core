@@ -27,6 +27,7 @@ export function EvidenciasManager() {
   const [formNombre, setFormNombre] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formOrden, setFormOrden] = useState(1);
+  const [formActivo, setFormActivo] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const GRADOS = ['1','2','3','4','5','6','7','8','9','10','11'];
@@ -90,6 +91,7 @@ export function EvidenciasManager() {
     setFormNombre('');
     setFormDescripcion('');
     setFormOrden(evidencias.length + 1);
+    setFormActivo(true);
     setShowForm(true);
   }
 
@@ -98,7 +100,25 @@ export function EvidenciasManager() {
     setFormNombre(ev.nombre);
     setFormDescripcion(ev.descripcion || '');
     setFormOrden(ev.orden);
+    setFormActivo(ev.activo);
     setShowForm(true);
+  }
+
+  async function handleToggleActivo(ev: EvidenciaRow) {
+    const res = await upsertEvidencia({
+      id_evidencia: ev.id_evidencia,
+      id_materia: ev.id_materia,
+      grado: ev.grado,
+      nombre: ev.nombre,
+      descripcion: ev.descripcion || undefined,
+      orden: ev.orden,
+      activo: !ev.activo,
+    });
+    if (res.success) {
+      loadEvidencias();
+    } else {
+      setError(res.error || 'Error al cambiar estado de la evidencia.');
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -112,6 +132,7 @@ export function EvidenciasManager() {
       nombre: formNombre,
       descripcion: formDescripcion,
       orden: formOrden,
+      activo: formActivo,
     });
     setSaving(false);
     if (res.success) {
@@ -234,13 +255,18 @@ export function EvidenciasManager() {
                     {ev.descripcion || <span className="italic text-muted-foreground/50">Sin descripción</span>}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      ev.activo
-                        ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20'
-                        : 'bg-secondary text-muted-foreground border border-border'
-                    }`}>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActivo(ev)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105 ${
+                        ev.activo
+                          ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25'
+                          : 'bg-secondary text-muted-foreground border border-border hover:bg-secondary/80'
+                      }`}
+                      title="Clic para cambiar estado de la evidencia"
+                    >
                       {ev.activo ? 'Activa' : 'Inactiva'}
-                    </span>
+                    </button>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex justify-end gap-2">
@@ -310,18 +336,37 @@ export function EvidenciasManager() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
-                  Orden en planilla
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={formOrden}
-                  onChange={(e) => setFormOrden(Number(e.target.value))}
-                  className="w-24 bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
+                    Orden en planilla
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={formOrden}
+                    onChange={(e) => setFormOrden(Number(e.target.value))}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
+                    Estado
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer mt-2">
+                    <input
+                      type="checkbox"
+                      checked={formActivo}
+                      onChange={(e) => setFormActivo(e.target.checked)}
+                      className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <span className="text-xs font-semibold text-foreground">
+                      {formActivo ? 'Evidencia Activa' : 'Inactiva'}
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
 

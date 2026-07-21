@@ -16,6 +16,12 @@ export interface Student {
   institution: string;
 }
 
+export interface DashboardStats {
+  promedioAcademico: string;
+  asistenciaPromedio: string;
+  aiAnalysisCount: number;
+}
+
 export function useAdminDashboard() {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
@@ -25,6 +31,11 @@ export function useAdminDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stats, setStats] = useState<DashboardStats>({
+    promedioAcademico: '-',
+    asistenciaPromedio: '-',
+    aiAnalysisCount: 0
+  });
 
   useEffect(() => {
     async function loadData() {
@@ -32,10 +43,13 @@ export function useAdminDashboard() {
       setUser(user);
 
       if (user?.app_metadata?.id_institucion) {
+        const instId = user.app_metadata.id_institucion;
+
+        // 1. Fetch Students
         const { data: dbStudents } = await supabase
           .from('usuarios')
           .select('*, estudiantes_matriculados(id_matricula, cursos(nombre))')
-          .eq('id_institucion', user.app_metadata.id_institucion)
+          .eq('id_institucion', instId)
           .eq('rol', 'ESTUDIANTE');
 
         if (dbStudents && dbStudents.length > 0) {
@@ -62,6 +76,53 @@ export function useAdminDashboard() {
         } else {
           setStudents([]);
         }
+
+        // 2. Fetch Grades for Promedio Académico
+        const { data: dbGrades } = await supabase
+          .from('calificaciones')
+          .select('nota, comentario_ia')
+          .eq('id_institucion', instId);
+
+        let calculatedPromedio = '-';
+        let aiCount = 0;
+
+        if (dbGrades && dbGrades.length > 0) {
+          const sum = dbGrades.reduce((acc, g) => acc + (Number(g.nota) || 0), 0);
+          calculatedPromedio = (sum / dbGrades.length).toFixed(2);
+          aiCount = dbGrades.filter(g => Boolean(g.comentario_ia)).length;
+        }
+
+        // 3. Fetch Attendance
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: dbAbsences } = await (supabase as any)
+          .from('asistencias')
+          .select('estado')
+          .eq('id_institucion', instId);
+
+        let calculatedAsistencia = '100%';
+        if (dbAbsences && dbAbsences.length > 0) {
+          const total = dbAbsences.length;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const faltas = dbAbsences.filter((a: any) => a.estado === 'FALTA_INJUSTIFICADA' || a.estado === 'FALTA_JUSTIFICADA').length;
+          const pct = Math.max(0, Math.round(((total - faltas) / total) * 100));
+          calculatedAsistencia = `${pct}.0%`;
+        }
+
+        // 4. Fetch AI Token logs
+        const { data: dbAiLogs } = await supabase
+          .from('logs_ia_tokens')
+          .select('id_ia_token')
+          .eq('id_institucion', instId);
+
+        if (dbAiLogs && dbAiLogs.length > 0) {
+          aiCount += dbAiLogs.length;
+        }
+
+        setStats({
+          promedioAcademico: calculatedPromedio,
+          asistenciaPromedio: calculatedAsistencia,
+          aiAnalysisCount: aiCount
+        });
       }
     }
     loadData();
@@ -114,6 +175,7 @@ export function useAdminDashboard() {
     generatingProgress,
     handleGenerateAIComment,
     setStudents,
+    stats,
     refresh: () => setRefreshTrigger((prev) => prev + 1)
   };
 }

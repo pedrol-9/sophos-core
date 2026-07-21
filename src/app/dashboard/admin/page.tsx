@@ -12,7 +12,6 @@ import { StudentList } from '@/components/dashboard/admin/StudentList';
 import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
 import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
 import { AjustesAcademicos } from '@/components/dashboard/admin/AjustesAcademicos';
-import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
 import { SubscriptionManager } from '@/components/dashboard/admin/SubscriptionManager';
 import { CierrePeriodoManager } from '@/components/dashboard/admin/CierrePeriodoManager';
 import {
@@ -30,7 +29,6 @@ export default function DashboardPage() {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showEvidencias, setShowEvidencias] = useState(false);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState<boolean | null>(null);
   const [dismissedOnboarding, setDismissedOnboarding] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -64,6 +62,7 @@ export default function DashboardPage() {
     generatingProgress,
     handleGenerateAIComment,
     refresh,
+    stats: dashboardStats,
   } = useAdminDashboard();
 
   useEffect(() => {
@@ -243,59 +242,18 @@ export default function DashboardPage() {
                activeTab === 'cierre' ? 'Generación de reportes finales y boletines académicos' : ''}
             </p>
           </div>
-          {activeTab === 'dashboard' && (
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              <button
-                onClick={() => setShowEvidencias(!showEvidencias)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  showEvidencias
-                    ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-xs'
-                    : 'bg-secondary border border-border text-foreground hover:bg-secondary/80'
-                }`}
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                Gestionar Evidencias
-              </button>
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
-              >
-                <IconPlus /> Cargar Usuarios (CSV)
-              </button>
-            </div>
-          )}
         </div>
-
-        {/* ─── PANEL EVIDENCIAS ─────────────────────────────────────────────── */}
-        {showEvidencias && (
-          <div className="mb-8 bg-[#0d1220]/70 border border-white/10 rounded-2xl p-6 animate-in slide-in-from-top duration-200">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-sm font-bold text-white">Gestión de Evidencias del Año Lectivo</h2>
-                <p className="text-xs text-white/40 mt-0.5">
-                  Define las evidencias de aprendizaje por grado y materia que los docentes evaluarán cada periodo.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowEvidencias(false)}
-                className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <EvidenciasManager />
-          </div>
-        )}
 
         {/* ─── VISTAS DE TABS INTERACTIVAS ──────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <>
             {/* ─── STATS GRID ────────────────────────────────────────────────────── */}
-            <StatsGrid totalStudents={students.length} />
+            <StatsGrid 
+              totalStudents={students.length} 
+              promedioAcademico={dashboardStats.promedioAcademico}
+              asistenciaPromedio={dashboardStats.asistenciaPromedio}
+              aiAnalysisCount={dashboardStats.aiAnalysisCount}
+            />
 
             {/* ─── WORK AREA (FLEX LAYOUT) ────────────────────────────────────────── */}
             <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -722,6 +680,7 @@ export default function DashboardPage() {
           <AjustesAcademicos
             idInstitucion={user.app_metadata.id_institucion}
             onConfigSaved={() => setIsOnboardingComplete(true)}
+            onOpenBulkImport={() => setShowAddForm(true)}
           />
         )}
 

@@ -10,9 +10,12 @@ import {
   EscalaParam,
 } from '@/app/actions/config-actions';
 
+import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
+
 interface AjustesAcademicosProps {
   idInstitucion?: string;
   onConfigSaved?: () => void;
+  onOpenBulkImport?: () => void;
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -103,7 +106,7 @@ function SaveBar({
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export function AjustesAcademicos({ onConfigSaved }: AjustesAcademicosProps) {
+export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAcademicosProps) {
   const [loading, setLoading] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
 
@@ -497,6 +500,39 @@ export function AjustesAcademicos({ onConfigSaved }: AjustesAcademicosProps) {
             setNomSuccess(false);
           }}
         />
+      </SectionCard>
+
+      {/* ── SECCIÓN 4: BANCO DE EVIDENCIAS ────────────────────────────────────── */}
+      <SectionCard
+        title="Gestión de Banco de Evidencias de Aprendizaje"
+        description="Define la lista de evidencias disponibles por grado y materia para el año lectivo. Los docentes seleccionarán cuáles trabajar en cada periodo."
+      >
+        <EvidenciasManager />
+      </SectionCard>
+
+      {/* ── SECCIÓN 5: CARGA MASIVA DE USUARIOS Y DATOS ───────────────────────── */}
+      <SectionCard
+        title="Carga Masiva (CSV)"
+        description="Importación y migración masiva de listas de estudiantes, docentes y usuarios del sistema desde archivos CSV o TXT."
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-foreground">Asistente de Importación de Datos</h4>
+            <p className="text-xs text-muted-foreground">
+              Sube tus listados masivos en formato CSV para matricular o registrar usuarios en lote.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenBulkImport}
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Abrir Carga Masiva (CSV)
+          </button>
+        </div>
       </SectionCard>
 
       {/* ── MODAL: Video Tutorial ──────────────────────────────────────────── */}
