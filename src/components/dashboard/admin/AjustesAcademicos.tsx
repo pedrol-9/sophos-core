@@ -60,12 +60,14 @@ function SaveBar({
   success,
   error,
   onSave,
+  onCancel,
 }: {
   isDirty: boolean;
   saving: boolean;
   success: boolean;
   error: string;
   onSave: () => void;
+  onCancel: () => void;
 }) {
   if (!isDirty && !success && !error) return null;
   return (
@@ -76,14 +78,24 @@ function SaveBar({
         {isDirty && !error && !success && <span className="text-white/40">Hay cambios sin guardar</span>}
       </div>
       {isDirty && (
-        <button
-          type="button"
-          disabled={saving}
-          onClick={onSave}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
-        >
-          {saving ? 'Guardando...' : 'Guardar cambios'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onCancel}
+            className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50 text-white/60 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer shrink-0"
+          >
+            Descartar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onSave}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+          >
+            {saving ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -143,10 +155,15 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
 
   // ── Periodo helpers ────────────────────────────────────────────────────────
   const setCantPeriodos = (n: 3 | 4) => {
-    const base = n === 3
-      ? [1,2,3].map((i) => ({ numero_periodo: i, fecha_inicio: '', fecha_fin: '', activo: i === 1 }))
-      : [1,2,3,4].map((i) => ({ numero_periodo: i, fecha_inicio: '', fecha_fin: '', activo: i === 1 }));
-    setPeriodos(base);
+    const nums = n === 3 ? [1, 2, 3] : [1, 2, 3, 4];
+    // Preservar datos existentes; solo crear nueva entrada si el periodo no existía
+    const updated = nums.map((i) => {
+      const existing = periodos.find((p) => p.numero_periodo === i);
+      return existing ?? { numero_periodo: i, fecha_inicio: '', fecha_fin: '', activo: false };
+    });
+    // Garantizar que sigue habiendo un periodo activo
+    if (!updated.some((p) => p.activo)) updated[0].activo = true;
+    setPeriodos(updated);
     setPeriodoError('');
     setPeriodoSuccess(false);
   };
@@ -353,6 +370,11 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
           success={periodoSuccess}
           error={periodoError}
           onSave={handleSavePeriodos}
+          onCancel={() => {
+            setPeriodos(periodosSaved);
+            setPeriodoError('');
+            setPeriodoSuccess(false);
+          }}
         />
       </SectionCard>
 
@@ -398,6 +420,11 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
           success={escalaSuccess}
           error={escalaError}
           onSave={handleSaveEscala}
+          onCancel={() => {
+            setEscalas(escalasSaved);
+            setEscalaError('');
+            setEscalaSuccess(false);
+          }}
         />
       </SectionCard>
 
@@ -462,6 +489,14 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
           success={nomSuccess}
           error={nomError}
           onSave={handleSaveNom}
+          onCancel={() => {
+            const opt = nomenclaturaSaved === '6A' ? '6A' : nomenclaturaSaved === '601' ? '601' : 'custom';
+            setNomenclaturaOption(opt);
+            setNomenclatura(nomenclaturaSaved);
+            if (opt === 'custom') setCustomNom(nomenclaturaSaved);
+            setNomError('');
+            setNomSuccess(false);
+          }}
         />
       </SectionCard>
 
