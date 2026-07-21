@@ -218,7 +218,7 @@ export default function DashboardPage() {
         )}
 
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {activeTab === 'dashboard' ? 'Panel Académico' :
@@ -232,7 +232,6 @@ export default function DashboardPage() {
                activeTab === 'cierre' ? 'Boletines y Cierre de Periodo' : 'Panel General'}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-
               {activeTab === 'dashboard' ? 'Supervisión integrada e inteligencia predictiva académica' :
                activeTab === 'institutions' ? 'Información y estadísticas de la sede principal' :
                activeTab === 'courses' ? 'Gestión curricular y administrativa de grados y asignaturas' :
@@ -245,23 +244,23 @@ export default function DashboardPage() {
             </p>
           </div>
           {activeTab === 'dashboard' && (
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => setShowEvidencias(!showEvidencias)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                   showEvidencias
-                    ? 'bg-teal-600 hover:bg-teal-500 shadow-md shadow-teal-600/20'
-                    : 'bg-white/5 border border-white/10 hover:bg-white/10 text-white/80'
+                    ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-xs'
+                    : 'bg-secondary border border-border text-foreground hover:bg-secondary/80'
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
                 Gestionar Evidencias
               </button>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition-all shadow-md shadow-indigo-600/20 hover:-translate-y-0.5"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
               >
                 <IconPlus /> Cargar Usuarios (CSV)
               </button>
