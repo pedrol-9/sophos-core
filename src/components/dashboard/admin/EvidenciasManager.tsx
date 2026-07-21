@@ -222,53 +222,32 @@ export function EvidenciasManager() {
         </button>
       </div>
 
-      {/* TARJETAS DE RESUMEN DE ESTADO (RESPONSIVAS - MODO CLARO / OSCURO) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Banco Disponible</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-          </div>
-          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalBanco}</p>
-          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Evidencias en el catálogo</p>
+      {/* RESUMEN EN UNA SOLA LÍNEA DE ALTO MÍNIMO */}
+      <div className="flex flex-wrap items-center gap-3 sm:gap-6 py-2.5 px-4 bg-secondary/30 border border-border rounded-xl text-xs font-medium">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+          <span className="text-muted-foreground">Banco:</span>
+          <strong className="text-foreground font-bold">{stats.totalBanco}</strong>
         </div>
-
-        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Activas Periodo</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-          </div>
-          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalActivasPeriodo}</p>
-          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Seleccionadas para evaluar</p>
+        <span className="text-border hidden sm:inline">•</span>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0" />
+          <span className="text-muted-foreground">Activas Periodo:</span>
+          <strong className="text-foreground font-bold">{stats.totalActivasPeriodo}</strong>
         </div>
-
-        <div className={`border rounded-xl p-3.5 flex flex-col justify-between shadow-xs transition-all ${
-          stats.totalPendientesAprobacion > 0
-            ? 'bg-amber-500/10 border-amber-500/30'
-            : 'bg-card/70 border-border'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-300 tracking-wider">Sugeridas Pendientes</span>
-            {stats.totalPendientesAprobacion > 0 ? (
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-            ) : (
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-400/40" />
-            )}
-          </div>
-          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalPendientesAprobacion}</p>
-          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Esperando aprobación admin</p>
+        <span className="text-border hidden sm:inline">•</span>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+          <span className="text-muted-foreground">Sugeridas:</span>
+          <strong className={`font-bold ${stats.totalPendientesAprobacion > 0 ? 'text-amber-500 font-black animate-pulse' : 'text-foreground'}`}>
+            {stats.totalPendientesAprobacion}
+          </strong>
         </div>
-
-        <div className="bg-card/70 border border-border rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Usadas Anteriores</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-          </div>
-          <p className="text-xl font-extrabold text-foreground mt-2">{stats.totalUsadasAnteriores}</p>
-          <p className="text-[10px] text-muted-foreground/70 mt-0.5">En periodos pasados</p>
+        <span className="text-border hidden sm:inline">•</span>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
+          <span className="text-muted-foreground">Usadas Anteriores:</span>
+          <strong className="text-foreground font-bold">{stats.totalUsadasAnteriores}</strong>
         </div>
       </div>
 

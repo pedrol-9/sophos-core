@@ -103,7 +103,7 @@ export async function getEvidenciasAdmin(opts?: {
 
     let query = supabase
       .from('evidencias')
-      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo, estado_aprobacion, id_docente_sugerido')
+      .select('*')
       .eq('id_institucion', idInstitucion)
       .eq('ano_lectivo', anoLectivo)
       .order('grado', { ascending: true })
@@ -115,7 +115,12 @@ export async function getEvidenciasAdmin(opts?: {
     const { data, error } = await query;
     if (error) return { success: false, error: error.message };
 
-    return { success: true, data: (data as EvidenciaRow[]) || [] };
+    const mapped = (data || []).map((row: any) => ({
+      ...row,
+      estado_aprobacion: row.estado_aprobacion || 'APROBADA',
+    }));
+
+    return { success: true, data: mapped as EvidenciaRow[] };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Error desconocido.' };
   }
@@ -150,10 +155,10 @@ export async function getEvidenciasAdminFull(opts: {
     const idInstitucion = user.app_metadata?.id_institucion as string;
     const anoLectivo = opts.anoLectivo ?? new Date().getFullYear();
 
-    // 1. Obtener todas las evidencias del banco para esta materia + grado
+    // 1. Obtener todas las evidencias del banco para esta materia + grado (select * para tolerancia a columnas)
     const { data: evidencias, error: evErr } = await supabase
       .from('evidencias')
-      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo, estado_aprobacion, id_docente_sugerido')
+      .select('*')
       .eq('id_institucion', idInstitucion)
       .eq('id_materia', opts.idMateria)
       .eq('grado', opts.grado)
@@ -161,7 +166,10 @@ export async function getEvidenciasAdminFull(opts: {
       .order('orden', { ascending: true });
 
     if (evErr) return { success: false, error: evErr.message };
-    const list = (evidencias as EvidenciaRow[]) || [];
+    const list = (evidencias || []).map((row: any) => ({
+      ...row,
+      estado_aprobacion: row.estado_aprobacion || 'APROBADA',
+    })) as EvidenciaRow[];
 
     // 2. Obtener periodo activo y todos los periodos
     const { data: periodos } = await supabase
@@ -270,12 +278,18 @@ export async function aprobarEvidenciaAdmin(idEvidencia: string): Promise<{ succ
       return { success: false, error: 'Acceso restringido. Solo administradores.' };
     }
 
-    const { data: ev, error: evErr } = await supabase
+    let { data: ev, error: evErr } = await supabase
       .from('evidencias')
       .update({ estado_aprobacion: 'APROBADA', activo: true })
       .eq('id_evidencia', idEvidencia)
-      .select('*, id_docente_sugerido')
+      .select('*')
       .single();
+
+    if (evErr && evErr.message.includes('column')) {
+      const retry = await supabase.from('evidencias').update({ activo: true }).eq('id_evidencia', idEvidencia).select('*').single();
+      ev = retry.data;
+      evErr = retry.error;
+    }
 
     if (evErr || !ev) return { success: false, error: evErr?.message || 'No se encontró la evidencia.' };
 
@@ -328,10 +342,13 @@ export async function rechazarEvidenciaAdmin(idEvidencia: string): Promise<{ suc
       return { success: false, error: 'Acceso restringido. Solo administradores.' };
     }
 
-    const { error } = await supabase
-      .from('evidencias')
-      .update({ estado_aprobacion: 'RECHAZADA', activo: false })
-      .eq('id_evidencia', idEvidencia);
+    let payload: any = { estado_aprobacion: 'RECHAZADA', activo: false };
+    let { error } = await supabase.from('evidencias').update(payload).eq('id_evidencia', idEvidencia);
+
+    if (error && error.message.includes('column')) {
+      const retry = await supabase.from('evidencias').update({ activo: false }).eq('id_evidencia', idEvidencia);
+      error = retry.error;
+    }
 
     if (error) return { success: false, error: error.message };
     revalidatePath('/dashboard/admin');
@@ -373,7 +390,7 @@ export async function sugerirEvidenciaDocente(opts: {
 
     const grado = curso ? extractGrado(curso.nombre) : '6';
 
-    const payload = {
+    const payload: any = {
       id_institucion: asig.id_institucion,
       id_materia: asig.id_materia,
       grado: grado,
@@ -386,11 +403,19 @@ export async function sugerirEvidenciaDocente(opts: {
       ano_lectivo: new Date().getFullYear(),
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('evidencias')
       .insert(payload)
       .select()
       .single();
+
+    if (error && error.message.includes('column')) {
+      delete payload.estado_aprobacion;
+      delete payload.id_docente_sugerido;
+      const retry = await supabase.from('evidencias').insert(payload).select().single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) return { success: false, error: error.message };
     return { success: true, data: data as EvidenciaRow };
@@ -421,7 +446,7 @@ export async function upsertEvidencia(evidencia: {
 
     const idInstitucion = user.app_metadata?.id_institucion as string;
 
-    const payload = {
+    const payload: any = {
       id_institucion: idInstitucion,
       id_materia: evidencia.id_materia,
       grado: evidencia.grado,
@@ -435,20 +460,34 @@ export async function upsertEvidencia(evidencia: {
 
     let result;
     if (evidencia.id_evidencia) {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('evidencias')
         .update(payload)
         .eq('id_evidencia', evidencia.id_evidencia)
         .select()
         .single();
+
+      if (error && error.message.includes('column')) {
+        delete payload.estado_aprobacion;
+        const retry = await supabase.from('evidencias').update(payload).eq('id_evidencia', evidencia.id_evidencia).select().single();
+        data = retry.data;
+        error = retry.error;
+      }
       if (error) return { success: false, error: error.message };
       result = data;
     } else {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('evidencias')
         .insert(payload)
         .select()
         .single();
+
+      if (error && error.message.includes('column')) {
+        delete payload.estado_aprobacion;
+        const retry = await supabase.from('evidencias').insert(payload).select().single();
+        data = retry.data;
+        error = retry.error;
+      }
       if (error) return { success: false, error: error.message };
       result = data;
     }
