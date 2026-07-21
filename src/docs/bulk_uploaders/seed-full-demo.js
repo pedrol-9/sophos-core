@@ -569,76 +569,83 @@ async function runSeed() {
       });
     }
 
-    // --- PERIODO 2 (ACTIVO) ---
-    // Si la materia es del grupo de materias importantes, creamos 2 evidencias (una calificada, otra pendiente)
-    const esImportante = materiasImportantes.some(mi => asig.materiaNombre.toLowerCase().includes(mi.toLowerCase()));
+    // --- PERIODO 2 (COMPLETO CON NOTAS PARA TODAS LAS MATERIAS Y ESTUDIANTES) ---
+    const evsP2 = getEvidenciasPorMateria(asig.materiaNombre, 2);
 
-    if (esImportante) {
-      const evsP2 = getEvidenciasPorMateria(asig.materiaNombre, 2);
+    const { data: evP2_1 } = await supabase.from('evidencias').insert({
+      id_institucion: idInstitucion,
+      id_materia: asig.id_materia,
+      grado: extractGrado(asig.cursoNombre),
+      nombre: evsP2[0].nombre,
+      descripcion: evsP2[0].descripcion,
+      orden: 1,
+      activo: true,
+      ano_lectivo: 2026
+    }).select('id_evidencia').single();
 
-      const { data: evP2_1 } = await supabase.from('evidencias').insert({
-        id_institucion: idInstitucion,
-        id_materia: asig.id_materia,
-        grado: extractGrado(asig.cursoNombre),
-        nombre: evsP2[0].nombre,
-        descripcion: evsP2[0].descripcion,
-        orden: 1,
+    const { data: evP2_2 } = await supabase.from('evidencias').insert({
+      id_institucion: idInstitucion,
+      id_materia: asig.id_materia,
+      grado: extractGrado(asig.cursoNombre),
+      nombre: evsP2[1].nombre,
+      descripcion: evsP2[1].descripcion,
+      orden: 2,
+      activo: true,
+      ano_lectivo: 2026
+    }).select('id_evidencia').single();
+
+    if (evP2_1 && evP2_2) {
+      // Registrar configuración de periodo 2 (50% y 50%)
+      configEvidenciasPeriodoAInsertar.push({
+        id_asignacion: asig.id_asignacion,
+        id_periodo: idPeriodo2,
+        id_evidencia: evP2_1.id_evidencia,
         activo: true,
-        ano_lectivo: 2026
-      }).select('id_evidencia').single();
-
-      const { data: evP2_2 } = await supabase.from('evidencias').insert({
-        id_institucion: idInstitucion,
-        id_materia: asig.id_materia,
-        grado: extractGrado(asig.cursoNombre),
-        nombre: evsP2[1].nombre,
-        descripcion: evsP2[1].descripcion,
-        orden: 2,
+        peso: 0.50
+      });
+      configEvidenciasPeriodoAInsertar.push({
+        id_asignacion: asig.id_asignacion,
+        id_periodo: idPeriodo2,
+        id_evidencia: evP2_2.id_evidencia,
         activo: true,
-        ano_lectivo: 2026
-      }).select('id_evidencia').single();
+        peso: 0.50
+      });
 
-      if (evP2_1 && evP2_2) {
-        // Registrar configuración de periodo 2
-        configEvidenciasPeriodoAInsertar.push({
+      // Logro Periodo 2
+      logrosAInsertar.push({
+        id_asignacion: asig.id_asignacion,
+        id_periodo: idPeriodo2,
+        descripcion: `Desarrolla habilidades analíticas en la resolución de problemas en el área de ${asig.materiaNombre} correspondientes al segundo periodo.`
+      });
+
+      // Insertar notas en Periodo 2 para AMBAS evidencias en todos los estudiantes
+      cursoEstudiantes.forEach(est => {
+        const notaP2_1 = parseFloat((Math.random() * (5.0 - 2.8) + 2.8).toFixed(1));
+        calificacionesAInsertar.push({
+          id_institucion: idInstitucion,
+          id_matricula: est.id_matricula,
           id_asignacion: asig.id_asignacion,
           id_periodo: idPeriodo2,
+          periodo: 2,
           id_evidencia: evP2_1.id_evidencia,
-          activo: true,
-          peso: 0.50
+          actividad: 'evidencia',
+          nota: notaP2_1,
+          fecha_registro: '2026-05-20T10:00:00Z'
         });
-        configEvidenciasPeriodoAInsertar.push({
+
+        const notaP2_2 = parseFloat((Math.random() * (5.0 - 3.0) + 3.0).toFixed(1));
+        calificacionesAInsertar.push({
+          id_institucion: idInstitucion,
+          id_matricula: est.id_matricula,
           id_asignacion: asig.id_asignacion,
           id_periodo: idPeriodo2,
+          periodo: 2,
           id_evidencia: evP2_2.id_evidencia,
-          activo: true,
-          peso: 0.50
+          actividad: 'evidencia',
+          nota: notaP2_2,
+          fecha_registro: '2026-06-15T10:00:00Z'
         });
-
-        // Logro Periodo 2
-        logrosAInsertar.push({
-          id_asignacion: asig.id_asignacion,
-          id_periodo: idPeriodo2,
-          descripcion: `Desarrolla habilidades analíticas en la resolución de problemas en el área de ${asig.materiaNombre} correspondientes al segundo periodo.`
-        });
-
-        // Insertar notas en Periodo 2 SOLO para la Evidencia 1.
-        // La Evidencia 2 queda vacía (Pendiente).
-        cursoEstudiantes.forEach(est => {
-          const notaP2 = parseFloat((Math.random() * (5.0 - 2.8) + 2.8).toFixed(1));
-          calificacionesAInsertar.push({
-            id_institucion: idInstitucion,
-            id_matricula: est.id_matricula,
-            id_asignacion: asig.id_asignacion,
-            id_periodo: idPeriodo2,
-            periodo: 2,
-            id_evidencia: evP2_1.id_evidencia,
-            actividad: 'evidencia',
-            nota: notaP2,
-            fecha_registro: '2026-05-20T10:00:00Z'
-          });
-        });
-      }
+      });
     }
   }
 

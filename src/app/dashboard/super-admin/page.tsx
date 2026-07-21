@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { 
@@ -13,6 +13,7 @@ import {
   SaaSMetrics,
   InstitutionSaaSInfo
 } from '@/app/actions/superadmin-actions';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -21,7 +22,9 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<SaaSMetrics | null>(null);
   const [institutions, setInstitutions] = useState<InstitutionSaaSInfo[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [plans, setPlans] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [aiLogs, setAiLogs] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState('');
@@ -41,7 +44,7 @@ export default function SuperAdminDashboard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -57,10 +60,10 @@ export default function SuperAdminDashboard() {
 
       const resA = await getAILogs(50);
       if (resA.success && resA.data) setAiLogs(resA.data);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error al cargar datos del SaaS. Verifica tus privilegios.');
-      // Si el rol no es válido, redirigir después de 2s
-      if (err.message?.includes('denegado')) {
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrorMsg(error.message || 'Error al cargar datos del SaaS. Verifica tus privilegios.');
+      if (error.message?.includes('denegado')) {
         setTimeout(() => {
           router.push('/dashboard/admin');
         }, 2000);
@@ -68,11 +71,11 @@ export default function SuperAdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     loadAllData();
-  }, []);
+  }, [loadAllData]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -95,8 +98,9 @@ export default function SuperAdminDashboard() {
       } else {
         setErrorMsg(res.error || 'Error al actualizar institución.');
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error de red.');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrorMsg(error.message || 'Error de red.');
     } finally {
       setUpdatingInst(false);
     }
@@ -110,115 +114,156 @@ export default function SuperAdminDashboard() {
     try {
       const res = await updatePlanDetails(planId, editPlanPrice, editPlanLimit);
       if (res.success) {
-        setSuccessMsg('Plan de suscripción modificado exitosamente.');
+        setSuccessMsg('Plan de suscripción actualizado correctamente.');
         setEditingPlanId(null);
         await loadAllData();
       } else {
         setErrorMsg(res.error || 'Error al actualizar plan.');
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error de red.');
+    } catch (err: unknown) {
+      const error = err as Error;
+      setErrorMsg(error.message || 'Error de red.');
     } finally {
       setUpdatingPlan(false);
     }
   };
 
-  // Filtrado de colegios
+  // Filtros de instituciones
   const filteredInstitutions = institutions.filter(inst => {
-    const matchesSearch = inst.nombre_legal.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          inst.nit.includes(searchQuery);
-    const matchesPlan = selectedPlanFilter === '' || inst.planNombre === selectedPlanFilter;
-    return matchesSearch && matchesPlan;
+    const matchSearch = inst.nombre_legal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        inst.nit.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchPlan = !selectedPlanFilter || inst.planNombre === selectedPlanFilter;
+    return matchSearch && matchPlan;
   });
 
-  if (loading && !metrics) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center space-y-4">
-        <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
-        <p className="text-sm text-white/50">Verificando sesión e inicializando panel SaaS...</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center space-y-3 text-foreground">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-muted-foreground">Cargando Consola Global de Super-Admin...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#070b13] text-white flex flex-col">
-      {/* Glow background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[400px] bg-indigo-600/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-cyan-500/5 blur-[120px] rounded-full" />
+    <div className="h-screen bg-background text-foreground font-sans flex overflow-hidden relative">
+      
+      {/* Ambient Decorative Glows */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 blur-[100px] rounded-full" />
       </div>
 
-      {/* NAVBAR */}
-      <header className="relative z-10 border-b border-white/5 bg-[#0c1220]/80 backdrop-blur-xl shrink-0 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
-              <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
-            </svg>
+      {/* Sidebar Super-Admin */}
+      <aside className="w-64 border-r border-border flex flex-col justify-between shrink-0 bg-card backdrop-blur-md relative z-10 h-full shadow-xs">
+        <div className="flex flex-col flex-1 min-h-0">
+          {/* Logo Brand */}
+          <div className="p-6 border-b border-border shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                SA
+              </div>
+              <div>
+                <h2 className="text-base font-black tracking-tight text-foreground leading-none">Sophos Core</h2>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Super-Admin</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="text-sm font-black tracking-wider uppercase text-white">
-              Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> SaaS</span>
-            </span>
-            <span className="ml-2 px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold text-[9px] uppercase tracking-wider">Super Admin</span>
-          </div>
+
+          {/* Navigation Menu */}
+          <nav className="p-4 space-y-1.5 overflow-y-auto flex-1 custom-scrollbar">
+            <button
+              onClick={() => setActiveTab('metrics')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'metrics'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1.5-3m1.5 3l1.5-3m0 0l1.5 3m-1.5-3l-1.5-3" />
+              </svg>
+              Métricas Globales SaaS
+            </button>
+
+            <button
+              onClick={() => setActiveTab('instituciones')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'instituciones'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21" />
+              </svg>
+              Colegios Instituciones
+            </button>
+
+            <button
+              onClick={() => setActiveTab('planes')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'planes'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-6h6m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Planes y Precios SaaS
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ia')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'ia'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
+              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              Consumo Tokens IA
+            </button>
+          </nav>
         </div>
 
-        {/* Tabs navigation */}
-        <nav className="hidden md:flex items-center gap-1 bg-white/5 border border-white/8 rounded-xl p-1 text-xs">
-          <button 
-            onClick={() => setActiveTab('metrics')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${activeTab === 'metrics' ? 'bg-indigo-600 text-white' : 'text-white/50 hover:text-white'}`}
+        {/* Profile Footer & Theme Toggle */}
+        <div className="p-4 border-t border-border space-y-3 bg-secondary/30 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500 font-bold uppercase shrink-0">
+                SA
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-semibold text-foreground truncate">Super-Admin</p>
+                <p className="text-[10px] text-muted-foreground truncate">Master SaaS</p>
+              </div>
+            </div>
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-background border border-border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 text-muted-foreground text-xs font-semibold transition-all duration-200 cursor-pointer"
           >
-            Métricas SaaS
+            Cerrar sesión
           </button>
-          <button 
-            onClick={() => setActiveTab('instituciones')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${activeTab === 'instituciones' ? 'bg-indigo-600 text-white' : 'text-white/50 hover:text-white'}`}
-          >
-            Instituciones ({institutions.length})
-          </button>
-          <button 
-            onClick={() => setActiveTab('planes')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${activeTab === 'planes' ? 'bg-indigo-600 text-white' : 'text-white/50 hover:text-white'}`}
-          >
-            Suscripciones y Planes
-          </button>
-          <button 
-            onClick={() => setActiveTab('ia')}
-            className={`px-4 py-2 rounded-lg font-bold transition-all ${activeTab === 'ia' ? 'bg-indigo-600 text-white' : 'text-white/50 hover:text-white'}`}
-          >
-            Logs de IA
-          </button>
-        </nav>
+        </div>
+      </aside>
 
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 rounded-xl text-xs font-semibold text-white/70 transition-all cursor-pointer"
-        >
-          Cerrar Sesión
-        </button>
-      </header>
-
-      {/* MOBILE NAV */}
-      <div className="md:hidden relative z-10 p-2 bg-[#0c1220] border-b border-white/5 flex gap-1 justify-around text-[10px] font-bold">
-        <button onClick={() => setActiveTab('metrics')} className={`py-1.5 px-2.5 rounded ${activeTab === 'metrics' ? 'bg-indigo-600' : 'text-white/55'}`}>Resumen</button>
-        <button onClick={() => setActiveTab('instituciones')} className={`py-1.5 px-2.5 rounded ${activeTab === 'instituciones' ? 'bg-indigo-600' : 'text-white/55'}`}>Colegios</button>
-        <button onClick={() => setActiveTab('planes')} className={`py-1.5 px-2.5 rounded ${activeTab === 'planes' ? 'bg-indigo-600' : 'text-white/55'}`}>Planes</button>
-        <button onClick={() => setActiveTab('ia')} className={`py-1.5 px-2.5 rounded ${activeTab === 'ia' ? 'bg-indigo-600' : 'text-white/55'}`}>IA Logs</button>
-      </div>
-
-      {/* MAIN CONTAINER */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-8 relative z-10 max-w-7xl mx-auto w-full">
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-8 relative z-10 custom-scrollbar">
         
-        {/* Messages */}
+        {/* Banner Alert Messages */}
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-200 text-xs font-medium">
             <strong>Error:</strong> {errorMsg}
           </div>
         )}
         {successMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-200 text-sm">
+          <div className="mb-6 p-4 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-600 dark:text-teal-200 text-xs font-semibold">
             {successMsg}
           </div>
         )}
@@ -226,47 +271,46 @@ export default function SuperAdminDashboard() {
         {/* TAB 1: METRICS */}
         {activeTab === 'metrics' && metrics && (
           <div className="space-y-8 animate-in fade-in duration-200">
-            {/* SaaS Overview Title */}
             <div>
-              <h1 className="text-2xl font-black text-white">SaaS Analytics & Métricas</h1>
-              <p className="text-xs text-white/40 mt-0.5">Visión consolidada e ingresos agregados del negocio Sophos Core.</p>
+              <h1 className="text-2xl font-black text-foreground">Consola de Métricas Master SaaS</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Visión global de tenants activos, facturación recurrente y consumo de recursos.</p>
             </div>
 
-            {/* Metrics cards grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Grid 4 KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
-              {/* Card 1: Institutions */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 blur-xl rounded-full" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Instituciones</span>
-                <div className="text-3xl font-extrabold text-white mt-2">{metrics.totalInstituciones}</div>
-                <p className="text-[10px] text-white/30 mt-1">Colegios y sedes activas registradas</p>
+              {/* Card 1: MRR */}
+              <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xs">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 blur-xl rounded-full" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ingreso Mensual (MRR)</span>
+                <div className="text-3xl font-extrabold text-amber-500 mt-2">${metrics.mrrTotal.toLocaleString()} USD</div>
+                <p className="text-[10px] text-muted-foreground mt-1">Facturación proyectada de colegios activos</p>
               </div>
 
               {/* Card 2: Total Users */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 blur-xl rounded-full" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total Usuarios</span>
-                <div className="text-3xl font-extrabold text-white mt-2">{metrics.totalUsuarios}</div>
-                <p className="text-[10px] text-white/30 mt-1">Estudiantes, docentes y acudientes</p>
+              <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xs">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 blur-xl rounded-full" />
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Usuarios Totales SaaS</span>
+                <div className="text-3xl font-extrabold text-foreground mt-2">{metrics.totalUsuarios}</div>
+                <p className="text-[10px] text-muted-foreground mt-1">Estudiantes, docentes y acudientes</p>
               </div>
 
               {/* Card 3: AI Consumption Cost */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xs">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 blur-xl rounded-full" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Costo de IA (Gemini)</span>
-                <div className="text-3xl font-extrabold text-rose-400 mt-2">${metrics.costoEstimadoIA} USD</div>
-                <p className="text-[10px] text-white/30 mt-1">Por {metrics.totalTokensIA.toLocaleString()} tokens consumidos</p>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Costo de IA (Gemini)</span>
+                <div className="text-3xl font-extrabold text-rose-500 mt-2">${metrics.costoEstimadoIA} USD</div>
+                <p className="text-[10px] text-muted-foreground mt-1">Por {metrics.totalTokensIA.toLocaleString()} tokens consumidos</p>
               </div>
 
               {/* Card 4: Subscriptions state */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-5 backdrop-blur-md relative overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-md relative overflow-hidden shadow-xs">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 blur-xl rounded-full" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Salud de Suscripciones</span>
-                <div className="text-3xl font-extrabold text-teal-400 mt-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Salud de Suscripciones</span>
+                <div className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 mt-2">
                   {Math.round((institutions.filter(i => i.estado_suscripcion === 'ACTIVO').length / (institutions.length || 1)) * 100)}%
                 </div>
-                <p className="text-[10px] text-white/30 mt-1">Tasa de retención sobre colegios de pago</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Tasa de retención sobre colegios de pago</p>
               </div>
             </div>
 
@@ -274,8 +318,8 @@ export default function SuperAdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               
               {/* Plan distribution */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-6 backdrop-blur-md">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Suscripciones por Categoría</h3>
+              <div className="bg-card border border-border rounded-2xl p-6 backdrop-blur-md shadow-xs">
+                <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-4">Suscripciones por Categoría</h3>
                 <div className="space-y-4">
                   {metrics.distribucionPlanes.map(dp => {
                     const pct = Math.round((dp.count / metrics.totalInstituciones) * 100) || 0;
@@ -288,9 +332,9 @@ export default function SuperAdminDashboard() {
                       <div key={dp.plan} className="space-y-1">
                         <div className="flex justify-between text-xs font-semibold">
                           <span>{dp.plan}</span>
-                          <span className="text-white/40">{dp.count} colegios ({pct}%)</span>
+                          <span className="text-muted-foreground">{dp.count} colegios ({pct}%)</span>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
                           <div className={`h-full rounded-full ${barBg}`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -300,8 +344,8 @@ export default function SuperAdminDashboard() {
               </div>
 
               {/* Users by role */}
-              <div className="bg-white/3 border border-white/8 rounded-2xl p-6 backdrop-blur-md">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4">Usuarios por Rol en SaaS</h3>
+              <div className="bg-card border border-border rounded-2xl p-6 backdrop-blur-md shadow-xs">
+                <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-4">Usuarios por Rol en SaaS</h3>
                 <div className="space-y-4">
                   {metrics.usuariosPorRol.map(ur => {
                     const pct = Math.round((ur.count / metrics.totalUsuarios) * 100) || 0;
@@ -309,10 +353,10 @@ export default function SuperAdminDashboard() {
                       <div key={ur.rol} className="space-y-1">
                         <div className="flex justify-between text-xs font-semibold">
                           <span>{ur.rol}</span>
-                          <span className="text-white/40">{ur.count} usuarios ({pct}%)</span>
+                          <span className="text-muted-foreground">{ur.count} usuarios ({pct}%)</span>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-                          <div className="h-full rounded-full bg-cyan-400" style={{ width: `${pct}%` }} />
+                        <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full rounded-full bg-cyan-500" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -327,113 +371,111 @@ export default function SuperAdminDashboard() {
         {activeTab === 'instituciones' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-2xl font-black text-white">Instituciones Educativas</h1>
-              <p className="text-xs text-white/40 mt-0.5">Control de suscripción, límites de usuarios y facturación por tenant.</p>
+              <h1 className="text-2xl font-black text-foreground">Instituciones Educativas</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Control de suscripción, límites de usuarios y facturación por tenant.</p>
             </div>
 
             {/* Filter and search bars */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/3 border border-white/8 rounded-2xl p-4">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-card border border-border rounded-2xl p-4 shadow-xs">
               <input
                 type="text"
                 placeholder="Buscar colegio por nombre o NIT..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full md:w-96 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/30 focus:outline-none focus:border-indigo-500"
+                className="w-full md:w-96 bg-background border border-border rounded-xl px-4 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               
               <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end">
-                <span className="text-xs text-white/40 font-semibold">Filtrar Plan:</span>
+                <span className="text-xs text-muted-foreground font-semibold">Filtrar Plan:</span>
                 <select
                   value={selectedPlanFilter}
                   onChange={(e) => setSelectedPlanFilter(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                 >
-                  <option value="" className="bg-[#121829] text-white">Todos los planes</option>
-                  <option value="Plan Prueba" className="bg-[#121829] text-white">Plan Prueba</option>
-                  <option value="Plan Básico" className="bg-[#121829] text-white">Plan Básico</option>
-                  <option value="Plan Premium" className="bg-[#121829] text-white">Plan Premium</option>
+                  <option value="" className="bg-card text-foreground">Todos los planes</option>
+                  <option value="Plan Prueba" className="bg-card text-foreground">Plan Prueba</option>
+                  <option value="Plan Básico" className="bg-card text-foreground">Plan Básico</option>
+                  <option value="Plan Premium" className="bg-card text-foreground">Plan Premium</option>
                 </select>
               </div>
             </div>
 
             {/* Table of institutions */}
             {filteredInstitutions.length > 0 ? (
-              <div className="overflow-hidden border border-white/8 rounded-2xl bg-white/[0.01]">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-white/8 bg-white/3 text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                        <th className="py-3 px-5">Nombre Legal</th>
-                        <th className="py-3 px-5">NIT / ID</th>
-                        <th className="py-3 px-5">Plan Suscripción</th>
-                        <th className="py-3 px-5">Consumo Usuarios</th>
-                        <th className="py-3 px-5">Estado</th>
-                        <th className="py-3 px-5 text-right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-xs">
-                      {filteredInstitutions.map((inst) => {
-                        const usageRatio = inst.totalUsuarios / (inst.planLimit || 1);
-                        
-                        return (
-                          <tr key={inst.id_institucion} className="hover:bg-white/[0.01] transition-all">
-                            <td className="py-3.5 px-5 font-bold text-white/90">{inst.nombre_legal}</td>
-                            <td className="py-3.5 px-5 text-white/40">{inst.nit}</td>
-                            <td className="py-3.5 px-5">
-                              <span className={`px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider ${
-                                inst.planNombre.includes('Premium') 
-                                  ? 'bg-amber-500/10 text-amber-400' 
-                                  : inst.planNombre.includes('Básico') 
-                                    ? 'bg-indigo-500/10 text-indigo-400' 
-                                    : 'bg-slate-500/10 text-slate-300'
-                              }`}>
-                                {inst.planNombre}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-5">
-                              <div className="flex justify-between items-baseline mb-1 text-[10px] text-white/45">
-                                <span>{inst.totalUsuarios} / {inst.planLimit}</span>
-                                <span>{Math.round(usageRatio * 100)}%</span>
-                              </div>
-                              <div className="w-24 h-1 rounded-full bg-white/10 overflow-hidden">
-                                <div 
-                                  className={`h-full rounded-full ${usageRatio > 0.85 ? 'bg-red-500' : 'bg-indigo-500'}`} 
-                                  style={{ width: `${Math.min(100, usageRatio * 100)}%` }} 
-                                />
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-5">
-                              <span className={`px-2 py-0.5 rounded-md font-black text-[9px] uppercase ${
-                                inst.estado_suscripcion === 'ACTIVO' 
-                                  ? 'bg-teal-500/10 text-teal-400' 
-                                  : inst.estado_suscripcion === 'PRUEBA' 
-                                    ? 'bg-amber-500/10 text-amber-400' 
-                                    : 'bg-red-500/10 text-red-400 animate-pulse'
-                              }`}>
-                                {inst.estado_suscripcion}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-5 text-right">
-                              <button
-                                onClick={() => {
-                                  setEditingInst(inst);
-                                  setEditPlanId(inst.id_suscripcion || 1);
-                                  setEditEstado(inst.estado_suscripcion);
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-indigo-600 border border-white/10 hover:border-indigo-500 text-white font-bold transition-all cursor-pointer text-[10px] uppercase tracking-wider"
-                              >
-                                Gestionar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="overflow-hidden border border-border rounded-2xl bg-card custom-scrollbar overflow-x-auto shadow-xs">
+                <table className="w-full text-left border-collapse text-xs min-w-[650px]">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      <th className="py-3 px-5">Nombre Legal</th>
+                      <th className="py-3 px-5">NIT / ID</th>
+                      <th className="py-3 px-5">Plan Suscripción</th>
+                      <th className="py-3 px-5">Consumo Usuarios</th>
+                      <th className="py-3 px-5">Estado</th>
+                      <th className="py-3 px-5 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border text-xs">
+                    {filteredInstitutions.map((inst) => {
+                      const usageRatio = inst.totalUsuarios / (inst.planLimit || 1);
+                      
+                      return (
+                        <tr key={inst.id_institucion} className="hover:bg-secondary/40 transition-all">
+                          <td className="py-3.5 px-5 font-bold text-foreground">{inst.nombre_legal}</td>
+                          <td className="py-3.5 px-5 text-muted-foreground">{inst.nit}</td>
+                          <td className="py-3.5 px-5">
+                            <span className={`px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider ${
+                              inst.planNombre.includes('Premium') 
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' 
+                                : inst.planNombre.includes('Básico') 
+                                  ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' 
+                                  : 'bg-secondary text-muted-foreground'
+                            }`}>
+                              {inst.planNombre}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <div className="flex justify-between items-baseline mb-1 text-[10px] text-muted-foreground">
+                              <span>{inst.totalUsuarios} / {inst.planLimit}</span>
+                              <span>{Math.round(usageRatio * 100)}%</span>
+                            </div>
+                            <div className="w-24 h-1 rounded-full bg-secondary overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full ${usageRatio > 0.85 ? 'bg-rose-500' : 'bg-primary'}`} 
+                                style={{ width: `${Math.min(100, usageRatio * 100)}%` }} 
+                              />
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <span className={`px-2 py-0.5 rounded-md font-black text-[9px] uppercase ${
+                              inst.estado_suscripcion === 'ACTIVO' 
+                                ? 'bg-teal-500/15 text-teal-600 dark:text-teal-400' 
+                                : inst.estado_suscripcion === 'PRUEBA' 
+                                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' 
+                                  : 'bg-rose-500/15 text-rose-500 animate-pulse'
+                            }`}>
+                              {inst.estado_suscripcion}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-right">
+                            <button
+                              onClick={() => {
+                                setEditingInst(inst);
+                                setEditPlanId(inst.id_suscripcion || 1);
+                                setEditEstado(inst.estado_suscripcion);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-secondary hover:bg-primary text-foreground hover:text-primary-foreground font-bold transition-all cursor-pointer text-[10px] uppercase tracking-wider border border-border"
+                            >
+                              Gestionar
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="text-center py-12 text-xs text-white/30">
+              <div className="text-center py-12 text-xs text-muted-foreground">
                 Ninguna institución coincide con la búsqueda.
               </div>
             )}
@@ -441,24 +483,24 @@ export default function SuperAdminDashboard() {
             {/* MODAL PARA GESTIONAR INSTITUCIÓN */}
             {editingInst && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-                <div className="bg-[#0f1524] border border-white/10 rounded-2xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
+                <div className="bg-card border border-border rounded-2xl w-full max-w-md p-6 relative shadow-2xl animate-in zoom-in-95 duration-200 text-foreground">
                   
                   <div className="mb-5">
-                    <h3 className="text-base font-extrabold text-white">Gestionar Suscripción</h3>
-                    <p className="text-xs text-white/40 mt-0.5">{editingInst.nombre_legal} • NIT {editingInst.nit}</p>
+                    <h3 className="text-base font-extrabold text-foreground">Gestionar Suscripción</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{editingInst.nombre_legal} • NIT {editingInst.nit}</p>
                   </div>
 
                   <div className="space-y-4 text-xs">
                     {/* Plan selection */}
                     <div className="space-y-1.5">
-                      <label className="font-bold text-white/70">Plan de Suscripción</label>
+                      <label className="font-bold text-foreground">Plan de Suscripción</label>
                       <select
                         value={editPlanId}
                         onChange={(e) => setEditPlanId(Number(e.target.value))}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                       >
                         {plans.map(p => (
-                          <option key={p.id_suscripcion} value={p.id_suscripcion} className="bg-[#121829]">
+                          <option key={p.id_suscripcion} value={p.id_suscripcion} className="bg-card text-foreground">
                             {p.nombre} (Límite: {p.limite_usuarios} usuarios - ${p.precio}/mes)
                           </option>
                         ))}
@@ -467,15 +509,15 @@ export default function SuperAdminDashboard() {
 
                     {/* Subscription state */}
                     <div className="space-y-1.5">
-                      <label className="font-bold text-white/70">Estado de Acceso</label>
+                      <label className="font-bold text-foreground">Estado de Acceso</label>
                       <select
                         value={editEstado}
                         onChange={(e) => setEditEstado(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                       >
-                        <option value="PRUEBA" className="bg-[#121829]">PRUEBA (Demo)</option>
-                        <option value="ACTIVO" className="bg-[#121829]">ACTIVO (De pago)</option>
-                        <option value="INACTIVE" className="bg-[#121829]">INACTIVE (Congelado/Suspendido)</option>
+                        <option value="PRUEBA" className="bg-card text-foreground">PRUEBA (Demo)</option>
+                        <option value="ACTIVO" className="bg-card text-foreground">ACTIVO (De pago)</option>
+                        <option value="INACTIVE" className="bg-card text-foreground">INACTIVE (Congelado/Suspendido)</option>
                       </select>
                     </div>
                   </div>
@@ -484,14 +526,14 @@ export default function SuperAdminDashboard() {
                   <div className="mt-6 flex justify-end gap-3">
                     <button
                       onClick={() => setEditingInst(null)}
-                      className="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                      className="px-4 py-2 border border-border bg-secondary text-muted-foreground hover:text-foreground rounded-xl text-xs font-semibold transition-all cursor-pointer"
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={handleSaveInstitution}
                       disabled={updatingInst}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-50"
+                      className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
                     >
                       {updatingInst ? 'Guardando...' : 'Aplicar Cambios'}
                     </button>
@@ -506,8 +548,8 @@ export default function SuperAdminDashboard() {
         {activeTab === 'planes' && (
           <div className="space-y-8 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-2xl font-black text-white">Planes de Suscripción Globales</h1>
-              <p className="text-xs text-white/40 mt-0.5">Parámetros, precios mensuales y límites máximos de usuarios del SaaS.</p>
+              <h1 className="text-2xl font-black text-foreground">Planes de Suscripción Globales</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Parámetros, precios mensuales y límites máximos de usuarios del SaaS.</p>
             </div>
 
             {/* Plans card display */}
@@ -518,62 +560,62 @@ export default function SuperAdminDashboard() {
                 return (
                   <div 
                     key={p.id_suscripcion}
-                    className="bg-white/3 border border-white/8 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between"
+                    className="bg-card border border-border rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between shadow-xs"
                   >
                     <div>
-                      <span className="text-[9px] font-black text-white/30 uppercase tracking-widest block">Nivel {p.id_suscripcion}</span>
-                      <h3 className="text-xl font-bold text-white mt-1">{p.nombre}</h3>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest block">Nivel {p.id_suscripcion}</span>
+                      <h3 className="text-xl font-bold text-foreground mt-1">{p.nombre}</h3>
                       
                       <div className="my-6 space-y-4">
                         {isEditing ? (
                           <div className="space-y-3 text-xs">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-white/40 uppercase">Precio ($ USD / mes)</label>
+                              <label className="text-[10px] font-bold text-muted-foreground uppercase">Precio ($ USD / mes)</label>
                               <input 
                                 type="number" 
                                 value={editPlanPrice} 
                                 onChange={(e) => setEditPlanPrice(Number(e.target.value))}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl py-1.5 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                                className="w-full bg-background border border-border rounded-xl py-1.5 px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-white/40 uppercase">Límite Usuarios</label>
+                              <label className="text-[10px] font-bold text-muted-foreground uppercase">Límite Usuarios</label>
                               <input 
                                 type="number" 
                                 value={editPlanLimit} 
                                 onChange={(e) => setEditPlanLimit(Number(e.target.value))}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl py-1.5 px-3 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                                className="w-full bg-background border border-border rounded-xl py-1.5 px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono"
                               />
                             </div>
                           </div>
                         ) : (
                           <div className="space-y-2">
                             <div>
-                              <span className="text-xs text-white/40">Tarifa Mensual</span>
-                              <p className="text-2xl font-black text-white mt-0.5">${p.precio} <span className="text-xs text-white/40 font-normal">USD</span></p>
+                              <span className="text-xs text-muted-foreground">Tarifa Mensual</span>
+                              <p className="text-2xl font-black text-foreground mt-0.5">${p.precio} <span className="text-xs text-muted-foreground font-normal">USD</span></p>
                             </div>
                             <div>
-                              <span className="text-xs text-white/40">Límite de Cuentas</span>
-                              <p className="text-lg font-bold text-indigo-400 mt-0.5">{p.limite_usuarios.toLocaleString()} <span className="text-xs text-white/40 font-normal">usuarios</span></p>
+                              <span className="text-xs text-muted-foreground">Límite de Cuentas</span>
+                              <p className="text-lg font-bold text-primary mt-0.5">{p.limite_usuarios.toLocaleString()} <span className="text-xs text-muted-foreground font-normal">usuarios</span></p>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-white/5">
+                    <div className="pt-4 border-t border-border">
                       {isEditing ? (
                         <div className="flex gap-2">
                           <button
                             onClick={() => setEditingPlanId(null)}
-                            className="flex-1 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                            className="flex-1 py-2 border border-border bg-secondary text-muted-foreground hover:text-foreground rounded-xl text-xs font-semibold transition-all cursor-pointer"
                           >
                             Cancelar
                           </button>
                           <button
                             onClick={() => handleSavePlan(p.id_suscripcion)}
                             disabled={updatingPlan}
-                            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-indigo-600/20 cursor-pointer disabled:opacity-50"
+                            className="flex-1 py-2 bg-primary hover:bg-primary/90 rounded-xl text-xs font-bold text-primary-foreground transition-all shadow-md cursor-pointer disabled:opacity-50"
                           >
                             {updatingPlan ? 'Guardando...' : 'Guardar'}
                           </button>
@@ -585,7 +627,7 @@ export default function SuperAdminDashboard() {
                             setEditPlanPrice(p.precio);
                             setEditPlanLimit(p.limite_usuarios);
                           }}
-                          className="w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-xs font-bold text-white transition-all cursor-pointer"
+                          className="w-full py-2 bg-secondary hover:bg-secondary/80 border border-border rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer"
                         >
                           Editar Parámetros
                         </button>
@@ -602,43 +644,41 @@ export default function SuperAdminDashboard() {
         {activeTab === 'ia' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div>
-              <h1 className="text-2xl font-black text-white">Monitoreo de Consumo de IA</h1>
-              <p className="text-xs text-white/40 mt-0.5">Logs de peticiones de tokens consumidos de Gemini API por cada colegio.</p>
+              <h1 className="text-2xl font-black text-foreground">Monitoreo de Consumo de IA</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Logs de peticiones de tokens consumidos de Gemini API por cada colegio.</p>
             </div>
 
             {aiLogs.length > 0 ? (
-              <div className="overflow-hidden border border-white/8 rounded-2xl bg-white/[0.01]">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-white/8 bg-white/3 text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                        <th className="py-3 px-5">ID Petición</th>
-                        <th className="py-3 px-5">Institución</th>
-                        <th className="py-3 px-5">Servicio IA</th>
-                        <th className="py-3 px-5 text-center">Tokens Usados</th>
-                        <th className="py-3 px-5 text-center">Costo Estimado</th>
-                        <th className="py-3 px-5 text-right">Fecha / Hora</th>
+              <div className="overflow-hidden border border-border rounded-2xl bg-card shadow-xs custom-scrollbar overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      <th className="py-3 px-5">ID Petición</th>
+                      <th className="py-3 px-5">Institución</th>
+                      <th className="py-3 px-5">Servicio IA</th>
+                      <th className="py-3 px-5 text-center">Tokens Usados</th>
+                      <th className="py-3 px-5 text-center">Costo Estimado</th>
+                      <th className="py-3 px-5 text-right">Fecha / Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border text-xs font-mono">
+                    {aiLogs.map((log) => (
+                      <tr key={log.id_ia_token} className="hover:bg-secondary/40 transition-all">
+                        <td className="py-3 px-5 text-muted-foreground text-[10px]">{log.id_ia_token.slice(0, 8)}...</td>
+                        <td className="py-3 px-5 font-bold font-sans text-foreground">{log.instituciones?.nombre_legal || 'Master SaaS'}</td>
+                        <td className="py-3 px-5 text-primary font-semibold text-[10px]">{log.servicio_ia}</td>
+                        <td className="py-3 px-5 text-center text-foreground">{log.tokens_usados.toLocaleString()}</td>
+                        <td className="py-3 px-5 text-center text-rose-500 font-bold">${Number(log.costo_estimado).toFixed(5)}</td>
+                        <td className="py-3 px-5 text-right text-muted-foreground text-[10px]">
+                          {new Date(log.fecha_peticion).toLocaleString('es-CO')}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-xs font-mono">
-                      {aiLogs.map((log) => (
-                        <tr key={log.id_ia_token} className="hover:bg-white/[0.01] transition-all">
-                          <td className="py-3 px-5 text-white/40 text-[10px]">{log.id_ia_token.slice(0, 8)}...</td>
-                          <td className="py-3 px-5 font-bold font-sans text-white/80">{log.instituciones?.nombre_legal || 'Master SaaS'}</td>
-                          <td className="py-3 px-5 text-indigo-400 font-semibold text-[10px]">{log.servicio_ia}</td>
-                          <td className="py-3 px-5 text-center text-white/90">{log.tokens_usados.toLocaleString()}</td>
-                          <td className="py-3 px-5 text-center text-rose-400 font-bold">${Number(log.costo_estimado).toFixed(5)}</td>
-                          <td className="py-3 px-5 text-right text-white/30 text-[10px]">
-                            {new Date(log.fecha_peticion).toLocaleString('es-CO')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="text-center py-16 text-xs text-white/30">
+              <div className="text-center py-16 text-xs text-muted-foreground">
                 No hay llamadas de IA registradas en el SaaS.
               </div>
             )}

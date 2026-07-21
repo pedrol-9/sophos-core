@@ -2,6 +2,7 @@
 
 import { useState, useActionState } from 'react';
 import { changeUserPassword } from '@/app/actions/auth-actions';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 function IconEye({ open }: { open: boolean }) {
   return open ? (
@@ -49,10 +50,16 @@ export default function ChangePasswordPage() {
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden">
+      
+      {/* Theme toggle in top right */}
+      <div className="absolute top-5 right-5 z-10">
+        <ThemeToggle />
+      </div>
+
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/15 blur-[100px] rounded-full" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/10 blur-[100px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-cyan-500/8 blur-[80px] rounded-full" />
       </div>
 
@@ -61,35 +68,35 @@ export default function ChangePasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2.5 group">
-            <img src="/favicon.png" alt="Sophos Core Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-indigo-500/25" />
-            <span className="text-xl font-bold tracking-tight text-white">
-              Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Core</span>
+            <img src="/favicon.png" alt="Sophos Core Logo" className="w-10 h-10 object-contain rounded-xl shadow-md" />
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Sophos<span className="bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent"> Core</span>
             </span>
           </div>
-          <p className="text-white/40 text-sm mt-3">Actualización obligatoria de seguridad</p>
+          <p className="text-muted-foreground text-sm mt-3">Actualización obligatoria de seguridad</p>
         </div>
 
         {/* Info banner */}
         <div className="mb-5 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-start gap-2.5">
-          <svg className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <div>
-            <p className="text-indigo-300 text-xs font-semibold">Primer inicio de sesión detectado</p>
-            <p className="text-white/50 text-[11px] mt-0.5 leading-relaxed">
+            <p className="text-indigo-600 dark:text-indigo-300 text-xs font-semibold">Primer inicio de sesión detectado</p>
+            <p className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed">
               Por motivos de seguridad, debes cambiar tu contraseña temporal antes de poder acceder a tu panel de control.
             </p>
           </div>
         </div>
 
         {/* Form card */}
-        <div className="bg-white/3 border border-white/10 rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
-          <h1 className="text-lg font-semibold text-white mb-6">Establecer Nueva Contraseña</h1>
+        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl">
+          <h1 className="text-lg font-semibold text-foreground mb-6">Establecer Nueva Contraseña</h1>
 
           <form action={formAction} className="space-y-5">
             {/* New Password */}
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="password" className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                 Nueva Contraseña
               </label>
               <div className="relative">
@@ -99,13 +106,13 @@ export default function ChangePasswordPage() {
                   type={showPwd ? 'text' : 'password'}
                   required
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-all z-10 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-all z-10 cursor-pointer"
                 >
                   <IconEye open={showPwd} />
                 </button>
@@ -114,7 +121,7 @@ export default function ChangePasswordPage() {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirm_password" className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="confirm_password" className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                 Confirmar Contraseña
               </label>
               <div className="relative">
@@ -124,13 +131,13 @@ export default function ChangePasswordPage() {
                   type={showConfirmPwd ? 'text' : 'password'}
                   required
                   placeholder="Repite la nueva contraseña"
-                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-all z-10 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-all z-10 cursor-pointer"
                 >
                   <IconEye open={showConfirmPwd} />
                 </button>
@@ -140,10 +147,10 @@ export default function ChangePasswordPage() {
             {/* Error message */}
             {state?.error && (
               <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25">
-                <svg className="w-4 h-4 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
-                <p className="text-red-300 text-sm">{state.error}</p>
+                <p className="text-red-500 dark:text-red-300 text-sm">{state.error}</p>
               </div>
             )}
 
@@ -151,9 +158,9 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white transition-all duration-200 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 mt-2"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
-              {isPending ? <><Spinner /> Guardando...</> : <>Actualizar y Entrar <IconArrow /></>}
+              {isPending ? <><Spinner /> Actualizando contraseña...</> : <>Guardar y Continuar <IconArrow /></>}
             </button>
           </form>
         </div>

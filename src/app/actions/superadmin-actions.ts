@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 export type SaaSMetrics = {
   totalInstituciones: number;
   totalUsuarios: number;
+  mrrTotal: number;
   distribucionPlanes: { plan: string; count: number }[];
   totalTokensIA: number;
   costoEstimadoIA: number;
@@ -71,15 +72,17 @@ export async function getSuperAdminMetrics(): Promise<{ success: boolean; data?:
       count: rolCounts[rol]
     }));
 
-    // 3. Distribución de planes
+    // 3. Distribución de planes y MRR
     const { data: insts } = await (supabase as any)
       .from('instituciones')
-      .select('id_suscripcion, planes_suscripcion(nombre)');
+      .select('id_suscripcion, planes_suscripcion(nombre, precio)');
 
     const planCounts: Record<string, number> = {};
+    let mrrTotal = 0;
     (insts || []).forEach((i: any) => {
       const name = i.planes_suscripcion?.nombre || 'Sin Plan';
       planCounts[name] = (planCounts[name] || 0) + 1;
+      mrrTotal += Number(i.planes_suscripcion?.precio || 0);
     });
 
     const distribucionPlanes = Object.keys(planCounts).map(plan => ({
@@ -104,6 +107,7 @@ export async function getSuperAdminMetrics(): Promise<{ success: boolean; data?:
       data: {
         totalInstituciones: totalInstituciones || 0,
         totalUsuarios,
+        mrrTotal,
         distribucionPlanes,
         totalTokensIA,
         costoEstimadoIA: Math.round(costoEstimadoIA * 100) / 100,

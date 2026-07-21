@@ -19,3 +19,6 @@
 // export { Navbar } from './layout/Navbar';
 
 export { InactivityProvider } from './auth/InactivityProvider';
+export { ThemeProvider, useTheme } from './ThemeProvider';
+export { ThemeToggle } from './ThemeToggle';
+

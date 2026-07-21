@@ -1,33 +1,44 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════════════
-   BLOQUE A — TEMA ACTIVO
-   Solo edita este bloque para cambiar toda la gama de colores del sitio.
+   BLOQUE A — VARIABLES DE TEMA (CLARO Y OSCURO)
+   Define la paleta de colores para Modo Claro (:root) y Modo Oscuro (.dark).
    ════════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Fondos ─────────────────────────────────────────────────────────────── */
-  --bg-base:        #1a1f35;   /* Fondo principal de pantalla  */
-  --bg-surface:     #1e2540;   /* Tarjetas, sidebar, modales   */
-  --bg-overlay:     #252b4a;   /* Hover de filas, dropdowns    */
+  /* ── Modo Claro ──────────────────────────────────────────────────────────── */
+  --bg-base:        #f8fafc;   /* Fondo principal (Slate 50) */
+  --bg-surface:     #ffffff;   /* Tarjetas, sidebar, modales (Blanco) */
+  --bg-overlay:     #f1f5f9;   /* Hover, dropdowns (Slate 100) */
 
-  /* ── Color primario (botones, links activos, anillos de foco) ─────────── */
-  --clr-primary:    #6366f1;   /* Indigo                        */
-  --clr-primary-h:  #818cf8;   /* Hover del primario            */
+  --clr-primary:    #4f46e5;   /* Indigo 600 */
+  --clr-primary-h:  #6366f1;   /* Indigo 500 */
+  --clr-accent:     #0891b2;   /* Cyan 600 */
 
-  /* ── Color acento (badges IA, highlights) ──────────────────────────────── */
-  --clr-accent:     #06b6d4;   /* Cyan                          */
+  --clr-text:       #0f172a;   /* Texto principal (Slate 900) */
+  --clr-text-muted: #64748b;   /* Texto secundario (Slate 500) */
 
-  /* ── Texto ──────────────────────────────────────────────────────────────── */
-  --clr-text:       #f1f5f9;
-  --clr-text-muted: #94a3b8;
+  --clr-border:     rgba(15, 23, 42, 0.12); /* Borde sutil */
+}
 
-  /* ── Bordes ─────────────────────────────────────────────────────────────── */
-  --clr-border:     rgba(255, 255, 255, 0.10);
+.dark {
+  /* ── Modo Oscuro ──────────────────────────────────────────────────────────── */
+  --bg-base:        #1a1f35;   /* Fondo principal oscuro */
+  --bg-surface:     #1e2540;   /* Tarjetas, sidebar, modales */
+  --bg-overlay:     #252b4a;   /* Hover de filas, dropdowns */
+
+  --clr-primary:    #6366f1;   /* Indigo 500 */
+  --clr-primary-h:  #818cf8;   /* Indigo 400 */
+  --clr-accent:     #06b6d4;   /* Cyan 500 */
+
+  --clr-text:       #f1f5f9;   /* Texto principal claro (Slate 100) */
+  --clr-text-muted: #94a3b8;   /* Texto secundario (Slate 400) */
+
+  --clr-border:     rgba(255, 255, 255, 0.10); /* Borde sutil claro */
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
    BLOQUE B — TOKENS SEMÁNTICOS
-   Se derivan del Bloque A automáticamente. No los toques.
+   Se derivan dinámicamente según la clase .dark activa.
    ════════════════════════════════════════════════════════════════════════════ */
 :root {
   --background:           var(--bg-base);
@@ -124,3 +135,57 @@ input:-webkit-autofill:active {
 input, textarea {
   caret-color: #ffffff !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BLOQUE D — ESTILOS DE OVERFLOW Y SCROLLBARS
+   Estilización personalizada de barras de desplazamiento alineadas a la 
+   arquitectura de diseño del front (tema oscuro, tokens semánticos).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Estándar CSS W3C (Firefox y navegadores modernos) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-overlay) transparent;
+}
+
+/* Motores WebKit / Chromium (Chrome, Edge, Safari, Brave) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bg-overlay);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--clr-primary);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Utilidades para control explícito de overflow y scrollbars en componentes */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-overlay) transparent;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE y Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;             /* WebKit */
+}
+

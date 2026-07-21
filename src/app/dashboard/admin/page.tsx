@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdminPwd, setShowAdminPwd] = useState(false);
-  const [logoTimestamp, setLogoTimestamp] = useState(Date.now());
+  const [logoTimestamp, setLogoTimestamp] = useState(() => Date.now());
 
   // ─── CUSTOM HOOK ─────────────────────────────────────────────────────────────
   const {
@@ -169,7 +169,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background text-white overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen bg-background text-foreground overflow-hidden">
       {/* Wizard: solo se muestra en el flujo inicial (onboarding incompleto y no dismissed) */}
       {!isOnboardingComplete && !dismissedOnboarding && user?.app_metadata?.id_institucion && (
         <OnboardingWizard
@@ -191,7 +191,7 @@ export default function DashboardPage() {
       />
 
       {/* ─── MAIN CONTENT ───────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto p-8 relative">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 relative custom-scrollbar">
         <div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-indigo-500/5 blur-[120px] pointer-events-none" />
 
         {/* WARNING BANNER FOR PENDING ONBOARDING */}
@@ -202,8 +202,8 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 className="text-sm font-bold text-amber-200">Ajustes Académicos Pendientes</h4>
-                <p className="text-xs text-amber-300/80 mt-0.5">
+                <h4 className="text-sm font-bold text-amber-500 dark:text-amber-200">Ajustes Académicos Pendientes</h4>
+                <p className="text-xs text-amber-600/80 dark:text-amber-300/80 mt-0.5">
                   Los periodos y la escala de valoración aún no están configurados. Los docentes no podrán registrar calificaciones hasta completar este paso.
                 </p>
               </div>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
         {/* HEADER */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               {activeTab === 'dashboard' ? 'Panel Académico' :
                activeTab === 'institutions' ? 'Sedes e Institutos' :
                activeTab === 'courses' ? 'Cursos y Materias' :
@@ -231,7 +231,8 @@ export default function DashboardPage() {
                activeTab === 'settings_admins' ? 'Administradores' :
                activeTab === 'cierre' ? 'Boletines y Cierre de Periodo' : 'Panel General'}
             </h1>
-            <p className="text-sm text-white/50 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
+
               {activeTab === 'dashboard' ? 'Supervisión integrada e inteligencia predictiva académica' :
                activeTab === 'institutions' ? 'Información y estadísticas de la sede principal' :
                activeTab === 'courses' ? 'Gestión curricular y administrativa de grados y asignaturas' :

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { InactivityProvider } from "@/components";
+import { InactivityProvider, ThemeProvider } from "@/components";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,14 +23,36 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className="h-full antialiased"
+      lang="es"
+      className="h-full antialiased dark"
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background text-white font-sans">
-        <InactivityProvider>
-          {children}
-        </InactivityProvider>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('theme');
+                  if (stored === 'light') {
+                    document.documentElement.classList.remove('dark');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans transition-colors duration-200">
+        <ThemeProvider>
+          <InactivityProvider>
+            {children}
+          </InactivityProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

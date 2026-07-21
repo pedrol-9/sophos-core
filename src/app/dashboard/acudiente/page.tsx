@@ -8,6 +8,7 @@ import {
   IconNotebook, IconChecklist, IconLogout, IconSparkles, IconUser
 } from '@/components/icons';
 import { signObservacion } from '@/app/actions/observador-actions';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface SubjectGrade {
   id_calificacion: string;
@@ -76,6 +77,9 @@ export default function AcudienteDashboard() {
   const [activeTab, setActiveTab] = useState<'grades' | 'absences' | 'observador'>('grades');
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
 
+  // Firma digital
+  const [signingObsId, setSigningObsId] = useState<string | null>(null);
+
   // Modal de confirmación / alerta personalizado
   const [modalConfig, setModalConfig] = useState<{
     show: boolean;
@@ -100,55 +104,52 @@ export default function AcudienteDashboard() {
       // Query parent-student relations
       const { data: relations, error: relError } = await supabase
         .from('perfiles_acudientes_estudiantes')
-        .select('id_estudiante, parentesco')
+        .select(`
+          id_estudiante,
+          parentesco,
+          usuarios!perfiles_acudientes_estudiantes_id_estudiante_fkey (
+            nombre_completo,
+            email
+          )
+        `)
         .eq('id_acudiente', currentUser.id);
 
-      if (relError || !relations || relations.length === 0) {
+      if (relError) {
+        console.error("Error loading acudidos:", relError);
         setLoadingUser(false);
         return;
       }
 
-      // Fetch profiles for these student IDs
-      const kidIds = relations.map(r => r.id_estudiante);
-      const { data: profiles, error: profError } = await supabase
-        .from('usuarios')
-        .select('id_usuario, nombre_completo, email')
-        .in('id_usuario', kidIds);
-
-      if (profError || !profiles) {
-        setLoadingUser(false);
-        return;
-      }
-
-      // Map everything
-      const kidsList: KidProfile[] = relations.map(r => {
-        const profile = profiles.find(p => p.id_usuario === r.id_estudiante);
-        return {
+      if (relations && relations.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedKids: KidProfile[] = relations.map((r: any) => ({
           id_estudiante: r.id_estudiante,
-          parentesco: r.parentesco,
-          nombre_completo: profile?.nombre_completo || 'Estudiante',
-          email: profile?.email || ''
-        };
-      });
+          parentesco: r.parentesco || 'Acudido',
+          nombre_completo: r.usuarios?.nombre_completo || 'Estudiante',
+          email: r.usuarios?.email || '',
+        }));
 
-      setKids(kidsList);
-      if (kidsList.length > 0) {
-        setSelectedKid(kidsList[0]);
+        setKids(mappedKids);
+        setSelectedKid(mappedKids[0]); // Default to first child
       }
+
       setLoadingUser(false);
     }
+
     loadInitialData();
   }, [supabase, router]);
 
-  // 2. Load Selected Student Academic Data
+  // 2. Load academic data whenever selectedKid changes
   useEffect(() => {
-    async function loadAcademicData() {
+    async function loadKidAcademicData() {
       if (!selectedKid) return;
-      setLoadingData(true);
-      
-      const currentYear = new Date().getFullYear();
 
-      // A. Fetch student enrollment for the current year
+      setLoadingData(true);
+      setSubjects([]);
+      setAbsences([]);
+      setObservadorLogs([]);
+
+      // a. Get enrollment for current year (2026)
       const { data: matricula } = await supabase
         .from('estudiantes_matriculados')
         .select(`
@@ -157,21 +158,18 @@ export default function AcudienteDashboard() {
           cursos (nombre)
         `)
         .eq('id_estudiante', selectedKid.id_estudiante)
-        .eq('ano_lectivo', currentYear)
+        .eq('ano_lectivo', new Date().getFullYear())
         .maybeSingle();
 
       if (!matricula) {
-        setCourseName('Sin matrícula activa');
-        setSubjects([]);
-        setAbsences([]);
-        setObservadorLogs([]);
+        setCourseName('Sin Matrícula Activa');
         setLoadingData(false);
         return;
       }
 
       setCourseName(matricula.cursos?.nombre || 'Sin Curso');
 
-      // B. Fetch assignments for this course
+      // b. Fetch all assignments for this course
       const { data: assignments } = await supabase
         .from('asignaciones_academicas')
         .select(`
@@ -181,136 +179,32 @@ export default function AcudienteDashboard() {
           usuarios (nombre_completo)
         `)
         .eq('id_curso', matricula.id_curso)
-        .eq('ano_lectivo', currentYear);
+        .eq('ano_lectivo', new Date().getFullYear());
 
-      if (!assignments) {
-        setSubjects([]);
-        setAbsences([]);
-        setObservadorLogs([]);
-        setLoadingData(false);
-        return;
-      }
-
-      // C. Fetch grades
+      // c. Fetch grades
       const { data: grades } = await supabase
         .from('calificaciones')
-        .select('id_calificacion, nota, periodo, comentario_docente, comentario_ia, id_asignacion, id_evidencia')
+        .select('id_calificacion, nota, periodo, comentario_docente, comentario_ia, id_asignacion')
         .eq('id_matricula', matricula.id_matricula);
 
-      // Fetch evidence configurations to calculate weighted averages
-      const assignmentIds = assignments.map(a => a.id_asignacion);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: configs } = await (supabase as any)
-        .from('configuracion_evidencias_periodo')
-        .select('id_asignacion, id_periodo, id_evidencia, activo, peso')
-        .in('id_asignacion', assignmentIds);
-
-      // D. Fetch absences
-      const { data: DBabsences } = await supabase
+      // d. Fetch absences
+      const { data: absenceData } = await (supabase as any)
         .from('asistencias')
         .select(`
           id_asistencia,
           fecha,
           estado,
+          id_asignacion,
           asignaciones_academicas (
             materias (nombre)
           )
         `)
         .eq('id_matricula', matricula.id_matricula)
-        .in('estado', ['FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA']);
+        .order('fecha', { ascending: false });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parsedAbsences: AbsenceRecord[] = (DBabsences || []).map((a: any) => ({
-        id_asistencia: a.id_asistencia,
-        fecha: a.fecha,
-        estado: a.estado,
-        materiaNombre: a.asignaciones_academicas?.materias?.nombre || 'Asignatura'
-      }));
-      setAbsences(parsedAbsences);
-
-      // E. Map subjects list
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parsedSubjects: StudentSubject[] = assignments.map((ass: any) => {
-        const studentGradesRaw = (grades || []).filter(g => g.id_asignacion === ass.id_asignacion);
-
-        // Group raw grades by period
-        const gradesByPeriod: Record<number, typeof studentGradesRaw> = {};
-        studentGradesRaw.forEach(g => {
-          if (!gradesByPeriod[g.periodo]) {
-            gradesByPeriod[g.periodo] = [];
-          }
-          gradesByPeriod[g.periodo].push(g);
-        });
-
-        // Compute definitive grade for each period (1, 2, 3, 4)
-        const periodGrades: SubjectGrade[] = Object.keys(gradesByPeriod).map(periodStr => {
-          const periodNum = parseInt(periodStr, 10);
-          const periodRawGrades = gradesByPeriod[periodNum];
-
-          let totalWeighted = 0;
-          let totalWeight = 0;
-          let hasWeightedGrade = false;
-
-          periodRawGrades.forEach(g => {
-            const conf = (configs || []).find(
-              (c: any) => c.id_asignacion === ass.id_asignacion && c.id_evidencia === g.id_evidencia
-            );
-
-            if (conf && conf.activo) {
-              totalWeighted += Number(g.nota) * Number(conf.peso);
-              totalWeight += Number(conf.peso);
-              hasWeightedGrade = true;
-            }
-          });
-
-          let rawAverage = 0;
-          if (hasWeightedGrade && totalWeight > 0) {
-            rawAverage = totalWeighted / totalWeight;
-          } else {
-            const sum = periodRawGrades.reduce((acc, curr) => acc + Number(curr.nota), 0);
-            rawAverage = sum / periodRawGrades.length;
-          }
-
-          // Redondeo a un decimal (basado en la segunda cifra decimal)
-          const roundedNota = Math.round(rawAverage * 10) / 10;
-
-          const commentsDocente = periodRawGrades
-            .map(g => g.comentario_docente)
-            .filter(Boolean)
-            .join(' | ');
-
-          const commentsIa = periodRawGrades
-            .map(g => g.comentario_ia)
-            .filter(Boolean)
-            .join(' | ');
-
-          return {
-            id_calificacion: periodRawGrades[0].id_calificacion,
-            nota: roundedNota,
-            periodo: periodNum,
-            comentario_docente: commentsDocente || null,
-            comentario_ia: commentsIa || null
-          };
-        });
-
-        const studentAbsencesCount = parsedAbsences.filter(
-          a => a.materiaNombre === ass.materias.nombre
-        ).length;
-
-        return {
-          id_asignacion: ass.id_asignacion,
-          materiaNombre: ass.materias.nombre,
-          materiaArea: ass.materias.area,
-          docenteNombre: ass.usuarios?.nombre_completo || 'Docente Asignado',
-          grades: periodGrades,
-          absencesCount: studentAbsencesCount
-        };
-      });
-      setSubjects(parsedSubjects);
-
-      // F. Fetch Observador Digital logs
-      const { data: DBobservador } = await supabase
-        .from('observador_digital')
+      // e. Fetch Observador Digital logs
+      const { data: obsData } = await (supabase as any)
+        .from('observador_estudiantes')
         .select(`
           id_observador,
           tipo_nota,
@@ -320,33 +214,80 @@ export default function AcudienteDashboard() {
           firmado,
           fecha_firma,
           firmado_por,
-          docente:usuarios!observador_digital_id_docente_fkey (nombre_completo),
-          firmador:usuarios!observador_digital_firmado_por_fkey (nombre_completo)
+          usuarios!observador_estudiantes_id_docente_fkey (nombre_completo),
+          firmador:usuarios!observador_estudiantes_firmado_por_fkey (nombre_completo)
         `)
         .eq('id_estudiante', selectedKid.id_estudiante)
         .order('fecha_registro', { ascending: false });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parsedObservador: ObservadorRecord[] = (DBobservador || []).map((o: any) => ({
-        id_observador: o.id_observador,
-        tipo_nota: o.tipo_nota,
-        observacion_informal: o.observacion_informal,
-        observacion_formal_ia: o.observacion_formal_ia,
-        fecha_registro: o.fecha_registro,
-        firmado: o.firmado,
-        fecha_firma: o.fecha_firma,
-        firmado_por: o.firmado_por,
-        docenteNombre: o.docente?.nombre_completo || 'Docente/Coordinador',
-        firmadorNombre: o.firmador?.nombre_completo
-      }));
-      setObservadorLogs(parsedObservador);
+      // Map subjects
+      if (assignments) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedSubjects: StudentSubject[] = assignments.map((ass: any) => {
+          const studentGrades = (grades || [])
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((g: any) => g.id_asignacion === ass.id_asignacion)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((g: any) => ({
+              id_calificacion: g.id_calificacion,
+              nota: g.nota,
+              periodo: g.periodo,
+              comentario_docente: g.comentario_docente,
+              comentario_ia: g.comentario_ia,
+            }));
+
+          const subAbsencesCount = (absenceData || [])
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((a: any) => a.id_asignacion === ass.id_asignacion).length;
+
+          return {
+            id_asignacion: ass.id_asignacion,
+            materiaNombre: ass.materias?.nombre || 'Asignatura',
+            materiaArea: ass.materias?.area || 'General',
+            docenteNombre: ass.usuarios?.nombre_completo || 'Docente no asignado',
+            grades: studentGrades,
+            absencesCount: subAbsencesCount,
+          };
+        });
+
+        setSubjects(mappedSubjects);
+      }
+
+      // Map absences list
+      if (absenceData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedAbsences: AbsenceRecord[] = absenceData.map((a: any) => ({
+          id_asistencia: a.id_asistencia,
+          fecha: a.fecha,
+          estado: a.estado,
+          materiaNombre: a.asignaciones_academicas?.materias?.nombre || 'Asignatura',
+        }));
+        setAbsences(mappedAbsences);
+      }
+
+      // Map observador logs
+      if (obsData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mappedObs: ObservadorRecord[] = obsData.map((o: any) => ({
+          id_observador: o.id_observador,
+          tipo_nota: o.tipo_nota,
+          observacion_informal: o.observacion_informal,
+          observacion_formal_ia: o.observacion_formal_ia,
+          fecha_registro: o.fecha_registro,
+          docenteNombre: o.usuarios?.nombre_completo || 'Docente',
+          firmado: o.firmado,
+          fecha_firma: o.fecha_firma,
+          firmado_por: o.firmado_por,
+          firmadorNombre: o.firmador?.nombre_completo || 'Acudiente'
+        }));
+        setObservadorLogs(mappedObs);
+      }
 
       setLoadingData(false);
     }
-    loadAcademicData();
-  }, [selectedKid, supabase]);
 
-  const [signingObsId, setSigningObsId] = useState<string | null>(null);
+    loadKidAcademicData();
+  }, [selectedKid, supabase]);
 
   const handleSignObservacion = async (idObservador: string) => {
     setSigningObsId(idObservador);
@@ -355,44 +296,28 @@ export default function AcudienteDashboard() {
       setModalConfig({
         show: true,
         title: 'Error al Firmar',
-        message: `Error al firmar de enterado: ${res.error}`,
+        message: `Error al registrar firma digital: ${res.error}`,
         type: 'error'
       });
     } else {
-      // Re-fetch only observador logs to update state immediately
-      if (selectedKid) {
-        const { data: DBobservador } = await supabase
-          .from('observador_digital')
-          .select(`
-            id_observador,
-            tipo_nota,
-            observacion_informal,
-            observacion_formal_ia,
-            fecha_registro,
-            firmado,
-            fecha_firma,
-            firmado_por,
-            docente:usuarios!observador_digital_id_docente_fkey (nombre_completo),
-            firmador:usuarios!observador_digital_firmado_por_fkey (nombre_completo)
-          `)
-          .eq('id_estudiante', selectedKid.id_estudiante)
-          .order('fecha_registro', { ascending: false });
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsedObservador: ObservadorRecord[] = (DBobservador || []).map((o: any) => ({
-          id_observador: o.id_observador,
-          tipo_nota: o.tipo_nota,
-          observacion_informal: o.observacion_informal,
-          observacion_formal_ia: o.observacion_formal_ia,
-          fecha_registro: o.fecha_registro,
-          firmado: o.firmado,
-          fecha_firma: o.fecha_firma,
-          firmado_por: o.firmado_por,
-          docenteNombre: o.docente?.nombre_completo || 'Docente/Coordinador',
-          firmadorNombre: o.firmador?.nombre_completo
-        }));
-        setObservadorLogs(parsedObservador);
-      }
+      setModalConfig({
+        show: true,
+        title: 'Firma Registrada',
+        message: '¡Anotación firmada correctamente como enterado!',
+        type: 'success'
+      });
+      // Update local state
+      setObservadorLogs(prev => prev.map(item => {
+        if (item.id_observador === idObservador) {
+          return {
+            ...item,
+            firmado: true,
+            fecha_firma: new Date().toISOString(),
+            firmadorNombre: user?.user_metadata?.nombre_completo || 'Acudiente'
+          };
+        }
+        return item;
+      }));
     }
     setSigningObsId(null);
   };
@@ -426,68 +351,69 @@ export default function AcudienteDashboard() {
 
   if (loadingUser) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
         <div className="text-center">
-          <svg className="animate-spin w-8 h-8 text-indigo-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
+          <svg className="animate-spin w-8 h-8 text-primary mx-auto mb-4" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <p className="text-white/60 text-sm">Cargando tu Portal de Acudiente...</p>
+          <p className="text-muted-foreground text-sm font-medium">Cargando tu Portal de Acudiente...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-background text-white/90 font-sans flex overflow-hidden relative">
+    <div className="h-screen bg-background text-foreground font-sans flex overflow-hidden relative">
       {/* Ambient Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full" />
+        <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-cyan-500/5 blur-[100px] rounded-full" />
       </div>
 
       {/* Parent Sidebar */}
-      <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md relative z-10 h-full">
+      <aside className="w-64 border-r border-border flex flex-col justify-between shrink-0 bg-card backdrop-blur-md relative z-10 h-full shadow-xs">
         <div className="flex flex-col flex-1 min-h-0">
           
           {/* Logo */}
-          <div className="p-6 border-b border-white/10 shrink-0">
+          <div className="p-6 border-b border-border shrink-0">
             <div className="flex items-center gap-2.5">
-              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-indigo-500/20" />
-              <span className="text-lg font-bold tracking-tight text-white">
-                Portal<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Acudiente</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+              <span className="text-lg font-bold tracking-tight text-foreground">
+                Portal<span className="text-primary"> Acudiente</span>
               </span>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="p-4 space-y-1 overflow-y-auto flex-1">
+          <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
             <button
               onClick={() => setActiveTab('grades')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'grades'
-                  ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <IconNotebook /> Calificaciones
             </button>
             <button
               onClick={() => setActiveTab('absences')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'absences'
-                  ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <IconChecklist /> Reporte de Faltas
             </button>
             <button
               onClick={() => setActiveTab('observador')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'observador'
-                  ? 'bg-indigo-600/15 border-l-2 border-indigo-500 text-indigo-400'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <IconUser className="w-5 h-5" /> Observador Digital
@@ -495,22 +421,25 @@ export default function AcudienteDashboard() {
           </nav>
         </div>
 
-        {/* Profile Card & Logout */}
-        <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/15 border border-indigo-500/35 flex items-center justify-center text-indigo-300 font-bold uppercase shrink-0">
-              {user?.email?.charAt(0) ?? 'A'}
+        {/* Profile Card, Theme Toggle & Logout */}
+        <div className="p-4 border-t border-border space-y-3 bg-secondary/30 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-bold uppercase shrink-0">
+                {user?.email?.charAt(0) ?? 'A'}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  {user?.user_metadata?.nombre_completo || 'Acudiente'}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">Familia / Acudiente</p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white/95 truncate">
-                {user?.user_metadata?.nombre_completo || 'Acudiente'}
-              </p>
-              <p className="text-xs text-white/40 truncate">Familia / Acudiente</p>
-            </div>
+            <ThemeToggle />
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-white/70 text-xs font-semibold transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-background border border-border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 text-muted-foreground text-xs font-semibold transition-all duration-200 cursor-pointer"
           >
             <IconLogout /> Cerrar sesión
           </button>
@@ -518,42 +447,42 @@ export default function AcudienteDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto relative z-10 flex flex-col">
+      <main className="flex-1 overflow-y-auto relative z-10 flex flex-col custom-scrollbar">
         
         {/* Header containing Kid Selector */}
-        <header className="px-8 py-6 border-b border-white/5 sticky top-0 bg-background/80 backdrop-blur-md z-20 space-y-5">
+        <header className="px-8 py-6 border-b border-border sticky top-0 bg-background/80 backdrop-blur-md z-20 space-y-5">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Seguimiento de Acudidos</h1>
-              <p className="text-xs text-white/40 mt-0.5">Consulta las notas y reportes institucionales de tus hijos matriculados.</p>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">Seguimiento de Acudidos</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Consulta las notas y reportes institucionales de tus hijos matriculados.</p>
             </div>
           </div>
 
           {/* Kid Selector Cards */}
           {kids.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-1 max-w-full">
+            <div className="flex gap-3 overflow-x-auto pb-1 max-w-full custom-scrollbar">
               {kids.map(kid => (
                 <button
                   key={kid.id_estudiante}
                   onClick={() => setSelectedKid(kid)}
                   className={`flex items-center gap-3.5 px-4 py-2.5 rounded-xl border text-left transition-all shrink-0 cursor-pointer ${
                     selectedKid?.id_estudiante === kid.id_estudiante
-                      ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md shadow-indigo-600/10'
-                      : 'bg-white/3 border-white/10 text-white/60 hover:bg-white/5 hover:text-white'
+                      ? 'bg-primary/15 border-primary text-foreground shadow-xs'
+                      : 'bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm uppercase shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm uppercase shrink-0">
                     {kid.nombre_completo.charAt(0)}
                   </div>
                   <div>
                     <span className="block text-xs font-bold">{kid.nombre_completo}</span>
-                    <span className="block text-[9px] text-white/35 font-normal capitalize mt-0.5">{kid.parentesco}</span>
+                    <span className="block text-[9px] text-muted-foreground font-normal capitalize mt-0.5">{kid.parentesco}</span>
                   </div>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/25 text-xs text-yellow-300">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-600 dark:text-amber-300">
               No tienes ningún estudiante asociado a tu cuenta de acudiente. Contacta al administrador del colegio para vincular a tus hijos.
             </div>
           )}
@@ -563,11 +492,11 @@ export default function AcudienteDashboard() {
         {loadingData ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center space-y-3">
-              <svg className="animate-spin w-7 h-7 text-indigo-400 mx-auto" viewBox="0 0 24 24" fill="none">
+              <svg className="animate-spin w-7 h-7 text-primary mx-auto" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <p className="text-white/40 text-xs">Cargando reporte de {selectedKid?.nombre_completo}...</p>
+              <p className="text-muted-foreground text-xs font-medium">Cargando reporte de {selectedKid?.nombre_completo}...</p>
             </div>
           </div>
         ) : selectedKid ? (
@@ -578,39 +507,39 @@ export default function AcudienteDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* Course Name */}
-                <div className="bg-white/3 border border-white/10 rounded-2xl p-5 backdrop-blur-sm shadow-md">
-                  <div className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Curso de Matrícula</div>
-                  <div className="text-2xl font-extrabold text-white mt-2 truncate">
+                <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-sm shadow-xs">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Curso de Matrícula</div>
+                  <div className="text-2xl font-extrabold text-foreground mt-2 truncate">
                     {courseName}
                   </div>
-                  <div className="text-[10px] text-indigo-400 mt-1 font-semibold">Año Lectivo {new Date().getFullYear()}</div>
+                  <div className="text-[10px] text-primary mt-1 font-semibold">Año Lectivo {new Date().getFullYear()}</div>
                 </div>
 
                 {/* Cumulative Average */}
-                <div className="bg-white/3 border border-white/10 rounded-2xl p-5 backdrop-blur-sm shadow-md">
-                  <div className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Promedio Acumulado</div>
-                  <div className="text-2xl font-extrabold text-white mt-2 flex items-baseline gap-1.5">
+                <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-sm shadow-xs">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Promedio Acumulado</div>
+                  <div className="text-2xl font-extrabold text-foreground mt-2 flex items-baseline gap-1.5">
                     {getCumulativeAverage()}
-                    <span className="text-[11px] text-white/20 font-bold">/ 5.0</span>
+                    <span className="text-[11px] text-muted-foreground font-bold">/ 5.0</span>
                   </div>
-                  <div className="text-[10px] text-white/30 mt-1">Cálculo de todas las asignaturas</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">Cálculo de todas las asignaturas</div>
                 </div>
 
                 {/* Semáforo */}
-                <div className="bg-white/3 border border-white/10 rounded-2xl p-5 backdrop-blur-sm shadow-md">
-                  <div className="text-[10px] font-bold text-white/35 uppercase tracking-wider">Semáforo de Desempeño</div>
+                <div className="bg-card border border-border rounded-2xl p-5 backdrop-blur-sm shadow-xs">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semáforo de Desempeño</div>
                   <div className="text-2xl font-extrabold mt-2">
                     <span className={`${
                       getAcademicStatus() === 'Excelente' 
-                        ? 'text-teal-400' 
+                        ? 'text-teal-600 dark:text-teal-400' 
                         : getAcademicStatus() === 'Aprobando' 
-                          ? 'text-indigo-400' 
-                          : 'text-rose-400 animate-pulse'
+                          ? 'text-indigo-600 dark:text-indigo-400' 
+                          : 'text-rose-500 animate-pulse'
                     }`}>
                       {getAcademicStatus()}
                     </span>
                   </div>
-                  <div className="text-[10px] text-white/30 mt-1">Estimación automática de IA</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">Estimación automática de IA</div>
                 </div>
 
               </div>
@@ -623,15 +552,15 @@ export default function AcudienteDashboard() {
               {activeTab === 'grades' && (
                 <div className="space-y-6">
                   {subjects.length === 0 ? (
-                    <div className="py-12 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01] text-white/40 text-xs">
+                    <div className="py-12 text-center border border-border border-dashed rounded-2xl bg-card text-muted-foreground text-xs font-medium">
                       No hay materias ni calificaciones registradas para este año.
                     </div>
                   ) : (
-                    <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+                      <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left border-collapse min-w-[700px]">
                           <thead>
-                            <tr className="border-b border-white/10 text-white/40 text-[9px] font-bold uppercase tracking-wider bg-white/[0.01]">
+                            <tr className="border-b border-border text-muted-foreground text-[9px] font-bold uppercase tracking-wider bg-secondary/50">
                               <th className="py-4 px-6">Asignatura</th>
                               <th className="py-4 px-6 text-center">P1</th>
                               <th className="py-4 px-6 text-center">P2</th>
@@ -641,27 +570,27 @@ export default function AcudienteDashboard() {
                               <th className="py-4 px-6 text-right">Análisis Predictivo</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-white/5 text-xs">
+                          <tbody className="divide-y divide-border text-xs">
                             {subjects.map(sub => {
                               const isExpanded = expandedSubject === sub.id_asignacion;
 
                               return (
                                 <React.Fragment key={sub.id_asignacion}>
-                                  <tr className="hover:bg-white/[0.01] transition-colors">
+                                  <tr className="hover:bg-secondary/40 transition-colors">
                                     <td className="py-4 px-6">
-                                      <span className="text-[9px] font-bold bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase">
+                                      <span className="text-[9px] font-bold bg-primary/15 text-primary px-2 py-0.5 rounded uppercase">
                                         {sub.materiaArea}
                                       </span>
-                                      <h4 className="text-sm font-bold text-white mt-1.5">{sub.materiaNombre}</h4>
-                                      <p className="text-[10px] text-white/40 font-normal mt-0.5">Docente: {sub.docenteNombre}</p>
+                                      <h4 className="text-sm font-bold text-foreground mt-1.5">{sub.materiaNombre}</h4>
+                                      <p className="text-[10px] text-muted-foreground font-normal mt-0.5">Docente: {sub.docenteNombre}</p>
                                     </td>
 
                                     {/* Period 1 */}
                                     <td className="py-4 px-6 text-center">
                                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                                         sub.grades.find(g => g.periodo === 1)
-                                          ? (sub.grades.find(g => g.periodo === 1)?.nota || 0) >= 3.0 ? 'text-teal-400 bg-teal-500/5' : 'text-rose-400 bg-rose-500/5'
-                                          : 'text-white/15'
+                                          ? (sub.grades.find(g => g.periodo === 1)?.nota || 0) >= 3.0 ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10' : 'text-rose-500 bg-rose-500/10'
+                                          : 'text-muted-foreground/30'
                                       }`}>
                                         {sub.grades.find(g => g.periodo === 1)?.nota.toFixed(1) || '-.-'}
                                       </span>
@@ -671,8 +600,8 @@ export default function AcudienteDashboard() {
                                     <td className="py-4 px-6 text-center">
                                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                                         sub.grades.find(g => g.periodo === 2)
-                                          ? (sub.grades.find(g => g.periodo === 2)?.nota || 0) >= 3.0 ? 'text-teal-400 bg-teal-500/5' : 'text-rose-400 bg-rose-500/5'
-                                          : 'text-white/15'
+                                          ? (sub.grades.find(g => g.periodo === 2)?.nota || 0) >= 3.0 ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10' : 'text-rose-500 bg-rose-500/10'
+                                          : 'text-muted-foreground/30'
                                       }`}>
                                         {sub.grades.find(g => g.periodo === 2)?.nota.toFixed(1) || '-.-'}
                                       </span>
@@ -682,8 +611,8 @@ export default function AcudienteDashboard() {
                                     <td className="py-4 px-6 text-center">
                                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                                         sub.grades.find(g => g.periodo === 3)
-                                          ? (sub.grades.find(g => g.periodo === 3)?.nota || 0) >= 3.0 ? 'text-teal-400 bg-teal-500/5' : 'text-rose-400 bg-rose-500/5'
-                                          : 'text-white/15'
+                                          ? (sub.grades.find(g => g.periodo === 3)?.nota || 0) >= 3.0 ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10' : 'text-rose-500 bg-rose-500/10'
+                                          : 'text-muted-foreground/30'
                                       }`}>
                                         {sub.grades.find(g => g.periodo === 3)?.nota.toFixed(1) || '-.-'}
                                       </span>
@@ -693,8 +622,8 @@ export default function AcudienteDashboard() {
                                     <td className="py-4 px-6 text-center">
                                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                                         sub.grades.find(g => g.periodo === 4)
-                                          ? (sub.grades.find(g => g.periodo === 4)?.nota || 0) >= 3.0 ? 'text-teal-400 bg-teal-500/5' : 'text-rose-400 bg-rose-500/5'
-                                          : 'text-white/15'
+                                          ? (sub.grades.find(g => g.periodo === 4)?.nota || 0) >= 3.0 ? 'text-teal-600 dark:text-teal-400 bg-teal-500/10' : 'text-rose-500 bg-rose-500/10'
+                                          : 'text-muted-foreground/30'
                                       }`}>
                                         {sub.grades.find(g => g.periodo === 4)?.nota.toFixed(1) || '-.-'}
                                       </span>
@@ -703,7 +632,7 @@ export default function AcudienteDashboard() {
                                     {/* Absences count */}
                                     <td className="py-4 px-6 text-center">
                                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                        sub.absencesCount > 0 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'text-white/20'
+                                        sub.absencesCount > 0 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' : 'text-muted-foreground'
                                       }`}>
                                         {sub.absencesCount}
                                       </span>
@@ -713,7 +642,7 @@ export default function AcudienteDashboard() {
                                     <td className="py-4 px-6 text-right">
                                       <button
                                         onClick={() => setExpandedSubject(isExpanded ? null : sub.id_asignacion)}
-                                        className="flex items-center gap-1 ml-auto px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/20 transition-all cursor-pointer"
+                                        className="flex items-center gap-1 ml-auto px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold border border-primary/20 transition-all cursor-pointer"
                                       >
                                         <IconSparkles className="w-3 h-3" />
                                         {isExpanded ? 'Ocultar IA' : 'Detalles / IA'}
@@ -723,13 +652,13 @@ export default function AcudienteDashboard() {
                                   
                                   {/* Expanded content */}
                                   {isExpanded && (
-                                    <tr className="bg-indigo-600/[0.01]">
-                                      <td colSpan={7} className="p-6 border-b border-white/10">
+                                    <tr className="bg-primary/5">
+                                      <td colSpan={7} className="p-6 border-b border-border">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                           {/* Teacher feedback */}
                                           <div className="space-y-2">
-                                            <h5 className="text-[9px] font-bold uppercase tracking-wider text-white/40">Observaciones del Docente</h5>
-                                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-white/70 italic leading-relaxed">
+                                            <h5 className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Observaciones del Docente</h5>
+                                            <div className="p-4 rounded-xl bg-background border border-border text-xs text-foreground italic leading-relaxed">
                                               {sub.grades.filter(g => g.comentario_docente).length > 0 ? (
                                                 sub.grades.map(g => g.comentario_docente && (
                                                   <p key={g.id_calificacion} className="mb-2 last:mb-0">
@@ -745,10 +674,10 @@ export default function AcudienteDashboard() {
                                           {/* IA report */}
                                           <div className="space-y-2">
                                             <div className="flex items-center gap-1.5">
-                                              <IconSparkles className="w-3.5 h-3.5 text-indigo-400" />
-                                              <h5 className="text-[9px] font-bold uppercase tracking-wider text-indigo-400">Análisis Predictivo (IA)</h5>
+                                              <IconSparkles className="w-3.5 h-3.5 text-primary" />
+                                              <h5 className="text-[9px] font-bold uppercase tracking-wider text-primary">Análisis Predictivo (IA)</h5>
                                             </div>
-                                            <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 text-xs text-indigo-200/90 leading-relaxed italic">
+                                            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground leading-relaxed italic">
                                               {sub.grades.filter(g => g.comentario_ia).length > 0 ? (
                                                 sub.grades.map(g => g.comentario_ia && (
                                                   <p key={g.id_calificacion} className="mb-2.5 last:mb-0">
@@ -778,28 +707,28 @@ export default function AcudienteDashboard() {
               {/* TAB 2: ABSENCES */}
               {activeTab === 'absences' && (
                 <div className="space-y-6">
-                  <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse min-w-[500px]">
                         <thead>
-                          <tr className="border-b border-white/10 text-white/40 text-[9px] font-bold uppercase tracking-wider bg-white/[0.01]">
+                          <tr className="border-b border-border text-muted-foreground text-[9px] font-bold uppercase tracking-wider bg-secondary/50">
                             <th className="py-4 px-6">Fecha</th>
                             <th className="py-4 px-6">Asignatura</th>
                             <th className="py-4 px-6">Estado</th>
                             <th className="py-4 px-6">Detalles de excusa</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-xs">
+                        <tbody className="divide-y divide-border text-xs">
                           {absences.length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="py-12 text-center text-white/35">
+                              <td colSpan={4} className="py-12 text-center text-muted-foreground font-medium">
                                 ¡Excelente! {selectedKid.nombre_completo} no tiene fallas de asistencia reportadas.
                               </td>
                             </tr>
                           ) : (
                             absences.map(abs => (
-                              <tr key={abs.id_asistencia} className="hover:bg-white/[0.01] transition-colors">
-                                <td className="py-4 px-6 font-semibold text-white/90">
+                              <tr key={abs.id_asistencia} className="hover:bg-secondary/40 transition-colors">
+                                <td className="py-4 px-6 font-semibold text-foreground">
                                   {new Date(abs.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
                                     weekday: 'long',
                                     year: 'numeric',
@@ -807,17 +736,17 @@ export default function AcudienteDashboard() {
                                     day: 'numeric'
                                   })}
                                 </td>
-                                <td className="py-4 px-6 text-white/80">{abs.materiaNombre}</td>
+                                <td className="py-4 px-6 text-foreground/80">{abs.materiaNombre}</td>
                                 <td className="py-4 px-6">
                                   <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
                                     abs.estado === 'FALTA_JUSTIFICADA' 
-                                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
-                                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
+                                      : 'bg-rose-500/15 text-rose-500 border border-rose-500/20'
                                   }`}>
                                     {abs.estado === 'FALTA_JUSTIFICADA' ? 'Justificada' : 'Injustificada'}
                                   </span>
                                 </td>
-                                <td className="py-4 px-6 text-white/45">
+                                <td className="py-4 px-6 text-muted-foreground">
                                   {abs.estado === 'FALTA_JUSTIFICADA' 
                                     ? 'Falla justificada y aceptada por el colegio' 
                                     : 'Falla sin excusa. Requiere radicar justificación ante coordinación.'}
@@ -836,28 +765,28 @@ export default function AcudienteDashboard() {
               {activeTab === 'observador' && (
                 <div className="space-y-6">
                   {observadorLogs.length === 0 ? (
-                    <div className="py-12 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01] text-white/40 text-xs">
+                    <div className="py-12 text-center border border-border border-dashed rounded-2xl bg-card text-muted-foreground text-xs font-medium">
                       No hay anotaciones registradas en el Observador de este año escolar.
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {observadorLogs.map(obs => (
-                        <div key={obs.id_observador} className="bg-white/3 border border-white/10 rounded-2xl p-6 backdrop-blur-sm shadow-md space-y-4">
+                        <div key={obs.id_observador} className="bg-card border border-border rounded-2xl p-6 backdrop-blur-sm shadow-xs space-y-4">
                           <div className="flex flex-wrap justify-between items-start gap-3 w-full">
                             <div className="space-y-1">
                               <span className={`px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                                 obs.tipo_nota === 'DISCIPLINARIA' 
-                                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                                  ? 'bg-rose-500/15 text-rose-500 border border-rose-500/20' 
                                   : obs.tipo_nota === 'LOGRO_DESTACADO' 
-                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                                    : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                                    : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                               }`}>
                                 {obs.tipo_nota === 'DISCIPLINARIA' ? 'Anotación Disciplinaria' :
                                  obs.tipo_nota === 'LOGRO_DESTACADO' ? 'Reconocimiento / Logro Destacado' :
                                  'Anotación Pedagógica'}
                               </span>
-                              <h4 className="text-sm font-bold text-white/95 mt-2">Registrado por: {obs.docenteNombre}</h4>
-                              <p className="text-[10px] text-white/45">
+                              <h4 className="text-sm font-bold text-foreground mt-2">Registrado por: {obs.docenteNombre}</h4>
+                              <p className="text-[10px] text-muted-foreground">
                                 Fecha de anotación: {new Date(obs.fecha_registro).toLocaleDateString('es-ES', {
                                   day: 'numeric',
                                   month: 'long',
@@ -870,16 +799,16 @@ export default function AcudienteDashboard() {
                             <div className="flex items-center">
                               {obs.firmado ? (
                                 <div className="flex flex-col items-end text-right">
-                                  <span className="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-500/5">
+                                  <span className="px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                     </svg> Firmado de Enterado
                                   </span>
-                                  <span className="text-[9px] text-white/40 mt-1">
+                                  <span className="text-[9px] text-muted-foreground mt-1">
                                     Por: {obs.firmadorNombre || 'Acudiente'}
                                   </span>
                                   {obs.fecha_firma && (
-                                    <span className="text-[8px] text-white/30">
+                                    <span className="text-[8px] text-muted-foreground/60">
                                       El {new Date(obs.fecha_firma).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                                     </span>
                                   )}
@@ -888,11 +817,11 @@ export default function AcudienteDashboard() {
                                 <button
                                   onClick={() => handleSignObservacion(obs.id_observador)}
                                   disabled={signingObsId === obs.id_observador}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-semibold shadow-lg shadow-amber-600/20 hover:shadow-amber-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 active:scale-95"
+                                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                                 >
                                   {signingObsId === obs.id_observador ? (
                                     <>
-                                      <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
+                                      <svg className="animate-spin h-3.5 w-3.5 text-slate-950" viewBox="0 0 24 24" fill="none">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                       </svg> Firmando...
@@ -907,15 +836,15 @@ export default function AcudienteDashboard() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-white/5 text-xs">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-border text-xs">
                             <div className="space-y-1.5">
-                              <span className="block text-[9px] font-bold uppercase tracking-wider text-white/40">Observación Original del Docente</span>
-                              <p className="text-white/70 italic leading-relaxed">&ldquo;{obs.observacion_informal}&rdquo;</p>
+                              <span className="block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Observación Original del Docente</span>
+                              <p className="text-foreground italic leading-relaxed">&ldquo;{obs.observacion_informal}&rdquo;</p>
                             </div>
                             
                             {obs.observacion_formal_ia && (
-                              <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-1.5 text-indigo-200/90 leading-relaxed italic">
-                                <span className="block text-[9px] font-bold uppercase tracking-wider text-indigo-400">Transcripción Formal / Pedagógica (IA)</span>
+                              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl space-y-1.5 text-foreground leading-relaxed italic">
+                                <span className="block text-[9px] font-bold uppercase tracking-wider text-primary">Transcripción Formal / Pedagógica (IA)</span>
                                 <p>&ldquo;{obs.observacion_formal_ia}&rdquo;</p>
                               </div>
                             )}
@@ -932,11 +861,11 @@ export default function AcudienteDashboard() {
         ) : (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-sm space-y-3">
-              <div className="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/35 flex items-center justify-center mx-auto text-indigo-300">
+              <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto text-primary">
                 <IconUser />
               </div>
-              <h3 className="text-base font-bold text-white">Ningún estudiante vinculado</h3>
-              <p className="text-xs text-white/50 leading-relaxed">
+              <h3 className="text-base font-bold text-foreground">Ningún estudiante vinculado</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 No se encontraron registros de estudiantes asociados a tu parentesco. Por favor, solicita al administrador del colegio que asocie tus acudidos con tu dirección de correo electrónico.
               </p>
             </div>
@@ -946,14 +875,14 @@ export default function AcudienteDashboard() {
 
       {/* MODAL DIALOG OVERRIDE FOR ALERTS & CONFIRMS */}
       {modalConfig?.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[#0c1220]/95 border border-white/10 p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4 text-left">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs bg-black/60 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-card border border-border p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4 text-left text-foreground">
             {/* Header / Icon */}
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                modalConfig.type === 'error' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
-                'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500' :
+                modalConfig.type === 'error' ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500' :
+                'bg-amber-500/10 border border-amber-500/30 text-amber-500'
               }`}>
                 {modalConfig.type === 'success' ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -969,18 +898,18 @@ export default function AcudienteDashboard() {
                   </svg>
                 )}
               </div>
-              <h3 className="text-base font-bold text-white leading-none">{modalConfig.title}</h3>
+              <h3 className="text-base font-bold text-foreground leading-none">{modalConfig.title}</h3>
             </div>
             
             {/* Body Message */}
-            <p className="text-xs text-white/60 leading-relaxed">{modalConfig.message}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{modalConfig.message}</p>
             
             {/* Footer Buttons */}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setModalConfig(null)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground transition-all shadow-md cursor-pointer"
               >
                 Entendido
               </button>

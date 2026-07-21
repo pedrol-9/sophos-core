@@ -251,6 +251,7 @@ export async function saveNomenclaturaConfig(nomenclatura: string): Promise<Acti
 export type ExistingOnboardingConfig = {
   periodos: PeriodoParam[];
   escalas: EscalaParam[];
+  logros?: LogroParam[];
   nomenclaturaCursos: string;
 };
 

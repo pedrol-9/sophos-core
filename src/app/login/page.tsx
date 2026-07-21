@@ -4,6 +4,7 @@ import { useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 // ─── ICONS ───────────────────────────────────────────────────────────────────
 function IconEye({ open }: { open: boolean }) {
@@ -74,59 +75,62 @@ export default function LoginPage({
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden">
 
-      {/* Back button */}
-      <Link
-        href="/"
-        id="btn-back"
-        className="absolute top-5 left-5 flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors group z-10"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 transition-transform group-hover:-translate-x-0.5">
-          <path d="M19 12H5M12 5l-7 7 7 7" />
-        </svg>
-        Volver
-      </Link>
+      {/* Back button & Theme toggle */}
+      <div className="absolute top-5 left-5 right-5 flex justify-between items-center z-10">
+        <Link
+          href="/"
+          id="btn-back"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 transition-transform group-hover:-translate-x-0.5">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          Volver
+        </Link>
+        <ThemeToggle />
+      </div>
 
       {/* Ambient glows */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/15 blur-[100px] rounded-full" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/10 blur-[100px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-cyan-500/8 blur-[80px] rounded-full" />
       </div>
 
       {/* Card */}
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md my-12">
 
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <img src="/favicon.png" alt="Sophos Core Logo" className="w-10 h-10 object-contain rounded-xl shadow-lg shadow-indigo-500/25" />
-            <span className="text-xl font-bold tracking-tight text-white">
-              Sophos<span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent"> Core</span>
+            <img src="/favicon.png" alt="Sophos Core Logo" className="w-10 h-10 object-contain rounded-xl shadow-md" />
+            <span className="text-xl font-bold tracking-tight text-foreground">
+              Sophos<span className="bg-gradient-to-r from-indigo-500 to-cyan-500 bg-clip-text text-transparent"> Core</span>
             </span>
           </Link>
-          <p className="text-white/40 text-sm mt-3">Accede al portal académico de tu institución</p>
+          <p className="text-muted-foreground text-sm mt-3">Accede al portal académico de tu institución</p>
         </div>
 
         {/* Session expired banner */}
         {isExpired && (
           <div className="mb-5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2.5">
-            <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            <p className="text-amber-300 text-sm">Tu sesión se cerró por inactividad. Por favor, vuelve a iniciar sesión.</p>
+            <p className="text-amber-600 dark:text-amber-300 text-sm">Tu sesión se cerró por inactividad. Por favor, vuelve a iniciar sesión.</p>
           </div>
         )}
 
         {/* Form card */}
-        <div className="bg-white/3 border border-white/10 rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
-          <h1 className="text-xl font-semibold text-white mb-6">Iniciar sesión</h1>
+        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 backdrop-blur-sm shadow-xl">
+          <h1 className="text-xl font-semibold text-foreground mb-6">Iniciar sesión</h1>
 
           <form id="login-form" onSubmit={handleLogin} className="space-y-4">
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wide">
+              <label htmlFor="email" className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                 Correo electrónico
               </label>
               <input
@@ -137,17 +141,17 @@ export default function LoginPage({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="director@colegio.edu.co"
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
               />
             </div>
 
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="password" className="block text-xs font-medium text-white/60 uppercase tracking-wide">
+                <label htmlFor="password" className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Contraseña
                 </label>
-                <button type="button" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                <button type="button" className="text-xs text-primary hover:underline transition-colors">
                   ¿Olvidaste tu contraseña?
                 </button>
               </div>
@@ -160,13 +164,13 @@ export default function LoginPage({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/8 transition-all"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                 />
                 <button
                   type="button"
                   id="toggle-password"
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-all z-10 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-all z-10 cursor-pointer"
                 >
                   <IconEye open={showPwd} />
                 </button>
@@ -176,10 +180,10 @@ export default function LoginPage({
             {/* Error message */}
             {error && (
               <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25">
-                <svg className="w-4 h-4 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
-                <p className="text-red-300 text-sm">{error}</p>
+                <p className="text-red-500 dark:text-red-300 text-sm">{error}</p>
               </div>
             )}
 
@@ -188,7 +192,7 @@ export default function LoginPage({
               id="btn-login"
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-violet-500 text-sm font-semibold text-white transition-all duration-200 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0 mt-2"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
               {loading ? <><Spinner /> Verificando...</> : <>Entrar al portal <IconArrow /></>}
             </button>
@@ -196,9 +200,9 @@ export default function LoginPage({
         </div>
 
         {/* Sign up link */}
-        <p className="text-center text-sm text-white/35 mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           ¿Tu institución aún no está en Sophos Core?{' '}
-          <Link href="/signup" id="link-signup" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+          <Link href="/signup" id="link-signup" className="text-primary hover:underline font-medium transition-colors">
             Regístrala aquí
           </Link>
         </p>

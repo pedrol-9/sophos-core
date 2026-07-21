@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { IconHome, IconNotebook, IconChecklist, IconLogout, IconPlus, IconSparkles } from '@/components/icons';
+import { IconNotebook, IconChecklist, IconLogout, IconSparkles } from '@/components/icons';
 import { 
   getTeacherAssignments, 
   getCourseStudents, 
@@ -19,6 +19,7 @@ import {
   getStudentObservations, 
   type ObservadorRecord 
 } from '@/app/actions/observador-actions';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function DocenteDashboard() {
   const router = useRouter();
@@ -91,7 +92,6 @@ export default function DocenteDashboard() {
   const [attendanceDate, setAttendanceDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  // Track absences locally: studentId -> 'PRESENTE' | 'FALTA_JUSTIFICADA' | 'FALTA_INJUSTIFICADA'
   const [localAbsences, setLocalAbsences] = useState<Record<string, 'PRESENTE' | 'FALTA_JUSTIFICADA' | 'FALTA_INJUSTIFICADA'>>({});
   const [savingAttendance, setSavingAttendance] = useState(false);
 
@@ -147,9 +147,6 @@ export default function DocenteDashboard() {
       });
     } else if (res.data) {
       setStudents(res.data);
-      
-      // Initialize local absences from DB for this assignment
-      // Note: we can map currently stored absences if we query them for today, but for a fresh day it defaults to empty.
       setLocalAbsences({});
     }
     setStudentsLoading(false);
@@ -163,21 +160,7 @@ export default function DocenteDashboard() {
     } else {
       setActiveTab('courses');
     }
-    // Reset forms
     setSelectedStudent(null);
-  };
-
-  const handleSelectStudentForGrading = (student: CourseStudent) => {
-    setSelectedStudent(student);
-    // Try to find if student already has a grade for the selected period
-    const existingGrade = student.grades.find(g => g.periodo === gradingPeriod);
-    if (existingGrade) {
-      setGradeValue(existingGrade.nota.toString());
-      setGradeComment(existingGrade.comentario_docente || '');
-    } else {
-      setGradeValue('');
-      setGradeComment('');
-    }
   };
 
   // Update form inputs when grading period changes
@@ -230,10 +213,8 @@ export default function DocenteDashboard() {
     } else if (res.data) {
       const savedGradeId = res.data.id_calificacion;
       
-      // Refresh local students data
       await loadStudents(selectedAssignment);
       
-      // Trigger AI Academic Comment Generation in Background
       setGeneratingAI(true);
       try {
         const aiRes = await fetch('/api/chat', {
@@ -246,7 +227,6 @@ export default function DocenteDashboard() {
         if (aiData.error) {
           console.error("AI error:", aiData.error);
         } else {
-          // Re-load to see the new AI comment
           await loadStudents(selectedAssignment);
         }
       } catch (err) {
@@ -256,7 +236,6 @@ export default function DocenteDashboard() {
       }
 
       setSavingGrade(false);
-      // Close side panel
       setSelectedStudent(null);
     }
   };
@@ -265,7 +244,7 @@ export default function DocenteDashboard() {
     setLocalAbsences(prev => {
       const next = { ...prev };
       if (status === 'PRESENTE') {
-        delete next[studentId]; // Assumed present
+        delete next[studentId];
       } else {
         next[studentId] = status;
       }
@@ -279,7 +258,7 @@ export default function DocenteDashboard() {
     setSavingAttendance(true);
 
     const absencesPayload = Object.entries(localAbsences)
-      .filter(([_, status]) => status !== 'PRESENTE')
+      .filter(([, status]) => status !== 'PRESENTE')
       .map(([studentId, status]) => {
         const student = students.find(s => s.id_estudiante === studentId);
         return {
@@ -309,7 +288,6 @@ export default function DocenteDashboard() {
         message: '¡Asistencia guardada correctamente!',
         type: 'success'
       });
-      // Refresh students details (re-fetch absences counts)
       await loadStudents(selectedAssignment);
     }
     setSavingAttendance(false);
@@ -330,7 +308,6 @@ export default function DocenteDashboard() {
       setObservations(res.data);
     }
     setLoadingObs(false);
-    // Reset form
     setNewObsText('');
     setNewObsType('PEDAGOGICA');
   };
@@ -354,7 +331,6 @@ export default function DocenteDashboard() {
         type: 'error'
       });
     } else {
-      // Re-load observations for list
       const updated = await getStudentObservations(selectedStudent.id_estudiante);
       if (updated.data) {
         setObservations(updated.data);
@@ -370,69 +346,63 @@ export default function DocenteDashboard() {
     router.refresh();
   };
 
-  // Helper to compute student's cumulative average grade
-  const getAverageGrade = (student: CourseStudent) => {
-    if (student.grades.length === 0) return '-';
-    const sum = student.grades.reduce((acc, curr) => acc + curr.nota, 0);
-    return (sum / student.grades.length).toFixed(1);
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
         <div className="text-center">
-          <svg className="animate-spin w-8 h-8 text-teal-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none">
+          <svg className="animate-spin w-8 h-8 text-primary mx-auto mb-4" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <p className="text-white/60 text-sm">Cargando Portal Docente...</p>
+          <p className="text-muted-foreground text-sm font-medium">Cargando Portal Docente...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-background text-white/90 font-sans flex overflow-hidden relative">
+    <div className="h-screen bg-background text-foreground font-sans flex overflow-hidden relative">
       {/* Ambient Glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/5 blur-[120px] rounded-full" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-teal-500/5 blur-[100px] rounded-full" />
       </div>
 
       {/* Docente Sidebar */}
-      <aside className="w-64 border-r border-white/10 flex flex-col justify-between shrink-0 bg-[#0c1220]/90 backdrop-blur-md relative z-10 h-full">
+      <aside className="w-64 border-r border-border flex flex-col justify-between shrink-0 bg-card backdrop-blur-md relative z-10 h-full shadow-xs">
         <div className="flex flex-col flex-1 min-h-0">
           {/* Logo */}
-          <div className="p-6 border-b border-white/10 shrink-0">
+          <div className="p-6 border-b border-border shrink-0">
             <div className="flex items-center gap-2.5">
-              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-lg shadow-teal-500/20" />
-              <span className="text-lg font-bold tracking-tight text-white">
-                Portal<span className="bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent"> Docente</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+              <span className="text-lg font-bold tracking-tight text-foreground">
+                Portal<span className="text-primary"> Docente</span>
               </span>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="p-4 space-y-1 overflow-y-auto flex-1">
+          <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
             <button
               onClick={() => {
                 setActiveTab('courses');
                 setSelectedAssignment(null);
                 setSelectedStudent(null);
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'courses' && !selectedAssignment
-                  ? 'bg-teal-600/15 border-l-2 border-teal-500 text-teal-400'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <IconNotebook /> Mis Asignaturas
             </button>
             
-            {/* If an assignment is selected, show contextual navigation links */}
+            {/* Contextual navigation */}
             {selectedAssignment && (
-              <div className="pl-4 pt-2 mt-2 border-l border-white/5 space-y-1">
-                <p className="text-[10px] uppercase font-bold tracking-wider text-white/30 px-3 mb-2">
+              <div className="pl-4 pt-2 mt-2 border-l border-border space-y-1">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-3 mb-2">
                   Curso: {selectedAssignment.cursos?.nombre}
                 </p>
                 <button
@@ -440,10 +410,10 @@ export default function DocenteDashboard() {
                     setActiveTab('courses');
                     setSelectedStudent(null);
                   }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     activeTab === 'courses'
-                      ? 'bg-teal-600/10 text-teal-300'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   }`}
                 >
                   <IconNotebook className="w-3.5 h-3.5" /> Calificar Alumnos
@@ -453,10 +423,10 @@ export default function DocenteDashboard() {
                     setActiveTab('attendance_tab');
                     setSelectedStudent(null);
                   }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     activeTab === 'attendance_tab'
-                      ? 'bg-teal-600/10 text-teal-300'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   }`}
                 >
                   <IconChecklist className="w-3.5 h-3.5" /> Control de Faltas
@@ -466,10 +436,10 @@ export default function DocenteDashboard() {
                     setActiveTab('observador_tab');
                     setSelectedStudent(null);
                   }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     activeTab === 'observador_tab'
-                      ? 'bg-teal-600/10 text-teal-300'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   }`}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -481,24 +451,27 @@ export default function DocenteDashboard() {
           </nav>
         </div>
 
-        {/* Profile Card & Logout */}
-        <div className="p-4 border-t border-white/10 space-y-3 bg-[#0a0f1b] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-500/35 flex items-center justify-center text-teal-300 font-bold uppercase shrink-0">
-              {user?.email?.charAt(0) ?? 'D'}
+        {/* Profile Card, Theme Toggle & Logout */}
+        <div className="p-4 border-t border-border space-y-3 bg-secondary/30 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-bold uppercase shrink-0">
+                {user?.email?.charAt(0) ?? 'D'}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-semibold text-foreground truncate">
+                  {user?.user_metadata?.nombre_completo 
+                    ? `Profe ${user.user_metadata.nombre_completo.trim().split(/\s+/)[0]}` 
+                    : 'Profe'}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">Docente</p>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white/95 truncate">
-                {user?.user_metadata?.nombre_completo 
-                  ? `Profe ${user.user_metadata.nombre_completo.trim().split(/\s+/)[0]}` 
-                  : 'Profe'}
-              </p>
-              <p className="text-xs text-white/40 truncate">Docente</p>
-            </div>
+            <ThemeToggle />
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-white/70 text-xs font-semibold transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-background border border-border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 text-muted-foreground text-xs font-semibold transition-all duration-200 cursor-pointer"
           >
             <IconLogout /> Cerrar sesión
           </button>
@@ -506,17 +479,17 @@ export default function DocenteDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto relative z-10">
+      <main className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
         
         {/* Header */}
-        <header className="px-8 py-6 border-b border-white/5 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20">
+        <header className="px-8 py-6 border-b border-border flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
               {!selectedAssignment 
                 ? 'Mis Asignaturas Asignadas' 
                 : `${selectedAssignment.materias?.nombre} - Curso ${selectedAssignment.cursos?.nombre}`}
             </h1>
-            <p className="text-sm text-white/50 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {!selectedAssignment 
                 ? 'Selecciona una asignatura para registrar calificaciones o inasistencias' 
                 : `Gestionando periodo lectivo ${selectedAssignment.ano_lectivo}`}
@@ -529,7 +502,7 @@ export default function DocenteDashboard() {
                 setSelectedAssignment(null);
                 setSelectedStudent(null);
               }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-all"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all cursor-pointer"
             >
               ← Volver al listado
             </button>
@@ -539,7 +512,7 @@ export default function DocenteDashboard() {
         {/* View content */}
         <div className="p-8">
           {error && (
-            <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-300 text-sm">
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-500 dark:text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -549,22 +522,22 @@ export default function DocenteDashboard() {
             <div className="space-y-6">
               {/* Filter controls */}
               {assignments.length > 0 && (
-                <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 backdrop-blur-md items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl bg-card border border-border backdrop-blur-md items-center justify-between shadow-xs">
                   <div className="flex flex-wrap gap-4 w-full sm:w-auto">
                     {/* Grado Selector */}
                     <div className="flex flex-col gap-1.5 min-w-[150px] w-full sm:w-auto">
-                      <label htmlFor="filter-grade" className="text-[10px] uppercase font-bold tracking-wider text-white/40">
+                      <label htmlFor="filter-grade" className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                         Grado
                       </label>
                       <select
                         id="filter-grade"
                         value={filterGrade}
                         onChange={(e) => setFilterGrade(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-background/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-background transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer"
                       >
-                        <option value="" className="bg-background text-white">Todos los grados</option>
+                        <option value="" className="bg-card text-foreground">Todos los grados</option>
                         {availableGrades.map(grade => (
-                          <option key={grade} value={grade} className="bg-background text-white">
+                          <option key={grade} value={grade} className="bg-card text-foreground">
                             {grade}
                           </option>
                         ))}
@@ -573,18 +546,18 @@ export default function DocenteDashboard() {
 
                     {/* Materia Selector */}
                     <div className="flex flex-col gap-1.5 min-w-[180px] w-full sm:w-auto">
-                      <label htmlFor="filter-subject" className="text-[10px] uppercase font-bold tracking-wider text-white/40">
+                      <label htmlFor="filter-subject" className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                         Materia
                       </label>
                       <select
                         id="filter-subject"
                         value={filterSubject}
                         onChange={(e) => setFilterSubject(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-background/80 border border-white/10 hover:border-white/20 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60 focus:bg-background transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer"
                       >
-                        <option value="" className="bg-background text-white">Todas las materias</option>
+                        <option value="" className="bg-card text-foreground">Todas las materias</option>
                         {availableSubjects.map(subject => (
-                          <option key={subject} value={subject} className="bg-background text-white">
+                          <option key={subject} value={subject} className="bg-card text-foreground">
                             {subject}
                           </option>
                         ))}
@@ -594,8 +567,8 @@ export default function DocenteDashboard() {
 
                   {/* Summary / Reset */}
                   <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <span className="text-xs text-white/40 font-medium">
-                      Mostrando <strong className="text-white/80">{filteredAssignments.length}</strong> de <strong className="text-white/80">{assignments.length}</strong> materias
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Mostrando <strong className="text-foreground">{filteredAssignments.length}</strong> de <strong className="text-foreground">{assignments.length}</strong> materias
                     </span>
                     {(filterGrade || filterSubject) && (
                       <button
@@ -603,7 +576,7 @@ export default function DocenteDashboard() {
                           setFilterGrade('');
                           setFilterSubject('');
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all cursor-pointer"
                       >
                         Limpiar filtros
                       </button>
@@ -615,20 +588,20 @@ export default function DocenteDashboard() {
               {/* Grid of cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                  <p className="text-white/40 text-sm col-span-full">Cargando materias...</p>
+                  <p className="text-muted-foreground text-sm col-span-full">Cargando materias...</p>
                 ) : assignments.length === 0 ? (
-                  <div className="col-span-full py-16 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01]">
-                    <p className="text-white/40 mb-2">No tienes asignaciones académicas configuradas para este año.</p>
+                  <div className="col-span-full py-16 text-center border border-border border-dashed rounded-2xl bg-card">
+                    <p className="text-muted-foreground mb-2">No tienes asignaciones académicas configuradas para este año.</p>
                   </div>
                 ) : filteredAssignments.length === 0 ? (
-                  <div className="col-span-full py-16 text-center border border-white/5 border-dashed rounded-2xl bg-white/[0.01]">
-                    <p className="text-white/40 mb-3">No se encontraron materias que coincidan con los filtros seleccionados.</p>
+                  <div className="col-span-full py-16 text-center border border-border border-dashed rounded-2xl bg-card">
+                    <p className="text-muted-foreground mb-3">No se encontraron materias que coincidan con los filtros seleccionados.</p>
                     <button
                       onClick={() => {
                         setFilterGrade('');
                         setFilterSubject('');
                       }}
-                      className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-all cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer"
                     >
                       Restablecer filtros
                     </button>
@@ -637,27 +610,27 @@ export default function DocenteDashboard() {
                   filteredAssignments.map(ass => (
                     <div 
                       key={ass.id_asignacion} 
-                      className="group p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-teal-500/30 hover:bg-white/[0.04] transition-all duration-300 relative overflow-hidden"
+                      className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all duration-300 relative overflow-hidden shadow-xs"
                     >
-                      <div className="absolute top-0 right-0 p-4 text-teal-500/10 group-hover:text-teal-500/20 transition-colors">
+                      <div className="absolute top-0 right-0 p-4 text-primary/10 group-hover:text-primary/20 transition-colors">
                         <IconNotebook className="w-10 h-10" />
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary px-2 py-0.5 rounded">
                         {ass.materias?.area || 'Asignatura'}
                       </span>
-                      <h3 className="text-xl font-bold text-white/95 mt-3 mb-1">{ass.materias?.nombre}</h3>
-                      <p className="text-sm text-white/50 mb-6">Curso: <strong className="text-white/80">{ass.cursos?.nombre}</strong></p>
+                      <h3 className="text-xl font-bold text-foreground mt-3 mb-1">{ass.materias?.nombre}</h3>
+                      <p className="text-sm text-muted-foreground mb-6">Curso: <strong className="text-foreground">{ass.cursos?.nombre}</strong></p>
                       
-                      <div className="flex gap-3 pt-3 border-t border-white/5">
+                      <div className="flex gap-3 pt-3 border-t border-border">
                         <button 
                           onClick={() => handleSelectAssignment(ass, 'grade')}
-                          className="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold transition-all shadow-md shadow-teal-600/10 hover:-translate-y-0.5"
+                          className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow-xs cursor-pointer"
                         >
                           Calificar
                         </button>
                         <button 
                           onClick={() => handleSelectAssignment(ass, 'attendance')}
-                          className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
+                          className="flex-1 py-2 rounded-xl bg-secondary border border-border text-foreground hover:bg-secondary/80 text-xs font-semibold transition-all cursor-pointer"
                         >
                           Control Faltas
                         </button>
@@ -669,7 +642,7 @@ export default function DocenteDashboard() {
             </div>
           )}
 
-          {/* VIEW 2: Grading view (Assignment selected + Courses tab) */}
+          {/* VIEW 2: Grading view */}
           {selectedAssignment && activeTab === 'courses' && (
             <TeacherGradebook 
               idAsignacion={selectedAssignment.id_asignacion} 
@@ -677,13 +650,13 @@ export default function DocenteDashboard() {
             />
           )}
 
-          {/* VIEW 3: Attendance view (Assignment selected + Attendance tab) */}
+          {/* VIEW 3: Attendance view */}
           {selectedAssignment && activeTab === 'attendance_tab' && (
             <div className="space-y-6">
               {/* Toolbar */}
-              <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 rounded-2xl p-4 flex-wrap gap-4">
+              <div className="flex justify-between items-center bg-card border border-border rounded-2xl p-4 flex-wrap gap-4 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <label htmlFor="attendance-date-selector" className="text-xs font-medium text-white/40 uppercase tracking-wide">
+                  <label htmlFor="attendance-date-selector" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     Fecha del Reporte:
                   </label>
                   <input
@@ -691,85 +664,83 @@ export default function DocenteDashboard() {
                     type="date"
                     value={attendanceDate}
                     onChange={(e) => setAttendanceDate(e.target.value)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs font-semibold focus:outline-none focus:border-teal-500/60"
+                    className="px-3 py-1.5 rounded-lg bg-background border border-border text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                 </div>
-                <div className="text-[10px] text-teal-400 bg-teal-500/5 border border-teal-500/20 px-3 py-1.5 rounded-lg max-w-md">
+                <div className="text-[10px] text-teal-600 dark:text-teal-400 bg-teal-500/10 border border-teal-500/20 px-3 py-1.5 rounded-lg max-w-md font-medium">
                   <strong>Regla de negocio:</strong> Todos los estudiantes se asumen como presentes. Registra únicamente los casos que tengan falta justificada o injustificada para la fecha.
                 </div>
               </div>
 
               {/* Students attendance list */}
               {studentsLoading ? (
-                <p className="text-white/40 text-sm">Cargando listado de estudiantes...</p>
+                <p className="text-muted-foreground text-sm font-medium">Cargando listado de estudiantes...</p>
               ) : (
-                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-white/40 text-[10px] font-bold uppercase tracking-wider bg-white/[0.01]">
-                          <th className="py-4 px-6">Estudiante</th>
-                          <th className="py-4 px-6 text-center">Asistencia Normal</th>
-                          <th className="py-4 px-6 text-center">Falta Justificada</th>
-                          <th className="py-4 px-6 text-center">Falta Injustificada</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-sm">
-                        {students.map((student) => {
-                          const currentStatus = localAbsences[student.id_estudiante] || 'PRESENTE';
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs custom-scrollbar overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-[10px] font-bold uppercase tracking-wider bg-secondary/50">
+                        <th className="py-4 px-6">Estudiante</th>
+                        <th className="py-4 px-6 text-center">Asistencia Normal</th>
+                        <th className="py-4 px-6 text-center">Falta Justificada</th>
+                        <th className="py-4 px-6 text-center">Falta Injustificada</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border text-sm">
+                      {students.map((student) => {
+                        const currentStatus = localAbsences[student.id_estudiante] || 'PRESENTE';
 
-                          return (
-                            <tr key={student.id_estudiante} className="hover:bg-white/[0.01] transition-colors">
-                              <td className="py-4 px-6 font-semibold text-white/90">
-                                {student.nombre_completo}
-                                <span className="block text-[11px] text-white/40 font-normal mt-0.5">{student.email}</span>
-                              </td>
-                              
-                              {/* 1. Presente (Default) */}
-                              <td className="py-4 px-6 text-center">
-                                <input
-                                  type="radio"
-                                  name={`att-${student.id_estudiante}`}
-                                  checked={currentStatus === 'PRESENTE'}
-                                  onChange={() => handleAttendanceChange(student.id_estudiante, 'PRESENTE')}
-                                  className="w-4 h-4 accent-teal-500 cursor-pointer"
-                                />
-                              </td>
+                        return (
+                          <tr key={student.id_estudiante} className="hover:bg-secondary/40 transition-colors">
+                            <td className="py-4 px-6 font-semibold text-foreground">
+                              {student.nombre_completo}
+                              <span className="block text-[11px] text-muted-foreground font-normal mt-0.5">{student.email}</span>
+                            </td>
+                            
+                            {/* 1. Presente */}
+                            <td className="py-4 px-6 text-center">
+                              <input
+                                type="radio"
+                                name={`att-${student.id_estudiante}`}
+                                checked={currentStatus === 'PRESENTE'}
+                                onChange={() => handleAttendanceChange(student.id_estudiante, 'PRESENTE')}
+                                className="w-4 h-4 accent-teal-500 cursor-pointer"
+                              />
+                            </td>
 
-                              {/* 2. Falta Justificada */}
-                              <td className="py-4 px-6 text-center">
-                                <input
-                                  type="radio"
-                                  name={`att-${student.id_estudiante}`}
-                                  checked={currentStatus === 'FALTA_JUSTIFICADA'}
-                                  onChange={() => handleAttendanceChange(student.id_estudiante, 'FALTA_JUSTIFICADA')}
-                                  className="w-4 h-4 accent-amber-500 cursor-pointer"
-                                />
-                              </td>
+                            {/* 2. Falta Justificada */}
+                            <td className="py-4 px-6 text-center">
+                              <input
+                                type="radio"
+                                name={`att-${student.id_estudiante}`}
+                                checked={currentStatus === 'FALTA_JUSTIFICADA'}
+                                onChange={() => handleAttendanceChange(student.id_estudiante, 'FALTA_JUSTIFICADA')}
+                                className="w-4 h-4 accent-amber-500 cursor-pointer"
+                              />
+                            </td>
 
-                              {/* 3. Falta Injustificada */}
-                              <td className="py-4 px-6 text-center">
-                                <input
-                                  type="radio"
-                                  name={`att-${student.id_estudiante}`}
-                                  checked={currentStatus === 'FALTA_INJUSTIFICADA'}
-                                  onChange={() => handleAttendanceChange(student.id_estudiante, 'FALTA_INJUSTIFICADA')}
-                                  className="w-4 h-4 accent-red-500 cursor-pointer"
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                            {/* 3. Falta Injustificada */}
+                            <td className="py-4 px-6 text-center">
+                              <input
+                                type="radio"
+                                name={`att-${student.id_estudiante}`}
+                                checked={currentStatus === 'FALTA_INJUSTIFICADA'}
+                                onChange={() => handleAttendanceChange(student.id_estudiante, 'FALTA_INJUSTIFICADA')}
+                                className="w-4 h-4 accent-red-500 cursor-pointer"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
 
                   {/* Save button */}
-                  <div className="p-6 border-t border-white/5 flex justify-end">
+                  <div className="p-6 border-t border-border flex justify-end">
                     <button
                       onClick={handleSaveAttendance}
                       disabled={savingAttendance}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-emerald-500 text-sm font-semibold text-white transition-all shadow-lg shadow-teal-600/25 disabled:opacity-60"
+                      className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-sm font-semibold text-primary-foreground transition-all shadow-md disabled:opacity-60 cursor-pointer"
                     >
                       {savingAttendance ? 'Guardando...' : 'Guardar Reporte de Asistencia'}
                     </button>
@@ -779,53 +750,51 @@ export default function DocenteDashboard() {
             </div>
           )}
 
-          {/* VIEW 4: Observador Digital view (Assignment selected + Observador tab) */}
+          {/* VIEW 4: Observador Digital view */}
           {selectedAssignment && activeTab === 'observador_tab' && (
             <div className="space-y-6">
               {/* Toolbar */}
-              <div className="flex justify-between items-center bg-white/[0.01] border border-white/5 rounded-2xl p-4 flex-wrap gap-4">
+              <div className="flex justify-between items-center bg-card border border-border rounded-2xl p-4 flex-wrap gap-4 shadow-xs">
                 <div>
-                  <h3 className="text-sm font-bold text-white">Observador Digital de Convivencia</h3>
-                  <p className="text-xs text-white/50 mt-0.5">Administra la hoja de vida, observaciones y reconocimientos de los estudiantes.</p>
+                  <h3 className="text-sm font-bold text-foreground">Observador Digital de Convivencia</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Administra la hoja de vida, observaciones y reconocimientos de los estudiantes.</p>
                 </div>
               </div>
 
               {/* Students list */}
               {studentsLoading ? (
-                <p className="text-white/40 text-sm">Cargando listado de estudiantes...</p>
+                <p className="text-muted-foreground text-sm font-medium">Cargando listado de estudiantes...</p>
               ) : (
-                <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden backdrop-blur-xs">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/10 text-white/40 text-[10px] font-bold uppercase tracking-wider bg-white/[0.01]">
-                          <th className="py-4 px-6">Estudiante</th>
-                          <th className="py-4 px-6">Email</th>
-                          <th className="py-4 px-6 text-center">Acción</th>
+                <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs custom-scrollbar overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-[10px] font-bold uppercase tracking-wider bg-secondary/50">
+                        <th className="py-4 px-6">Estudiante</th>
+                        <th className="py-4 px-6">Email</th>
+                        <th className="py-4 px-6 text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border text-sm">
+                      {students.map((student) => (
+                        <tr key={student.id_estudiante} className="hover:bg-secondary/40 transition-colors">
+                          <td className="py-4 px-6 font-semibold text-foreground">
+                            {student.nombre_completo}
+                          </td>
+                          <td className="py-4 px-6 text-muted-foreground">
+                            {student.email}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <button
+                              onClick={() => handleSelectStudentForObservador(student)}
+                              className="px-4 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-semibold transition-all cursor-pointer"
+                            >
+                              Ver / Registrar Novedad
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-sm">
-                        {students.map((student) => (
-                          <tr key={student.id_estudiante} className="hover:bg-white/[0.01] transition-colors">
-                            <td className="py-4 px-6 font-semibold text-white/90">
-                              {student.nombre_completo}
-                            </td>
-                            <td className="py-4 px-6 text-white/60">
-                              {student.email}
-                            </td>
-                            <td className="py-4 px-6 text-center">
-                              <button
-                                onClick={() => handleSelectStudentForObservador(student)}
-                                className="px-4 py-1.5 rounded-xl bg-teal-600/10 hover:bg-teal-600/20 text-teal-400 border border-teal-500/20 hover:border-teal-500/40 text-xs font-semibold transition-all"
-                              >
-                                Ver / Registrar Novedad
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -833,20 +802,20 @@ export default function DocenteDashboard() {
         </div>
 
         {/* ─── SLIDE-OVER PANEL: EDIT GRADE & SHOW AI REMARK ───────────────── */}
-        {selectedStudent && selectedAssignment && (
+        {selectedStudent && selectedAssignment && activeTab === 'courses' && (
           <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
-            <div className="w-full max-w-md h-full bg-[#0c1220] border-l border-white/10 p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="w-full max-w-md h-full bg-card border-l border-border p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 text-foreground custom-scrollbar">
               
               <div className="space-y-6">
                 {/* Panel Header */}
-                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                <div className="flex justify-between items-center pb-4 border-b border-border">
                   <div>
-                    <h2 className="text-lg font-bold text-white">Calificar Alumno</h2>
-                    <p className="text-xs text-white/50 mt-0.5">{selectedStudent.nombre_completo}</p>
+                    <h2 className="text-lg font-bold text-foreground">Calificar Alumno</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedStudent.nombre_completo}</p>
                   </div>
                   <button
                     onClick={() => setSelectedStudent(null)}
-                    className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -856,26 +825,26 @@ export default function DocenteDashboard() {
 
                 {/* Form */}
                 <form onSubmit={handleSaveGrade} className="space-y-4">
-                  {/* Period selector (replicated in panel for context) */}
+                  {/* Period selector */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Periodo Lectivo
                     </label>
                     <select
                       value={gradingPeriod}
                       onChange={(e) => handlePeriodChange(Number(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-teal-500/60"
+                      className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
-                      <option value={1} className="bg-[#0c1220]">Periodo 1</option>
-                      <option value={2} className="bg-[#0c1220]">Periodo 2</option>
-                      <option value={3} className="bg-[#0c1220]">Periodo 3</option>
-                      <option value={4} className="bg-[#0c1220]">Periodo 4</option>
+                      <option value={1} className="bg-card text-foreground">Periodo 1</option>
+                      <option value={2} className="bg-card text-foreground">Periodo 2</option>
+                      <option value={3} className="bg-card text-foreground">Periodo 3</option>
+                      <option value={4} className="bg-card text-foreground">Periodo 4</option>
                     </select>
                   </div>
 
                   {/* Grade value input */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Calificación (Escala 0.0 - 5.0)
                     </label>
                     <input
@@ -887,13 +856,13 @@ export default function DocenteDashboard() {
                       placeholder="Ej: 4.5"
                       value={gradeValue}
                       onChange={(e) => setGradeValue(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-teal-500/60 focus:bg-white/8 transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
                     />
                   </div>
 
                   {/* Teacher comment */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Observación / Logros (Docente)
                     </label>
                     <textarea
@@ -901,7 +870,7 @@ export default function DocenteDashboard() {
                       placeholder="Ej: Excelente razonamiento lógico. Presentó dificultades en ecuaciones cuadráticas pero mejoró."
                       value={gradeComment}
                       onChange={(e) => setGradeComment(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/20 focus:outline-none focus:border-teal-500/60 focus:bg-white/8 transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none"
                     />
                   </div>
 
@@ -909,27 +878,27 @@ export default function DocenteDashboard() {
                   <button
                     type="submit"
                     disabled={savingGrade || generatingAI}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-emerald-500 text-sm font-semibold text-white transition-all shadow-lg shadow-teal-600/20 disabled:opacity-60"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-sm font-semibold text-primary-foreground transition-all shadow-md disabled:opacity-60 cursor-pointer"
                   >
                     {savingGrade ? 'Guardando Calificación...' : 'Guardar Calificación'}
                   </button>
                 </form>
 
                 {/* AI Predictive remark section */}
-                <div className="pt-6 border-t border-white/5 space-y-3">
-                  <div className="flex items-center gap-2 text-teal-400">
+                <div className="pt-6 border-t border-border space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
                     <IconSparkles className="w-4 h-4 animate-pulse" />
                     <h3 className="text-xs font-bold uppercase tracking-wider">Retroalimentación IA Académica</h3>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-teal-500/5 border border-teal-500/10 text-xs leading-relaxed text-teal-100/90 relative min-h-[80px] flex items-center justify-center">
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-xs leading-relaxed text-foreground relative min-h-[80px] flex items-center justify-center">
                     {generatingAI ? (
                       <div className="text-center space-y-2">
-                        <svg className="animate-spin w-5 h-5 text-teal-400 mx-auto" viewBox="0 0 24 24" fill="none">
+                        <svg className="animate-spin w-5 h-5 text-primary mx-auto" viewBox="0 0 24 24" fill="none">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                        <p className="text-teal-400/70 text-[10px] animate-pulse">Gemini analizando rendimiento académico...</p>
+                        <p className="text-primary text-[10px] animate-pulse">Gemini analizando rendimiento académico...</p>
                       </div>
                     ) : (
                       <p className="italic">
@@ -941,7 +910,7 @@ export default function DocenteDashboard() {
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-white/5 text-center text-[10px] text-white/30 leading-relaxed">
+              <div className="pt-6 border-t border-border text-center text-[10px] text-muted-foreground leading-relaxed">
                 El análisis predictivo de IA considera el historial completo de calificaciones y las faltas reportadas para sugerir alertas tempranas de bajo rendimiento.
               </div>
 
@@ -952,18 +921,18 @@ export default function DocenteDashboard() {
         {/* ─── SLIDE-OVER PANEL: OBSERVADOR DIGITAL ─────────────────────────── */}
         {selectedStudent && selectedAssignment && activeTab === 'observador_tab' && (
           <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
-            <div className="w-full max-w-lg h-full bg-[#0c1220] border-l border-white/10 p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="w-full max-w-lg h-full bg-card border-l border-border p-8 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 text-foreground custom-scrollbar">
               
               <div className="space-y-6 flex-1 flex flex-col min-h-0">
                 {/* Panel Header */}
-                <div className="flex justify-between items-center pb-4 border-b border-white/5 shrink-0">
+                <div className="flex justify-between items-center pb-4 border-b border-border shrink-0">
                   <div>
-                    <h2 className="text-lg font-bold text-white">Observador Digital</h2>
-                    <p className="text-xs text-white/50 mt-0.5">{selectedStudent.nombre_completo}</p>
+                    <h2 className="text-lg font-bold text-foreground">Observador Digital</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedStudent.nombre_completo}</p>
                   </div>
                   <button
                     onClick={() => setSelectedStudent(null)}
-                    className="p-1.5 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -972,28 +941,28 @@ export default function DocenteDashboard() {
                 </div>
 
                 {/* Form to Create New Observation */}
-                <form onSubmit={handleSaveObservacion} className="space-y-4 shrink-0 bg-white/[0.01] border border-white/5 rounded-2xl p-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-teal-400">Registrar Nueva Novedad</h3>
+                <form onSubmit={handleSaveObservacion} className="space-y-4 shrink-0 bg-background border border-border rounded-2xl p-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary">Registrar Nueva Novedad</h3>
                   
                   {/* Tipo de Nota */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Tipo de Anotación
                     </label>
                     <select
                       value={newObsType}
                       onChange={(e) => setNewObsType(e.target.value as 'PEDAGOGICA' | 'DISCIPLINARIA' | 'LOGRO_DESTACADO')}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-500/60"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
                     >
-                      <option value="PEDAGOGICA" className="bg-[#0c1220]">Pedagógica (Seguimiento Académico/Convivencia)</option>
-                      <option value="DISCIPLINARIA" className="bg-[#0c1220]">Disciplinaria (Llamado de atención / Falta)</option>
-                      <option value="LOGRO_DESTACADO" className="bg-[#0c1220]">Reconocimiento / Logro Destacado</option>
+                      <option value="PEDAGOGICA" className="bg-card text-foreground">Pedagógica (Seguimiento Académico/Convivencia)</option>
+                      <option value="DISCIPLINARIA" className="bg-card text-foreground">Disciplinaria (Llamado de atención / Falta)</option>
+                      <option value="LOGRO_DESTACADO" className="bg-card text-foreground">Reconocimiento / Logro Destacado</option>
                     </select>
                   </div>
 
                   {/* Observacion Informal */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                       Detalle de la Observación (Nota en bruto)
                     </label>
                     <textarea
@@ -1002,7 +971,7 @@ export default function DocenteDashboard() {
                       placeholder="Ej: El alumno interrumpió la clase varias veces hablando con sus compañeros. Se le llamó la atención."
                       value={newObsText}
                       onChange={(e) => setNewObsText(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-xs placeholder-white/20 focus:outline-none focus:border-teal-500/60 focus:bg-white/8 transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl bg-card border border-border text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-none"
                     />
                   </div>
 
@@ -1010,7 +979,7 @@ export default function DocenteDashboard() {
                   <button
                     type="submit"
                     disabled={savingObs || !newObsText.trim()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-emerald-500 text-xs font-semibold text-white transition-all shadow-lg shadow-teal-600/20 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground transition-all shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {savingObs ? 'Procesando con IA Gemini...' : 'Registrar y Formalizar con IA'}
                   </button>
@@ -1018,23 +987,23 @@ export default function DocenteDashboard() {
 
                 {/* History of Observations */}
                 <div className="flex-1 flex flex-col min-h-0 pt-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3 shrink-0">Historial del Estudiante</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 shrink-0">Historial del Estudiante</h3>
                   
                   {loadingObs ? (
-                    <p className="text-white/40 text-xs text-center py-8">Cargando bitácora...</p>
+                    <p className="text-muted-foreground text-xs text-center py-8 font-medium">Cargando bitácora...</p>
                   ) : observations.length === 0 ? (
-                    <p className="text-white/30 text-xs italic text-center py-8">Sin anotaciones en este periodo.</p>
+                    <p className="text-muted-foreground/60 text-xs italic text-center py-8">Sin anotaciones en este periodo.</p>
                   ) : (
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
                       {observations.map((obs) => (
-                        <div key={obs.id_observador} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs">
+                        <div key={obs.id_observador} className="p-4 rounded-xl bg-background border border-border space-y-3 text-xs">
                           <div className="flex justify-between items-start flex-wrap gap-2">
                             <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
                               obs.tipo_nota === 'DISCIPLINARIA' 
-                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                                ? 'bg-rose-500/15 text-rose-500 border border-rose-500/20' 
                                 : obs.tipo_nota === 'LOGRO_DESTACADO' 
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                                  : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                                  : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
                             }`}>
                               {obs.tipo_nota === 'DISCIPLINARIA' ? 'Disciplinaria' :
                                obs.tipo_nota === 'LOGRO_DESTACADO' ? 'Logro' : 'Pedagógica'}
@@ -1043,8 +1012,8 @@ export default function DocenteDashboard() {
                             {/* Sign status */}
                             <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
                               obs.firmado 
-                                ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20' 
-                                : 'bg-amber-600/10 text-amber-400 border border-amber-500/20'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20'
                             }`}>
                               {obs.firmado ? `Firmado por ${obs.firmadorNombre || 'Acudiente'}` : 'Pendiente de firma'}
                             </span>
@@ -1052,18 +1021,18 @@ export default function DocenteDashboard() {
 
                           <div className="space-y-2 text-[11px] leading-relaxed">
                             <div>
-                              <span className="block text-[8px] font-bold uppercase tracking-wider text-white/30">Nota original:</span>
-                              <p className="text-white/60 italic">&ldquo;{obs.observacion_informal}&rdquo;</p>
+                              <span className="block text-[8px] font-bold uppercase tracking-wider text-muted-foreground">Nota original:</span>
+                              <p className="text-foreground italic">&ldquo;{obs.observacion_informal}&rdquo;</p>
                             </div>
                             {obs.observacion_formal_ia && (
-                              <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg text-indigo-200/90">
-                                <span className="block text-[8px] font-bold uppercase tracking-wider text-indigo-400">Transcripción IA:</span>
+                              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-foreground">
+                                <span className="block text-[8px] font-bold uppercase tracking-wider text-primary">Transcripción IA:</span>
                                 <p>&ldquo;{obs.observacion_formal_ia}&rdquo;</p>
                               </div>
                             )}
                           </div>
                           
-                          <div className="text-[9px] text-white/30 text-right">
+                          <div className="text-[9px] text-muted-foreground text-right">
                             {new Date(obs.fecha_registro || '').toLocaleDateString('es-ES', {
                               day: 'numeric',
                               month: 'short',
@@ -1083,14 +1052,14 @@ export default function DocenteDashboard() {
 
       {/* MODAL DIALOG OVERRIDE FOR ALERTS & CONFIRMS */}
       {modalConfig?.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/60 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-[#0c1220]/95 border border-white/10 p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs bg-black/60 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-sm bg-card border border-border p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4 text-foreground">
             {/* Header / Icon */}
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                modalConfig.type === 'error' ? 'bg-red-500/10 border border-red-500/30 text-red-400' :
-                'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500' :
+                modalConfig.type === 'error' ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500' :
+                'bg-amber-500/10 border border-amber-500/30 text-amber-500'
               }`}>
                 {modalConfig.type === 'success' ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -1106,11 +1075,11 @@ export default function DocenteDashboard() {
                   </svg>
                 )}
               </div>
-              <h3 className="text-base font-bold text-white leading-none">{modalConfig.title}</h3>
+              <h3 className="text-base font-bold text-foreground leading-none">{modalConfig.title}</h3>
             </div>
             
             {/* Body Message */}
-            <p className="text-xs text-white/60 leading-relaxed">{modalConfig.message}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{modalConfig.message}</p>
             
             {/* Footer Buttons */}
             <div className="flex justify-end gap-3 pt-2">
@@ -1119,7 +1088,7 @@ export default function DocenteDashboard() {
                   <button
                     type="button"
                     onClick={() => setModalConfig(null)}
-                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-secondary border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-all cursor-pointer"
                   >
                     Cancelar
                   </button>
@@ -1129,7 +1098,7 @@ export default function DocenteDashboard() {
                       if (modalConfig.onConfirm) modalConfig.onConfirm();
                       setModalConfig(null);
                     }}
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 transition-all shadow-md shadow-amber-500/15 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 transition-all shadow-md cursor-pointer"
                   >
                     Confirmar
                   </button>
@@ -1138,7 +1107,7 @@ export default function DocenteDashboard() {
                 <button
                   type="button"
                   onClick={() => setModalConfig(null)}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-md shadow-indigo-600/15 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground transition-all shadow-md cursor-pointer"
                 >
                   Entendido
                 </button>

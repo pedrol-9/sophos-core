@@ -86,7 +86,7 @@ export function EvidenciasPeriodoModal({
 
     setEvidencias((prev) => {
       const activas = prev.filter((e) => e.activaEnPeriodo);
-      if (activas.length <= 1) return prev; // Con 1 sola siempre 100%
+      if (activas.length <= 1) return prev;
 
       const newPeso = newPct / 100;
       const restantes = activas.filter((e) => e.id_evidencia !== idEvidencia);
@@ -141,22 +141,22 @@ export function EvidenciasPeriodoModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-[#0d1220] border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 text-foreground">
         
         {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
-            <h2 className="text-sm font-bold text-white">Evidencias del Periodo</h2>
-            <p className="text-xs text-white/40 mt-0.5">
+            <h2 className="text-sm font-bold text-foreground">Evidencias del Periodo</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Activa las evidencias a evaluar y define su peso en la definitiva.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-all"
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer"
             aria-label="Cerrar modal"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -166,18 +166,18 @@ export function EvidenciasPeriodoModal({
         </div>
 
         {/* CONTENT */}
-        <div className="px-6 py-5 space-y-3 max-h-[60vh] overflow-y-auto">
+        <div className="px-6 py-5 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : evidencias.length === 0 ? (
             <div className="py-10 text-center">
-              <svg className="w-10 h-10 text-white/10 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-sm text-white/40">No hay evidencias configuradas para este grado y materia.</p>
-              <p className="text-xs text-white/25 mt-1">El coordinador debe crearlas desde el panel de administración.</p>
+              <p className="text-sm text-muted-foreground font-medium">No hay evidencias configuradas para este grado y materia.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">El coordinador debe crearlas desde el panel de administración.</p>
             </div>
           ) : (
             evidencias.map((ev) => (
@@ -185,8 +185,8 @@ export function EvidenciasPeriodoModal({
                 key={ev.id_evidencia}
                 className={`rounded-xl border transition-all duration-200 ${
                   ev.activaEnPeriodo
-                    ? 'border-indigo-500/30 bg-indigo-500/5'
-                    : 'border-white/5 bg-white/[0.02] opacity-60'
+                    ? 'border-primary/30 bg-primary/10'
+                    : 'border-border bg-background opacity-70'
                 }`}
               >
                 <div className="flex items-center gap-3 px-4 py-3">
@@ -195,13 +195,13 @@ export function EvidenciasPeriodoModal({
                   <button
                     type="button"
                     onClick={() => toggleEvidencia(ev.id_evidencia)}
-                    className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none shrink-0 ${
-                      ev.activaEnPeriodo ? 'bg-indigo-600' : 'bg-white/10'
+                    className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none shrink-0 cursor-pointer ${
+                      ev.activaEnPeriodo ? 'bg-primary' : 'bg-secondary'
                     }`}
                     aria-label={ev.activaEnPeriodo ? 'Desactivar' : 'Activar'}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300 ${
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${
                         ev.activaEnPeriodo ? 'translate-x-5' : 'translate-x-0'
                       }`}
                     />
@@ -209,9 +209,9 @@ export function EvidenciasPeriodoModal({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{ev.nombre}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{ev.nombre}</p>
                     {ev.descripcion && (
-                      <p className="text-xs text-white/40 truncate mt-0.5">{ev.descripcion}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{ev.descripcion}</p>
                     )}
                   </div>
 
@@ -225,9 +225,9 @@ export function EvidenciasPeriodoModal({
                         step={1}
                         value={ev.peso === 0 ? '' : Math.round(ev.peso * 100)}
                         onChange={(e) => handlePesoChange(ev.id_evidencia, e.target.value)}
-                        className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center font-bold focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="w-14 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                       />
-                      <span className="text-xs text-white/40 font-semibold">%</span>
+                      <span className="text-xs text-muted-foreground font-semibold">%</span>
                     </div>
                   )}
                 </div>
@@ -235,9 +235,9 @@ export function EvidenciasPeriodoModal({
                 {/* Barra de progreso del peso */}
                 {ev.activaEnPeriodo && (
                   <div className="px-4 pb-3">
-                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-1 bg-secondary rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                        className="h-full bg-primary rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(ev.peso * 100, 100)}%` }}
                       />
                     </div>
@@ -250,29 +250,29 @@ export function EvidenciasPeriodoModal({
 
         {/* FOOTER */}
         {evidencias.length > 0 && (
-          <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between gap-4">
+          <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-4">
             
             {/* Total de pesos */}
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${totalOk ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              <span className={`text-xs font-semibold ${totalOk ? 'text-emerald-400' : 'text-amber-400'}`}>
+              <span className={`text-xs font-semibold ${totalOk ? 'text-emerald-500' : 'text-amber-500'}`}>
                 Total: {totalPct.toFixed(0)}%
               </span>
               {!totalOk && (
-                <span className="text-[10px] text-amber-400/70">
+                <span className="text-[10px] text-amber-500/80 font-medium">
                   (debe sumar 100%)
                 </span>
               )}
             </div>
 
-            {error && <p className="text-xs text-red-400 flex-1">{error}</p>}
+            {error && <p className="text-xs text-rose-500 flex-1 font-medium">{error}</p>}
 
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="px-4 py-2 rounded-xl bg-white/5 text-white/60 hover:text-white text-sm font-semibold transition-all disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground text-sm font-semibold transition-all disabled:opacity-50 cursor-pointer"
               >
                 Cancelar
               </button>
@@ -280,7 +280,7 @@ export function EvidenciasPeriodoModal({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || activas.length === 0}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-all shadow-md shadow-indigo-600/20"
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold transition-all shadow-md cursor-pointer"
               >
                 {saving ? 'Guardando...' : 'Guardar configuración'}
               </button>

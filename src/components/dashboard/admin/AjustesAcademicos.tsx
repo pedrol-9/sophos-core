@@ -11,24 +11,25 @@ import {
 } from '@/app/actions/config-actions';
 
 interface AjustesAcademicosProps {
-  idInstitucion: string;
+  idInstitucion?: string;
   onConfigSaved?: () => void;
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-const DESEMPENOS = ['BAJO', 'BASICO', 'ALTO', 'SUPERIOR'] as const;
 const DESEMPENO_COLORS: Record<string, string> = {
-  SUPERIOR: 'bg-emerald-400',
-  ALTO: 'bg-indigo-400',
-  BASICO: 'bg-cyan-400',
-  BAJO: 'bg-red-400',
+  SUPERIOR: 'bg-emerald-500',
+  ALTO: 'bg-indigo-500',
+  BASICO: 'bg-cyan-500',
+  BAJO: 'bg-red-500',
 };
+
 const DEFAULT_PERIODOS_4: PeriodoParam[] = [
   { numero_periodo: 1, fecha_inicio: '', fecha_fin: '', activo: true },
   { numero_periodo: 2, fecha_inicio: '', fecha_fin: '', activo: false },
   { numero_periodo: 3, fecha_inicio: '', fecha_fin: '', activo: false },
   { numero_periodo: 4, fecha_inicio: '', fecha_fin: '', activo: false },
 ];
+
 const DEFAULT_ESCALAS: EscalaParam[] = [
   { nombre_desempeno: 'BAJO',     nota_minima: 0.0, nota_maxima: 2.9 },
   { nombre_desempeno: 'BASICO',   nota_minima: 3.0, nota_maxima: 3.9 },
@@ -44,10 +45,10 @@ function deepEqual<T>(a: T, b: T) {
 
 function SectionCard({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0c1220]/75 border border-white/10 rounded-2xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/8">
-        <h3 className="text-sm font-bold text-white">{title}</h3>
-        <p className="text-xs text-white/45 mt-0.5">{description}</p>
+    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="px-6 py-4 border-b border-border">
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       <div className="px-6 py-5">{children}</div>
     </div>
@@ -71,11 +72,11 @@ function SaveBar({
 }) {
   if (!isDirty && !success && !error) return null;
   return (
-    <div className="mt-4 flex items-center justify-between gap-3 pt-4 border-t border-white/8 animate-in fade-in duration-200">
+    <div className="mt-4 flex items-center justify-between gap-3 pt-4 border-t border-border animate-in fade-in duration-200">
       <div className="text-xs">
-        {error   && <span className="text-red-400 font-medium">{error}</span>}
-        {success && !error && <span className="text-teal-400 font-medium">✓ Guardado correctamente</span>}
-        {isDirty && !error && !success && <span className="text-white/40">Hay cambios sin guardar</span>}
+        {error   && <span className="text-rose-500 font-medium">{error}</span>}
+        {success && !error && <span className="text-teal-500 font-medium font-semibold">✓ Guardado correctamente</span>}
+        {isDirty && !error && !success && <span className="text-muted-foreground">Hay cambios sin guardar</span>}
       </div>
       {isDirty && (
         <div className="flex items-center gap-2">
@@ -83,7 +84,7 @@ function SaveBar({
             type="button"
             disabled={saving}
             onClick={onCancel}
-            className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50 text-white/60 hover:text-white font-semibold text-xs rounded-xl transition-all cursor-pointer shrink-0"
+            className="px-4 py-2 bg-secondary border border-border hover:bg-secondary/80 disabled:opacity-50 text-foreground font-semibold text-xs rounded-xl transition-all cursor-pointer shrink-0"
           >
             Descartar
           </button>
@@ -91,7 +92,7 @@ function SaveBar({
             type="button"
             disabled={saving}
             onClick={onSave}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
           >
             {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
@@ -102,7 +103,7 @@ function SaveBar({
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcademicosProps) {
+export function AjustesAcademicos({ onConfigSaved }: AjustesAcademicosProps) {
   const [loading, setLoading] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
 
@@ -156,12 +157,10 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
   // ── Periodo helpers ────────────────────────────────────────────────────────
   const setCantPeriodos = (n: 3 | 4) => {
     const nums = n === 3 ? [1, 2, 3] : [1, 2, 3, 4];
-    // Preservar datos existentes; solo crear nueva entrada si el periodo no existía
     const updated = nums.map((i) => {
       const existing = periodos.find((p) => p.numero_periodo === i);
       return existing ?? { numero_periodo: i, fecha_inicio: '', fecha_fin: '', activo: false };
     });
-    // Garantizar que sigue habiendo un periodo activo
     if (!updated.some((p) => p.activo)) updated[0].activo = true;
     setPeriodos(updated);
     setPeriodoError('');
@@ -274,7 +273,7 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
     return (
       <div className="space-y-4 animate-pulse">
         {[1,2,3].map((i) => (
-          <div key={i} className="h-40 bg-white/5 rounded-2xl" />
+          <div key={i} className="h-40 bg-card rounded-2xl border border-border" />
         ))}
       </div>
     );
@@ -288,9 +287,9 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
         <button
           type="button"
           onClick={() => setShowVideo(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 text-white/60 hover:text-white text-xs font-medium transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border hover:bg-secondary text-muted-foreground hover:text-foreground text-xs font-medium transition-all"
         >
-          <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -305,7 +304,7 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
       >
         {/* Selector de cantidad */}
         <div className="flex items-center gap-3 mb-5">
-          <p className="text-xs text-white/50 shrink-0">Número de periodos:</p>
+          <p className="text-xs text-muted-foreground shrink-0 font-medium">Número de periodos:</p>
           {([3, 4] as const).map((n) => (
             <button
               key={n}
@@ -313,8 +312,8 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
               onClick={() => setCantPeriodos(n)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 periodos.length === n
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               {n} periodos
@@ -325,37 +324,37 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
         {/* Filas de periodos */}
         <div className="space-y-3">
           {periodos.map((p, idx) => (
-            <div key={p.numero_periodo} className="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-3 bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+            <div key={p.numero_periodo} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
               <div className="flex items-center gap-2 w-20">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${p.activo ? 'bg-indigo-400' : 'bg-white/20'}`} />
-                <span className="text-xs font-bold text-white/70">P{p.numero_periodo}</span>
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.activo ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                <span className="text-xs font-bold text-foreground">P{p.numero_periodo}</span>
               </div>
               <div>
-                <label className="block text-[10px] text-white/35 uppercase tracking-wider mb-1">Inicio</label>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Inicio</label>
                 <input
                   type="date"
                   value={p.fecha_inicio}
                   onChange={(e) => updatePeriodo(idx, 'fecha_inicio', e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-white/35 uppercase tracking-wider mb-1">Fin</label>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Fin</label>
                 <input
                   type="date"
                   value={p.fecha_fin}
                   onChange={(e) => updatePeriodo(idx, 'fecha_fin', e.target.value)}
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => updatePeriodo(idx, 'activo', true)}
                 title="Marcar como activo"
-                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
                   p.activo
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                    : 'bg-white/5 text-white/30 border border-white/10 hover:text-white/60'
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'bg-secondary text-muted-foreground border border-border hover:text-foreground'
                 }`}
               >
                 {p.activo ? 'Activo' : 'Activar'}
@@ -385,29 +384,29 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
       >
         <div className="space-y-2.5">
           {escalas.map((e, idx) => (
-            <div key={e.nombre_desempeno} className="grid grid-cols-[auto_1fr_1fr] items-center gap-4 bg-white/3 border border-white/8 rounded-xl px-4 py-3">
+            <div key={e.nombre_desempeno} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-4 bg-background border border-border rounded-xl px-4 py-3">
               <div className="flex items-center gap-2 w-24">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${DESEMPENO_COLORS[e.nombre_desempeno]}`} />
-                <span className="text-xs font-bold text-white/70">{e.nombre_desempeno}</span>
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${DESEMPENO_COLORS[e.nombre_desempeno]}`} />
+                <span className="text-xs font-bold text-foreground">{e.nombre_desempeno}</span>
               </div>
               <div>
-                <label className="block text-[10px] text-white/35 uppercase tracking-wider mb-1">Nota mínima</label>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota mínima</label>
                 <input
                   type="number"
                   step="0.1" min="0" max="5"
                   value={e.nota_minima}
                   onChange={(ev) => updateEscala(idx, 'nota_minima', parseFloat(ev.target.value) || 0)}
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-white/35 uppercase tracking-wider mb-1">Nota máxima</label>
+                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota máxima</label>
                 <input
                   type="number"
                   step="0.1" min="0" max="5"
                   value={e.nota_maxima}
                   onChange={(ev) => updateEscala(idx, 'nota_maxima', parseFloat(ev.target.value) || 0)}
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                 />
               </div>
             </div>
@@ -441,19 +440,19 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
               onClick={() => handleNomOption(opt)}
               className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
                 nomenclaturaOption === opt
-                  ? 'bg-indigo-600/15 border-indigo-500 text-white'
-                  : 'bg-white/3 border-white/10 text-white/60 hover:bg-white/5 hover:text-white'
+                  ? 'bg-primary/15 border-primary text-foreground font-semibold'
+                  : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
               }`}
             >
               <div>
                 <span className="block text-sm font-semibold">
                   {opt === '6A' ? 'Alfanumérica (Ej: 6A, 6B)' : 'Numérica Completa (Ej: 601, 602)'}
                 </span>
-                <span className="block text-[10px] text-white/40 mt-0.5">
+                <span className="block text-[10px] text-muted-foreground mt-0.5">
                   {opt === '6A' ? 'Grado número + sección letra' : 'Grado número + sección numérica'}
                 </span>
               </div>
-              <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === opt ? 'border-indigo-400 bg-indigo-400' : 'border-white/20'}`} />
+              <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === opt ? 'border-primary bg-primary' : 'border-border'}`} />
             </button>
           ))}
           <button
@@ -461,15 +460,15 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
             onClick={() => handleNomOption('custom')}
             className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
               nomenclaturaOption === 'custom'
-                ? 'bg-indigo-600/15 border-indigo-500 text-white'
-                : 'bg-white/3 border-white/10 text-white/60 hover:bg-white/5 hover:text-white'
+                ? 'bg-primary/15 border-primary text-foreground font-semibold'
+                : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
             }`}
           >
             <div>
               <span className="block text-sm font-semibold">Personalizada</span>
-              <span className="block text-[10px] text-white/40 mt-0.5">Escribe tu propia nomenclatura base</span>
+              <span className="block text-[10px] text-muted-foreground mt-0.5">Escribe tu propia nomenclatura base</span>
             </div>
-            <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === 'custom' ? 'border-indigo-400 bg-indigo-400' : 'border-white/20'}`} />
+            <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === 'custom' ? 'border-primary bg-primary' : 'border-border'}`} />
           </button>
 
           {nomenclaturaOption === 'custom' && (
@@ -478,7 +477,7 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
               value={customNom}
               onChange={(e) => { setCustomNom(e.target.value); setNomenclatura(e.target.value); setNomSuccess(false); setNomError(''); }}
               placeholder="Ej: 6-1, Sexto A, Grado 6 Sec 1..."
-              className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500 transition-colors animate-in fade-in"
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors animate-in fade-in"
             />
           )}
         </div>
@@ -503,37 +502,37 @@ export function AjustesAcademicos({ idInstitucion, onConfigSaved }: AjustesAcade
       {/* ── MODAL: Video Tutorial ──────────────────────────────────────────── */}
       {showVideo && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
           onClick={() => setShowVideo(false)}
         >
           <div
-            className="relative w-full max-w-lg bg-[#0c1220] border border-white/10 rounded-2xl p-8 text-center space-y-4 shadow-2xl"
+            className="relative w-full max-w-lg bg-card border border-border rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setShowVideo(false)}
-              className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Videotutorial</h3>
-              <p className="text-xs text-white/40 mt-1">Guía paso a paso para configurar tu año lectivo</p>
+              <h3 className="text-base font-bold text-foreground">Videotutorial</h3>
+              <p className="text-xs text-muted-foreground mt-1">Guía paso a paso para configurar tu año lectivo</p>
             </div>
-            <div className="w-full aspect-video bg-white/3 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-3">
+            <div className="w-full aspect-video bg-background border border-border rounded-xl flex flex-col items-center justify-center gap-3">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">En construcción</span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-300 uppercase tracking-wider">En construcción</span>
               </div>
-              <p className="text-xs text-white/30">El tutorial estará disponible próximamente</p>
+              <p className="text-xs text-muted-foreground">El tutorial estará disponible próximamente</p>
             </div>
           </div>
         </div>
