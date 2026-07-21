@@ -90,7 +90,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <IconRocket /> Configuración Inicial
+                <IconRocket /> Ajustes Académicos
               </button>
               <button
                 onClick={() => setActiveTab('settings_admins')}

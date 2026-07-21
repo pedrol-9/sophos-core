@@ -11,6 +11,7 @@ import { useAdminDashboard } from '@/hooks/useAdminDashboard';
 import { StudentList } from '@/components/dashboard/admin/StudentList';
 import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
 import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
+import { AjustesAcademicos } from '@/components/dashboard/admin/AjustesAcademicos';
 import { EvidenciasManager } from '@/components/dashboard/admin/EvidenciasManager';
 import { SubscriptionManager } from '@/components/dashboard/admin/SubscriptionManager';
 import { CierrePeriodoManager } from '@/components/dashboard/admin/CierrePeriodoManager';
@@ -23,7 +24,6 @@ import {
   getInstitutionAdmins,
   createAdditionalAdmin
 } from '@/app/actions/admin-actions';
-import { getOnboardingConfig, ExistingOnboardingConfig } from '@/app/actions/config-actions';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -51,11 +51,6 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAdminPwd, setShowAdminPwd] = useState(false);
   const [logoTimestamp, setLogoTimestamp] = useState(Date.now());
-  // ─── ESTADOS WIZARD ONBOARDING ─────────────────────────────────────────────
-  /** Controla la visibilidad del wizard SIN alterar isOnboardingComplete */
-  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
-  /** Config actual leída de la DB para pre-popular el wizard en modo edición */
-  const [existingConfig, setExistingConfig] = useState<ExistingOnboardingConfig | undefined>(undefined);
 
   // ─── CUSTOM HOOK ─────────────────────────────────────────────────────────────
   const {
@@ -160,13 +155,9 @@ export default function DashboardPage() {
       loadInstitutionInfo();
     } else if (activeTab === 'settings_admins') {
       loadAdmins();
-    } else if (activeTab === 'settings_academic' && isOnboardingComplete) {
-      // Cargar la config actual para mostrar los badges/resumen sin necesidad de clic extra
-      getOnboardingConfig().then((r) => {
-        if (r.success && r.data) setExistingConfig(r.data);
-      });
     }
   }, [activeTab, idInstitucion]);
+
 
 
   if (isOnboardingComplete === null) {
@@ -179,27 +170,14 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden">
-      {/* Wizard: se muestra si (a) onboarding incompleto y no dismissed, o (b) el admin lo abrió manualmente */}
-      {((!isOnboardingComplete && !dismissedOnboarding) || showOnboardingWizard) && user?.app_metadata?.id_institucion && (
+      {/* Wizard: solo se muestra en el flujo inicial (onboarding incompleto y no dismissed) */}
+      {!isOnboardingComplete && !dismissedOnboarding && user?.app_metadata?.id_institucion && (
         <OnboardingWizard
           idInstitucion={user.app_metadata.id_institucion}
-          initialData={showOnboardingWizard ? existingConfig : undefined}
-          isEditing={showOnboardingWizard && isOnboardingComplete}
-          onComplete={() => {
-            setIsOnboardingComplete(true);
-            setShowOnboardingWizard(false);
-            // Recargar config para que los badges se actualicen
-            getOnboardingConfig().then((r) => { if (r.success && r.data) setExistingConfig(r.data); });
-          }}
+          onComplete={() => setIsOnboardingComplete(true)}
           onDismiss={() => {
-            if (showOnboardingWizard) {
-              // El admin lo abrió desde settings: solo cerrar, no alterar el estado
-              setShowOnboardingWizard(false);
-            } else {
-              // Flujo inicial de onboarding: marcar como dismissed
-              sessionStorage.setItem('onboarding_dismissed', 'true');
-              setDismissedOnboarding(true);
-            }
+            sessionStorage.setItem('onboarding_dismissed', 'true');
+            setDismissedOnboarding(true);
           }}
         />
       )}
@@ -224,17 +202,14 @@ export default function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 className="text-sm font-bold text-amber-200">Configuración del Año Lectivo Pendiente</h4>
+                <h4 className="text-sm font-bold text-amber-200">Ajustes Académicos Pendientes</h4>
                 <p className="text-xs text-amber-300/80 mt-0.5">
-                  La estructura de periodos, ponderaciones y escalas aún no se ha configurado. Las planillas de docentes no estarán operativas hasta completar este paso.
+                  Los periodos y la escala de valoración aún no están configurados. Los docentes no podrán registrar calificaciones hasta completar este paso.
                 </p>
               </div>
             </div>
             <button
-              onClick={() => {
-                sessionStorage.removeItem('onboarding_dismissed');
-                setDismissedOnboarding(false);
-              }}
+              onClick={() => setActiveTab('settings_academic')}
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-background font-bold text-xs rounded-xl shadow-md transition-all shrink-0 cursor-pointer"
             >
               Configurar Ahora
@@ -252,7 +227,7 @@ export default function DashboardPage() {
                activeTab === 'ai' ? 'IA Académica' :
                activeTab === 'settings_profile' ? 'Configuración de Perfil' :
                activeTab === 'settings_plans' ? 'Suscripción y Facturación' :
-               activeTab === 'settings_academic' ? 'Configuración del Año Lectivo' :
+               activeTab === 'settings_academic' ? 'Ajustes Académicos' :
                activeTab === 'settings_admins' ? 'Administradores' :
                activeTab === 'cierre' ? 'Boletines y Cierre de Periodo' : 'Panel General'}
             </h1>
@@ -263,7 +238,7 @@ export default function DashboardPage() {
                activeTab === 'ai' ? 'Consumo de recursos de inteligencia artificial de la institución' :
                activeTab === 'settings_profile' ? 'Actualización de datos legales y logotipos' :
                activeTab === 'settings_plans' ? 'Administración de la cuenta y límite de usuarios' :
-               activeTab === 'settings_academic' ? 'Configuración inicial y re-onboarding de periodos' :
+               activeTab === 'settings_academic' ? 'Periodos, escala de valoración y nomenclatura de cursos' :
                activeTab === 'settings_admins' ? 'Gestión de personal de coordinación y administración' :
                activeTab === 'cierre' ? 'Generación de reportes finales y boletines académicos' : ''}
             </p>
@@ -743,118 +718,11 @@ export default function DashboardPage() {
 
         {activeTab === 'settings_plans' && <SubscriptionManager />}
 
-        {activeTab === 'settings_academic' && (
-          <div className="bg-[#0c1220]/75 border border-white/10 rounded-2xl p-6 max-w-2xl animate-in fade-in duration-300">
-            <h2 className="text-lg font-bold text-white mb-4">Configuración del Año Académico</h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 bg-indigo-500/5 border border-indigo-500/25 rounded-2xl p-4">
-                <svg className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h4 className="text-sm font-bold text-indigo-200 flex items-center gap-2">
-                    {isOnboardingComplete ? 'Configuración Completa' : 'Configuración Pendiente'}
-                    {isOnboardingComplete && (
-                      <span className="text-[10px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/25 px-2 py-0.5 rounded-full">Config. Actual</span>
-                    )}
-                  </h4>
-                  <p className="text-xs text-white/50 leading-relaxed mt-1">
-                    La parametrización inicial del año lectivo (como el número de periodos, las escalas de valoración de desempeño, y los logros institucionales) se define mediante el asistente interactivo.
-                  </p>
-                </div>
-              </div>
-
-              {isOnboardingComplete ? (
-                <div className="space-y-3">
-                  <div className="p-4 bg-teal-500/5 border border-teal-500/25 rounded-2xl text-xs text-teal-300 leading-relaxed">
-                    ✅ Tu año académico ya ha sido configurado y las planillas de los docentes están operativas. Puedes editarlo en cualquier momento — los cambios se guardan al finalizar el asistente.
-                  </div>
-
-                  {/* Resumen de configuración actual */}
-                  {existingConfig ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* Periodos */}
-                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Periodos Académicos</p>
-                        <div className="space-y-1.5">
-                          {existingConfig.periodos.map((p) => (
-                            <div key={p.numero_periodo} className="flex items-center justify-between text-xs">
-                              <span className="text-white/70">Periodo {p.numero_periodo}</span>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-white/40">{p.fecha_inicio} → {p.fecha_fin}</span>
-                                {p.activo && (
-                                  <span className="text-[9px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/25 px-1.5 py-0.5 rounded-full">ACTIVO</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Escala */}
-                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Escala de Valoración</p>
-                        <div className="space-y-1.5">
-                          {existingConfig.escalas.map((e) => (
-                            <div key={e.nombre_desempeno} className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                  e.nombre_desempeno === 'SUPERIOR' ? 'bg-emerald-400' :
-                                  e.nombre_desempeno === 'ALTO' ? 'bg-indigo-400' :
-                                  e.nombre_desempeno === 'BASICO' ? 'bg-cyan-400' : 'bg-red-400'
-                                }`} />
-                                <span className="text-white/70">{e.nombre_desempeno}</span>
-                              </div>
-                              <span className="text-white/40">{e.nota_minima.toFixed(1)} – {e.nota_maxima.toFixed(1)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Nomenclatura */}
-                      <div className="bg-white/3 border border-white/8 rounded-xl p-4 sm:col-span-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1">Nomenclatura de Cursos</p>
-                        <span className="text-sm font-bold text-indigo-300">{existingConfig.nomenclaturaCursos}</span>
-                        <span className="text-xs text-white/40 ml-2">(patrón base de identificación de cursos)</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const r = await getOnboardingConfig();
-                        if (r.success && r.data) setExistingConfig(r.data);
-                      }}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-                    >
-                      Ver configuración actual →
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 bg-amber-500/5 border border-amber-500/25 rounded-2xl text-xs text-amber-300 leading-relaxed">
-                  ⚠️ El asistente de configuración inicial no se ha completado. Los docentes no podrán subir calificaciones ni planificar materias hasta que se definan los periodos académicos y la escala de notas.
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-white/5 flex gap-3">
-                <button
-                  onClick={async () => {
-                    // Cargar config existente (si hay) para pre-popular el wizard
-                    if (isOnboardingComplete && !existingConfig) {
-                      const r = await getOnboardingConfig();
-                      if (r.success && r.data) setExistingConfig(r.data);
-                    }
-                    // Abrir wizard SIN alterar isOnboardingComplete
-                    setShowOnboardingWizard(true);
-                  }}
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
-                >
-                  {isOnboardingComplete ? 'Editar Configuración' : 'Iniciar Configuración'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {activeTab === 'settings_academic' && user?.app_metadata?.id_institucion && (
+          <AjustesAcademicos
+            idInstitucion={user.app_metadata.id_institucion}
+            onConfigSaved={() => setIsOnboardingComplete(true)}
+          />
         )}
 
         {activeTab === 'settings_admins' && (

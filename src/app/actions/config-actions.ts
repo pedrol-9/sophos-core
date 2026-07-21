@@ -171,6 +171,83 @@ export async function saveOnboardingParametrizacion(
   }
 }
 
+// ─── ACCIONES POR SECCIÓN (Ajustes Académicos) ────────────────────────────────
+
+/**
+ * Guarda solo los periodos académicos de la institución (delete + insert idempotente).
+ */
+export async function savePeriodosConfig(periodos: PeriodoParam[]): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return { success: false, error: 'Usuario no autenticado.' };
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) return { success: false, error: 'Institución no vinculada.' };
+
+    await supabase.from('periodos_academicos').delete().eq('id_institucion', idInstitucion);
+
+    const { error } = await supabase.from('periodos_academicos').insert(
+      periodos.map((p) => ({ id_institucion: idInstitucion, ...p }))
+    );
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error al guardar periodos.' };
+  }
+}
+
+/**
+ * Guarda solo la escala de valoración de la institución (delete + insert idempotente).
+ */
+export async function saveEscalaConfig(escalas: EscalaParam[]): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return { success: false, error: 'Usuario no autenticado.' };
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) return { success: false, error: 'Institución no vinculada.' };
+
+    await supabase.from('escala_valoracion').delete().eq('id_institucion', idInstitucion);
+
+    const { error } = await supabase.from('escala_valoracion').insert(
+      escalas.map((e) => ({ id_institucion: idInstitucion, ...e }))
+    );
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error al guardar escala.' };
+  }
+}
+
+/**
+ * Guarda solo la nomenclatura de cursos de la institución.
+ */
+export async function saveNomenclaturaConfig(nomenclatura: string): Promise<ActionResponse> {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return { success: false, error: 'Usuario no autenticado.' };
+    const idInstitucion = user.app_metadata?.id_institucion;
+    if (!idInstitucion) return { success: false, error: 'Institución no vinculada.' };
+
+    const { error } = await supabase
+      .from('instituciones')
+      .update({ nomenclatura_cursos: nomenclatura })
+      .eq('id_institucion', idInstitucion);
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error al guardar nomenclatura.' };
+  }
+}
+
+
 export type ExistingOnboardingConfig = {
   periodos: PeriodoParam[];
   escalas: EscalaParam[];
