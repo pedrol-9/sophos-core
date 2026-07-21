@@ -281,7 +281,7 @@ export function EvidenciasManager() {
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Nombre de la Evidencia</th>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Descripción</th>
                 <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estado Banco</th>
-                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Uso en Periodo</th>
+                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Usado en</th>
                 <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-20">Peso</th>
                 <th className="py-3 px-4 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-36">Acciones</th>
               </tr>
@@ -327,18 +327,31 @@ export function EvidenciasManager() {
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {ev.periodo_asignado ? (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/20">
-                          Seleccionada {ev.periodo_asignado}
-                        </span>
-                      ) : ev.usadaEnPeriodoAnterior ? (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/20">
-                          Usada en {ev.periodoAnteriorNombre}
-                        </span>
+                      {ev.periodosUsadosNombres && ev.periodosUsadosNombres.length > 0 ? (
+                        <div className="flex items-center justify-center gap-1 flex-wrap">
+                          {ev.periodosUsadosNombres.map((p) => {
+                            const isP1 = p === 'P1';
+                            const isP2 = p === 'P2';
+                            const isP3 = p === 'P3';
+                            const isP4 = p === 'P4';
+                            return (
+                              <span
+                                key={p}
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                                  isP1 ? 'bg-blue-500/15 text-blue-500 border-blue-500/25' :
+                                  isP2 ? 'bg-amber-500/15 text-amber-500 border-amber-500/25' :
+                                  isP3 ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25' :
+                                  isP4 ? 'bg-purple-500/15 text-purple-500 border-purple-500/25' :
+                                  'bg-secondary text-muted-foreground border-border'
+                                }`}
+                              >
+                                {p}
+                              </span>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <span className="text-[10px] font-normal text-muted-foreground/60 italic">
-                          Sin seleccionar
-                        </span>
+                        <span className="text-muted-foreground/40 text-xs font-mono">-</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center text-xs font-mono font-bold text-foreground">

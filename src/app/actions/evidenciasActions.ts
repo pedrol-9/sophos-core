@@ -25,6 +25,7 @@ export type EvidenciaAdminDetail = EvidenciaRow & {
   docente_nombre?: string | null;
   usadaEnPeriodoAnterior?: boolean;
   periodoAnteriorNombre?: string | null;
+  periodosUsadosNombres?: string[];
 };
 
 export type ConfigEvidenciaPeriodo = {
@@ -155,7 +156,7 @@ export async function getEvidenciasAdminFull(opts: {
     const idInstitucion = user.app_metadata?.id_institucion as string;
     const anoLectivo = opts.anoLectivo ?? new Date().getFullYear();
 
-    // 1. Obtener todas las evidencias del banco para esta materia + grado (select * para tolerancia a columnas)
+    // 1. Obtener todas las evidencias del banco para esta materia + grado
     const { data: evidencias, error: evErr } = await supabase
       .from('evidencias')
       .select('*')
@@ -171,6 +172,14 @@ export async function getEvidenciasAdminFull(opts: {
       estado_aprobacion: row.estado_aprobacion || 'APROBADA',
     })) as EvidenciaRow[];
 
+    if (list.length === 0) {
+      return {
+        success: true,
+        data: [],
+        stats: { totalBanco: 0, totalActivasPeriodo: 0, totalPendientesAprobacion: 0, totalUsadasAnteriores: 0 },
+      };
+    }
+
     // 2. Obtener periodo activo y todos los periodos
     const { data: periodos } = await supabase
       .from('periodos_academicos')
@@ -179,37 +188,16 @@ export async function getEvidenciasAdminFull(opts: {
       .order('numero_periodo', { ascending: true });
 
     const activePeriod = (periodos || []).find((p) => p.activo);
+    const evIds = list.map((e) => e.id_evidencia);
 
-    // 3. Obtener asignaciones para este grado y materia
-    const { data: cursos } = await supabase
-      .from('cursos')
-      .select('id_curso, nombre')
-      .eq('id_institucion', idInstitucion);
+    // 3. Cargar configuraciones de evidencias asociadas directamente por id_evidencia
+    const { data: cfgs } = await supabase
+      .from('configuracion_evidencias_periodo')
+      .select('id_evidencia, id_periodo, activo, peso')
+      .in('id_evidencia', evIds);
 
-    const cursoIdsForGrado = (cursos || [])
-      .filter((c) => extractGrado(c.nombre) === opts.grado)
-      .map((c) => c.id_curso);
+    const configRecords = cfgs || [];
 
-    let configRecords: any[] = [];
-    if (cursoIdsForGrado.length > 0) {
-      const { data: asignaciones } = await supabase
-        .from('asignaciones_academicas')
-        .select('id_asignacion, usuarios(nombre_completo)')
-        .eq('id_materia', opts.idMateria)
-        .in('id_curso', cursoIdsForGrado);
-
-      const asigIds = (asignaciones || []).map((a) => a.id_asignacion);
-      if (asigIds.length > 0) {
-        const { data: cfgs } = await supabase
-          .from('configuracion_evidencias_periodo')
-          .select('id_asignacion, id_periodo, id_evidencia, activo, peso')
-          .in('id_asignacion', asigIds);
-
-        configRecords = cfgs || [];
-      }
-    }
-
-    // Mapa de uso en periodo activo y periodos anteriores
     let totalActivasPeriodo = 0;
     let totalUsadasAnteriores = 0;
     let totalPendientesAprobacion = 0;
@@ -218,36 +206,44 @@ export async function getEvidenciasAdminFull(opts: {
       const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
       if (isPendiente) totalPendientesAprobacion++;
 
-      // Buscar si está activa en el periodo actual
+      const evConfigs = configRecords.filter((c) => c.id_evidencia === ev.id_evidencia && c.activo);
+      
+      const periodosUsadosNombres: string[] = [];
       let pesoPeriodo: number | null = null;
-      let periodoAsignado: string | null = null;
-      let usadaAnterior = false;
-      let periodoAnteriorNombre: string | null = null;
+      let esActivaEnPeriodoVigente = false;
+      let usadaEnAnterior = false;
 
-      for (const cfg of configRecords) {
-        if (cfg.id_evidencia === ev.id_evidencia && cfg.activo) {
-          const per = (periodos || []).find((p) => p.id_periodo === cfg.id_periodo);
-          if (per) {
-            if (activePeriod && per.id_periodo === activePeriod.id_periodo) {
-              pesoPeriodo = Number(cfg.peso);
-              periodoAsignado = `P${per.numero_periodo} (Activo)`;
-            } else if (activePeriod && per.numero_periodo < activePeriod.numero_periodo) {
-              usadaAnterior = true;
-              periodoAnteriorNombre = `P${per.numero_periodo}`;
-            }
+      evConfigs.forEach((cfg) => {
+        const per = (periodos || []).find((p) => p.id_periodo === cfg.id_periodo);
+        if (per) {
+          const pName = `P${per.numero_periodo}`;
+          if (!periodosUsadosNombres.includes(pName)) {
+            periodosUsadosNombres.push(pName);
+          }
+          if (activePeriod && per.id_periodo === activePeriod.id_periodo) {
+            esActivaEnPeriodoVigente = true;
+            pesoPeriodo = Number(cfg.peso);
+          } else if (activePeriod && per.numero_periodo < activePeriod.numero_periodo) {
+            usadaEnAnterior = true;
+          }
+          if (pesoPeriodo === null && cfg.peso !== undefined && cfg.peso !== null) {
+            pesoPeriodo = Number(cfg.peso);
           }
         }
-      }
+      });
 
-      if (pesoPeriodo !== null) totalActivasPeriodo++;
-      if (usadaAnterior) totalUsadasAnteriores++;
+      if (esActivaEnPeriodoVigente) totalActivasPeriodo++;
+      if (usadaEnAnterior && !esActivaEnPeriodoVigente) totalUsadasAnteriores++;
+
+      periodosUsadosNombres.sort();
 
       return {
         ...ev,
-        periodo_asignado: periodoAsignado,
+        periodo_asignado: periodosUsadosNombres.join(', ') || null,
         peso_periodo: pesoPeriodo,
-        usadaEnPeriodoAnterior: usadaAnterior,
-        periodoAnteriorNombre: periodoAnteriorNombre,
+        usadaEnPeriodoAnterior: usadaEnAnterior,
+        periodoAnteriorNombre: periodosUsadosNombres[0] || null,
+        periodosUsadosNombres,
       };
     });
 
