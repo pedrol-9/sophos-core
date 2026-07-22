@@ -575,6 +575,26 @@ export async function getEvidenciasForAsignacion(
       return { success: false, error: 'No se encontró la asignación académica.' };
     }
 
+    // 1b. Obtener el nombre de la materia para incluir IDs hermanos con el mismo nombre
+    const { data: materiaObj } = await supabase
+      .from('materias')
+      .select('nombre')
+      .eq('id_materia', asignacion.id_materia)
+      .maybeSingle();
+
+    let matchingMateriaIds = [asignacion.id_materia];
+    if (materiaObj?.nombre) {
+      const { data: siblingMaterias } = await supabase
+        .from('materias')
+        .select('id_materia')
+        .eq('id_institucion', asignacion.id_institucion)
+        .ilike('nombre', materiaObj.nombre.trim());
+
+      if (siblingMaterias && siblingMaterias.length > 0) {
+        matchingMateriaIds = Array.from(new Set([...matchingMateriaIds, ...siblingMaterias.map((m) => m.id_materia)]));
+      }
+    }
+
     // 2. Obtener el nombre del curso para extraer el grado
     const { data: curso, error: cursoErr } = await supabase
       .from('cursos')
@@ -594,14 +614,13 @@ export async function getEvidenciasForAsignacion(
       new Set([extractedGrado, rawDigits, curso.nombre, cursoGrado].filter((g): g is string => Boolean(g && g.trim())))
     );
 
-    // 3. Buscar evidencias disponibles para esta materia e institución
+    // 3. Buscar TODAS las evidencias para esta materia e institución
     const { data: rawEvidencias, error: evErr } = await supabase
       .from('evidencias')
       .select('*')
       .eq('id_institucion', asignacion.id_institucion)
-      .eq('id_materia', asignacion.id_materia)
+      .in('id_materia', matchingMateriaIds)
       .neq('estado_aprobacion', 'RECHAZADA')
-      .eq('activo', true)
       .order('orden', { ascending: true });
 
     if (evErr) return { success: false, error: evErr.message };
@@ -621,7 +640,9 @@ export async function getEvidenciasForAsignacion(
       );
     });
 
-    const evidencias = matchingEvidencias.map((row: any) => ({
+    const finalRawList = matchingEvidencias.length > 0 ? matchingEvidencias : rawEvidencias;
+
+    const evidencias = finalRawList.map((row: any) => ({
       ...row,
       estado_aprobacion: row.estado_aprobacion || 'APROBADA',
     }));
@@ -727,8 +748,9 @@ export async function saveConfigEvidenciasPeriodo(
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user || user.app_metadata?.rol !== 'DOCENTE') {
-      return { success: false, error: 'Solo docentes pueden configurar evidencias.' };
+    const userRole = user?.app_metadata?.rol;
+    if (!user || (userRole !== 'DOCENTE' && userRole !== 'ADMIN')) {
+      return { success: false, error: 'Solo docentes o administradores pueden configurar evidencias.' };
     }
 
     // Verificar que el periodo no esté cerrado
@@ -753,15 +775,14 @@ export async function saveConfigEvidenciasPeriodo(
       return { success: false, error: 'No se permite modificar la configuración de evidencias en periodos cerrados.' };
     }
 
-    // Verificar propiedad de la asignación
+    // Verificar existencia de la asignación
     const { data: asig } = await supabase
       .from('asignaciones_academicas')
       .select('id_asignacion')
       .eq('id_asignacion', idAsignacion)
-      .eq('id_docente', user.id)
       .maybeSingle();
 
-    if (!asig) return { success: false, error: 'No tienes permisos sobre esta asignación.' };
+    if (!asig) return { success: false, error: 'No se encontró la asignación académica.' };
 
     if (configs.length === 0) return { success: true };
 
