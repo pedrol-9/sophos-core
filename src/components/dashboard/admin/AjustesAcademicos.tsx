@@ -283,7 +283,7 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
   }
 
   return (
-    <div className="space-y-6 max-w-3xl animate-in fade-in duration-300">
+    <div className="space-y-6 w-full animate-in fade-in duration-300">
 
       {/* Video tutorial button */}
       <div className="flex justify-end">
@@ -300,209 +300,140 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
         </button>
       </div>
 
-      {/* ── SECCIÓN 1: Periodos ────────────────────────────────────────────── */}
-      <SectionCard
-        title="Periodos Académicos"
-        description="Define la estructura temporal del año lectivo. Cada periodo tiene su rango de fechas y uno debe estar activo."
-      >
-        {/* Selector de cantidad */}
-        <div className="flex items-center gap-3 mb-5">
-          <p className="text-xs text-muted-foreground shrink-0 font-medium">Número de periodos:</p>
-          {([3, 4] as const).map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setCantPeriodos(n)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                periodos.length === n
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
-              }`}
-            >
-              {n} periodos
-            </button>
-          ))}
-        </div>
-
-        {/* Filas de periodos */}
-        <div className="space-y-3">
-          {periodos.map((p, idx) => (
-            <div key={p.numero_periodo} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2 w-20">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.activo ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                <span className="text-xs font-bold text-foreground">P{p.numero_periodo}</span>
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Inicio</label>
-                <input
-                  type="date"
-                  value={p.fecha_inicio}
-                  onChange={(e) => updatePeriodo(idx, 'fecha_inicio', e.target.value)}
-                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Fin</label>
-                <input
-                  type="date"
-                  value={p.fecha_fin}
-                  onChange={(e) => updatePeriodo(idx, 'fecha_fin', e.target.value)}
-                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                />
-              </div>
+      {/* ── FILA 1: Periodos Académicos & Escala de Valoración (2 Columnas en PC) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* SECCIÓN 1: Periodos */}
+        <SectionCard
+          title="Periodos Académicos"
+          description="Define la estructura temporal del año lectivo. Cada periodo tiene su rango de fechas y uno debe estar activo."
+        >
+          {/* Selector de cantidad */}
+          <div className="flex items-center gap-3 mb-5">
+            <p className="text-xs text-muted-foreground shrink-0 font-medium">Número de periodos:</p>
+            {([3, 4] as const).map((n) => (
               <button
+                key={n}
                 type="button"
-                onClick={() => updatePeriodo(idx, 'activo', true)}
-                title="Marcar como activo"
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
-                  p.activo
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'bg-secondary text-muted-foreground border border-border hover:text-foreground'
+                onClick={() => setCantPeriodos(n)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  periodos.length === n
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
                 }`}
               >
-                {p.activo ? 'Activo' : 'Activar'}
+                {n} periodos
               </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <SaveBar
-          isDirty={periodosDirty}
-          saving={savingPeriodos}
-          success={periodoSuccess}
-          error={periodoError}
-          onSave={handleSavePeriodos}
-          onCancel={() => {
-            setPeriodos(periodosSaved);
-            setPeriodoError('');
-            setPeriodoSuccess(false);
-          }}
-        />
-      </SectionCard>
-
-      {/* ── SECCIÓN 2: Escala de Valoración ───────────────────────────────── */}
-      <SectionCard
-        title="Escala de Valoración"
-        description="Homologa las notas numéricas (0.0 – 5.0) con los niveles de desempeño del Decreto 1290."
-      >
-        <div className="space-y-2.5">
-          {escalas.map((e, idx) => (
-            <div key={e.nombre_desempeno} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-4 bg-background border border-border rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2 w-24">
-                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${DESEMPENO_COLORS[e.nombre_desempeno]}`} />
-                <span className="text-xs font-bold text-foreground">{e.nombre_desempeno}</span>
+          {/* Filas de periodos */}
+          <div className="space-y-3">
+            {periodos.map((p, idx) => (
+              <div key={p.numero_periodo} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2 w-20">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.activo ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                  <span className="text-xs font-bold text-foreground">P{p.numero_periodo}</span>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Inicio</label>
+                  <input
+                    type="date"
+                    value={p.fecha_inicio}
+                    onChange={(e) => updatePeriodo(idx, 'fecha_inicio', e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Fin</label>
+                  <input
+                    type="date"
+                    value={p.fecha_fin}
+                    onChange={(e) => updatePeriodo(idx, 'fecha_fin', e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updatePeriodo(idx, 'activo', true)}
+                  title="Marcar como activo"
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
+                    p.activo
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'bg-secondary text-muted-foreground border border-border hover:text-foreground'
+                  }`}
+                >
+                  {p.activo ? 'Activo' : 'Activar'}
+                </button>
               </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota mínima</label>
-                <input
-                  type="number"
-                  step="0.1" min="0" max="5"
-                  value={e.nota_minima}
-                  onChange={(ev) => updateEscala(idx, 'nota_minima', parseFloat(ev.target.value) || 0)}
-                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                />
+            ))}
+          </div>
+
+          <SaveBar
+            isDirty={periodosDirty}
+            saving={savingPeriodos}
+            success={periodoSuccess}
+            error={periodoError}
+            onSave={handleSavePeriodos}
+            onCancel={() => {
+              setPeriodos(periodosSaved);
+              setPeriodoError('');
+              setPeriodoSuccess(false);
+            }}
+          />
+        </SectionCard>
+
+        {/* SECCIÓN 2: Escala de Valoración */}
+        <SectionCard
+          title="Escala de Valoración"
+          description="Homologa las notas numéricas (0.0 – 5.0) con los niveles de desempeño del Decreto 1290."
+        >
+          <div className="space-y-2.5">
+            {escalas.map((e, idx) => (
+              <div key={e.nombre_desempeno} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-4 bg-background border border-border rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2 w-24">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${DESEMPENO_COLORS[e.nombre_desempeno]}`} />
+                  <span className="text-xs font-bold text-foreground">{e.nombre_desempeno}</span>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota mínima</label>
+                  <input
+                    type="number"
+                    step="0.1" min="0" max="5"
+                    value={e.nota_minima}
+                    onChange={(ev) => updateEscala(idx, 'nota_minima', parseFloat(ev.target.value) || 0)}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota máxima</label>
+                  <input
+                    type="number"
+                    step="0.1" min="0" max="5"
+                    value={e.nota_maxima}
+                    onChange={(ev) => updateEscala(idx, 'nota_maxima', parseFloat(ev.target.value) || 0)}
+                    className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Nota máxima</label>
-                <input
-                  type="number"
-                  step="0.1" min="0" max="5"
-                  value={e.nota_maxima}
-                  onChange={(ev) => updateEscala(idx, 'nota_maxima', parseFloat(ev.target.value) || 0)}
-                  className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <SaveBar
-          isDirty={escalaDirty}
-          saving={savingEscala}
-          success={escalaSuccess}
-          error={escalaError}
-          onSave={handleSaveEscala}
-          onCancel={() => {
-            setEscalas(escalasSaved);
-            setEscalaError('');
-            setEscalaSuccess(false);
-          }}
-        />
-      </SectionCard>
+          <SaveBar
+            isDirty={escalaDirty}
+            saving={savingEscala}
+            success={escalaSuccess}
+            error={escalaError}
+            onSave={handleSaveEscala}
+            onCancel={() => {
+              setEscalas(escalasSaved);
+              setEscalaError('');
+              setEscalaSuccess(false);
+            }}
+          />
+        </SectionCard>
+      </div>
 
-      {/* ── SECCIÓN 3: Nomenclatura de Cursos ─────────────────────────────── */}
-      <SectionCard
-        title="Nomenclatura de Cursos"
-        description="Define cómo se identificarán las secciones de cada grado (ej: 6A, 6B o 601, 602)."
-      >
-        <div className="space-y-2.5">
-          {(['6A', '601'] as const).map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => handleNomOption(opt)}
-              className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
-                nomenclaturaOption === opt
-                  ? 'bg-primary/15 border-primary text-foreground font-semibold'
-                  : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
-              }`}
-            >
-              <div>
-                <span className="block text-sm font-semibold">
-                  {opt === '6A' ? 'Alfanumérica (Ej: 6A, 6B)' : 'Numérica Completa (Ej: 601, 602)'}
-                </span>
-                <span className="block text-[10px] text-muted-foreground mt-0.5">
-                  {opt === '6A' ? 'Grado número + sección letra' : 'Grado número + sección numérica'}
-                </span>
-              </div>
-              <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === opt ? 'border-primary bg-primary' : 'border-border'}`} />
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => handleNomOption('custom')}
-            className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
-              nomenclaturaOption === 'custom'
-                ? 'bg-primary/15 border-primary text-foreground font-semibold'
-                : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
-            }`}
-          >
-            <div>
-              <span className="block text-sm font-semibold">Personalizada</span>
-              <span className="block text-[10px] text-muted-foreground mt-0.5">Escribe tu propia nomenclatura base</span>
-            </div>
-            <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === 'custom' ? 'border-primary bg-primary' : 'border-border'}`} />
-          </button>
-
-          {nomenclaturaOption === 'custom' && (
-            <input
-              type="text"
-              value={customNom}
-              onChange={(e) => { setCustomNom(e.target.value); setNomenclatura(e.target.value); setNomSuccess(false); setNomError(''); }}
-              placeholder="Ej: 6-1, Sexto A, Grado 6 Sec 1..."
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors animate-in fade-in"
-            />
-          )}
-        </div>
-
-        <SaveBar
-          isDirty={nomDirty}
-          saving={savingNom}
-          success={nomSuccess}
-          error={nomError}
-          onSave={handleSaveNom}
-          onCancel={() => {
-            const opt = nomenclaturaSaved === '6A' ? '6A' : nomenclaturaSaved === '601' ? '601' : 'custom';
-            setNomenclaturaOption(opt);
-            setNomenclatura(nomenclaturaSaved);
-            if (opt === 'custom') setCustomNom(nomenclaturaSaved);
-            setNomError('');
-            setNomSuccess(false);
-          }}
-        />
-      </SectionCard>
-
-      {/* ── SECCIÓN 4: BANCO DE EVIDENCIAS ────────────────────────────────────── */}
+      {/* ── FILA 2: BANCO DE EVIDENCIAS (Ancho completo) ─────────────────────── */}
       <SectionCard
         title="Gestión Evidencias de Aprendizaje"
         description="Catálogo máster de evidencias por grado y materia. Revisa solicitudes de docentes y consulta la selección por periodo."
@@ -510,30 +441,105 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
         <EvidenciasManager />
       </SectionCard>
 
-      {/* ── SECCIÓN 5: CARGA MASIVA DE USUARIOS Y DATOS ───────────────────────── */}
-      <SectionCard
-        title="Carga Masiva (CSV)"
-        description="Importación y migración masiva de listas de estudiantes, docentes y usuarios del sistema desde archivos CSV o TXT."
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-foreground">Asistente de Importación de Datos</h4>
-            <p className="text-xs text-muted-foreground">
-              Sube tus listados masivos en formato CSV para matricular o registrar usuarios en lote.
-            </p>
+      {/* ── FILA 3: Nomenclatura de Cursos & Carga Masiva (2 Columnas en PC) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* SECCIÓN 3: Nomenclatura de Cursos */}
+        <SectionCard
+          title="Nomenclatura de Cursos"
+          description="Define cómo se identificarán las secciones de cada grado (ej: 6A, 6B o 601, 602)."
+        >
+          <div className="space-y-2.5">
+            {(['6A', '601'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => handleNomOption(opt)}
+                className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
+                  nomenclaturaOption === opt
+                    ? 'bg-primary/15 border-primary text-foreground font-semibold'
+                    : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <div>
+                  <span className="block text-sm font-semibold">
+                    {opt === '6A' ? 'Alfanumérica (Ej: 6A, 6B)' : 'Numérica Completa (Ej: 601, 602)'}
+                  </span>
+                  <span className="block text-[10px] text-muted-foreground mt-0.5">
+                    {opt === '6A' ? 'Grado número + sección letra' : 'Grado número + sección numérica'}
+                  </span>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === opt ? 'border-primary bg-primary' : 'border-border'}`} />
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => handleNomOption('custom')}
+              className={`flex items-center justify-between w-full p-3.5 rounded-xl border text-left transition-all ${
+                nomenclaturaOption === 'custom'
+                  ? 'bg-primary/15 border-primary text-foreground font-semibold'
+                  : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              <div>
+                <span className="block text-sm font-semibold">Personalizada</span>
+                <span className="block text-[10px] text-muted-foreground mt-0.5">Escribe tu propia nomenclatura base</span>
+              </div>
+              <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${nomenclaturaOption === 'custom' ? 'border-primary bg-primary' : 'border-border'}`} />
+            </button>
+
+            {nomenclaturaOption === 'custom' && (
+              <input
+                type="text"
+                value={customNom}
+                onChange={(e) => { setCustomNom(e.target.value); setNomenclatura(e.target.value); setNomSuccess(false); setNomError(''); }}
+                placeholder="Ej: 6-1, Sexto A, Grado 6 Sec 1..."
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors animate-in fade-in"
+              />
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onOpenBulkImport}
-            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Abrir Carga Masiva (CSV)
-          </button>
-        </div>
-      </SectionCard>
+
+          <SaveBar
+            isDirty={nomDirty}
+            saving={savingNom}
+            success={nomSuccess}
+            error={nomError}
+            onSave={handleSaveNom}
+            onCancel={() => {
+              const opt = nomenclaturaSaved === '6A' ? '6A' : nomenclaturaSaved === '601' ? '601' : 'custom';
+              setNomenclaturaOption(opt);
+              setNomenclatura(nomenclaturaSaved);
+              if (opt === 'custom') setCustomNom(nomenclaturaSaved);
+              setNomError('');
+              setNomSuccess(false);
+            }}
+          />
+        </SectionCard>
+
+        {/* SECCIÓN 4: CARGA MASIVA DE USUARIOS Y DATOS */}
+        <SectionCard
+          title="Carga Masiva (CSV)"
+          description="Importación y migración masiva de listas de estudiantes, docentes y usuarios del sistema desde archivos CSV o TXT."
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-foreground">Asistente de Importación de Datos</h4>
+              <p className="text-xs text-muted-foreground">
+                Sube tus listados masivos en formato CSV para matricular o registrar usuarios en lote.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenBulkImport}
+              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Abrir Carga Masiva (CSV)
+            </button>
+          </div>
+        </SectionCard>
+      </div>
 
       {/* ── MODAL: Video Tutorial ──────────────────────────────────────────── */}
       {showVideo && (

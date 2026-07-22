@@ -27,6 +27,7 @@ export type EvidenciaAdminDetail = EvidenciaRow & {
   periodoAnteriorNombre?: string | null;
   periodosUsadosNombres?: string[];
   esActivaEnPeriodoVigente?: boolean;
+  pesosPorPeriodo?: Record<string, number>;
 };
 
 export type ConfigEvidenciaPeriodo = {
@@ -69,7 +70,8 @@ export type GradesheetStudentEvidencias = {
  * "6A" → "6", "601" → "6", "1002" → "10", "11-1" → "11"
  */
 function extractGrado(nombreCurso: string): string {
-  const match = nombreCurso.match(/^(\d+)/);
+  if (!nombreCurso) return '';
+  const match = nombreCurso.match(/(\d+)/);
   if (match) {
     const num = match[1];
     if (num.length >= 3) {
@@ -78,7 +80,7 @@ function extractGrado(nombreCurso: string): string {
     }
     return num;
   }
-  return nombreCurso;
+  return nombreCurso.trim();
 }
 
 // ─── ACCIONES DEL ADMINISTRADOR ──────────────────────────────────────────────
@@ -213,6 +215,7 @@ export async function getEvidenciasAdminFull(opts: {
       let pesoPeriodo: number | null = null;
       let esActivaEnPeriodoVigente = false;
       let usadaEnAnterior = false;
+      const pesosPorPeriodo: Record<string, number> = {};
 
       evConfigs.forEach((cfg) => {
         const per = (periodos || []).find((p) => p.id_periodo === cfg.id_periodo);
@@ -221,11 +224,19 @@ export async function getEvidenciasAdminFull(opts: {
           if (!periodosUsadosNombres.includes(pName)) {
             periodosUsadosNombres.push(pName);
           }
+          pesosPorPeriodo[pName] = Number(cfg.peso);
           if (activePeriod && per.id_periodo === activePeriod.id_periodo) {
             esActivaEnPeriodoVigente = true;
             pesoPeriodo = Number(cfg.peso);
           } else if (activePeriod && per.numero_periodo < activePeriod.numero_periodo) {
             usadaEnAnterior = true;
+            if (pesoPeriodo === null) {
+              pesoPeriodo = Number(cfg.peso);
+            }
+          } else if (!activePeriod) {
+            if (pesoPeriodo === null) {
+              pesoPeriodo = Number(cfg.peso);
+            }
           }
         }
       });
@@ -238,11 +249,12 @@ export async function getEvidenciasAdminFull(opts: {
       return {
         ...ev,
         periodo_asignado: periodosUsadosNombres.join(', ') || null,
-        peso_periodo: esActivaEnPeriodoVigente ? pesoPeriodo : null,
+        peso_periodo: pesoPeriodo,
         usadaEnPeriodoAnterior: usadaEnAnterior,
         periodoAnteriorNombre: periodosUsadosNombres[0] || null,
         periodosUsadosNombres,
         esActivaEnPeriodoVigente,
+        pesosPorPeriodo,
       };
     });
 
@@ -550,7 +562,7 @@ export async function getEvidenciasForAsignacion(
     // 2. Obtener el nombre del curso para extraer el grado
     const { data: curso, error: cursoErr } = await supabase
       .from('cursos')
-      .select('nombre')
+      .select('*')
       .eq('id_curso', asignacion.id_curso)
       .single();
 
@@ -558,16 +570,20 @@ export async function getEvidenciasForAsignacion(
       return { success: false, error: 'No se encontró el curso asociado.' };
     }
 
-    const grado = extractGrado(curso.nombre);
+    const extractedGrado = extractGrado(curso.nombre || '');
+    const cursoGrado = (curso as any).grado || '';
+    const gradosToSearch = Array.from(
+      new Set([extractedGrado, curso.nombre, cursoGrado].filter((g): g is string => Boolean(g && g.trim())))
+    );
 
-    // 3. Buscar evidencias disponibles para este grado+materia+año
+    // 3. Buscar evidencias disponibles para este grado+materia
     const { data: rawEvidencias, error: evErr } = await supabase
       .from('evidencias')
       .select('*')
       .eq('id_institucion', asignacion.id_institucion)
       .eq('id_materia', asignacion.id_materia)
-      .eq('grado', grado)
-      .eq('ano_lectivo', new Date().getFullYear())
+      .in('grado', gradosToSearch)
+      .neq('estado_aprobacion', 'RECHAZADA')
       .eq('activo', true)
       .order('orden', { ascending: true });
 
@@ -635,13 +651,21 @@ export async function getEvidenciasForAsignacion(
       const usadaAnterior = usedInPreviousMap.has(ev.id_evidencia);
       const periodoAnteriorNombre = usedInPreviousMap.get(ev.id_evidencia);
 
-      // Si fue usada en periodo anterior, el docente no puede activarla de nuevo
-      const activaEnPeriodo = usadaAnterior ? false : saved ? saved.activo : true;
+      // Si fue usada en periodo anterior, el docente no puede activarla de nuevo.
+      // Si la asignación ya tiene una configuración previa guardada por el docente,
+      // cualquier evidencia no configurada explícitamente se mantiene inactiva (DISPONIBLE).
+      const activaEnPeriodo = usadaAnterior
+        ? false
+        : saved !== undefined
+        ? saved.activo
+        : hasSavedConfig
+        ? false
+        : true;
 
       return {
         ...(ev as EvidenciaRow),
         activaEnPeriodo: activaEnPeriodo,
-        peso: saved ? saved.peso : activaEnPeriodo ? pesoEquitativo : 0,
+        peso: saved !== undefined ? saved.peso : activaEnPeriodo ? pesoEquitativo : 0,
         usadaEnPeriodoAnterior: usadaAnterior,
         periodoAnteriorNombre: periodoAnteriorNombre,
       };

@@ -356,10 +356,30 @@ export function EvidenciasManager() {
                       )}
                     </td>
                     <td className="py-3 px-4 text-center text-xs font-mono font-bold text-foreground">
-                      {ev.peso_periodo !== null && ev.peso_periodo !== undefined ? (
-                        <span className="text-emerald-500 font-bold">{(ev.peso_periodo * 100).toFixed(0)}%</span>
+                      {ev.periodosUsadosNombres && ev.periodosUsadosNombres.length > 0 ? (
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {ev.periodosUsadosNombres.map((p) => {
+                            const peso = ev.pesosPorPeriodo?.[p] ?? ev.peso_periodo;
+                            if (peso === null || peso === undefined) {
+                              return (
+                                <span key={p} className="text-muted-foreground/40 font-mono">-</span>
+                              );
+                            }
+                            const isMultiple = ev.periodosUsadosNombres!.length > 1;
+                            const pct = `${(peso * 100).toFixed(0)}%`;
+                            return (
+                              <span
+                                key={p}
+                                className={`font-bold ${isActiva ? 'text-emerald-500' : 'text-emerald-600 dark:text-emerald-400'}`}
+                                title={`Peso en ${p}: ${pct}`}
+                              >
+                                {isMultiple ? `${p}: ${pct}` : pct}
+                              </span>
+                            );
+                          })}
+                        </div>
                       ) : (
-                        <span className="text-muted-foreground/40">-</span>
+                        <span className="text-muted-foreground/40 font-mono">-</span>
                       )}
                     </td>
                     <td className="py-3 px-4">

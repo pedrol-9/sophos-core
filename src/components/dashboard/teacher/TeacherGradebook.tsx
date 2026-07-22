@@ -38,7 +38,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   // Modales
   const [showEvidenciasModal, setShowEvidenciasModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [, setRefreshTrigger] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Cambios pendientes por guardar
   const [pendingChanges, setPendingChanges] = useState<Record<string, CalificacionBatchItem>>({});
@@ -77,7 +77,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     loadConfig();
   }, [idAsignacion]);
 
-  // ─── CARGA DE EVIDENCIAS Y ESTUDIANTES AL CAMBIAR PERIODO ────────────────
+  // ─── CARGA DE EVIDENCIAS Y ESTUDIANTES AL CAMBIAR PERIODO O GUARDAR CONFIG ──
   useEffect(() => {
     if (!selectedPeriodo) return;
 
@@ -105,7 +105,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     }
 
     loadData();
-  }, [idAsignacion, idCurso, selectedPeriodo]);
+  }, [idAsignacion, idCurso, selectedPeriodo, refreshTrigger]);
 
   // ─── MANEJO DE CAMBIO DE NOTA LOCAL ────────────────────────────────────────
   const handleGradeChange = (
@@ -288,12 +288,12 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     <div className="space-y-6">
 
       {/* TOOLBAR */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-card border border-border rounded-2xl p-6 gap-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-card border border-border rounded-2xl p-4 sm:p-6 gap-4 shadow-xs">
 
         {/* Selector de Periodo */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Periodo:</label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {(() => {
               const maxPeriodoNum = activePeriodo ? activePeriodo.numero_periodo : 1;
               const visiblePeriodos = periodos.filter((p) => p.numero_periodo <= maxPeriodoNum);
@@ -341,14 +341,14 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           {/* Botón Guardar Cambios */}
           {Object.keys(pendingChanges).length > 0 && (
             <button
               type="button"
               disabled={savingBatch}
               onClick={handleSaveChanges}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-bold transition-all shadow-md animate-pulse duration-1000 cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-bold transition-all shadow-md animate-pulse duration-1000 cursor-pointer flex-1 sm:flex-initial"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
@@ -362,7 +362,7 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
             type="button"
             disabled={isPeriodoClosed}
             onClick={() => setShowEvidenciasModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-1 sm:flex-initial"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -375,12 +375,24 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
             type="button"
             disabled={isPeriodoClosed}
             onClick={() => setShowBulkModal(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-1 sm:flex-initial"
           >
             <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             Importar CSV
+          </button>
+
+          {/* Botón Refrescar Planilla */}
+          <button
+            type="button"
+            onClick={() => setRefreshTrigger((prev) => prev + 1)}
+            title="Refrescar planilla"
+            className="p-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
           </button>
         </div>
       </div>
