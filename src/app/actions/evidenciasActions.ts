@@ -562,9 +562,9 @@ export async function getEvidenciasForAsignacion(
     const grado = extractGrado(curso.nombre);
 
     // 3. Buscar evidencias disponibles para este grado+materia+año
-    const { data: evidencias, error: evErr } = await supabase
+    const { data: rawEvidencias, error: evErr } = await supabase
       .from('evidencias')
-      .select('id_evidencia, id_materia, grado, nombre, descripcion, ano_lectivo, orden, activo')
+      .select('*')
       .eq('id_institucion', asignacion.id_institucion)
       .eq('id_materia', asignacion.id_materia)
       .eq('grado', grado)
@@ -573,9 +573,14 @@ export async function getEvidenciasForAsignacion(
       .order('orden', { ascending: true });
 
     if (evErr) return { success: false, error: evErr.message };
-    if (!evidencias || evidencias.length === 0) {
+    if (!rawEvidencias || rawEvidencias.length === 0) {
       return { success: true, data: [] };
     }
+
+    const evidencias = rawEvidencias.map((row: any) => ({
+      ...row,
+      estado_aprobacion: row.estado_aprobacion || 'APROBADA',
+    }));
 
     // 4. Cargar periodos para determinar cuales son periodos anteriores
     const { data: periodos } = await supabase

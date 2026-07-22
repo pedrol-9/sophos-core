@@ -280,7 +280,7 @@ export function EvidenciasManager() {
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-10">#</th>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Nombre de la Evidencia</th>
                 <th className="py-3 px-4 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Descripción</th>
-                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estado Banco</th>
+                <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Estado Evidencia</th>
                 <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Usado en</th>
                 <th className="py-3 px-4 text-center text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-20">Peso</th>
                 <th className="py-3 px-4 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-36">Acciones</th>
@@ -289,6 +289,9 @@ export function EvidenciasManager() {
             <tbody className="divide-y divide-border">
               {evidencias.map((ev) => {
                 const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
+                const isActiva = ev.peso_periodo !== null && ev.peso_periodo !== undefined && ev.peso_periodo > 0;
+                const isUsadaAnterior = Boolean(ev.usadaEnPeriodoAnterior && !isActiva);
+                const isInactivaCat = !ev.activo;
 
                 return (
                   <tr key={ev.id_evidencia} className={`hover:bg-secondary/40 transition-colors ${
@@ -297,33 +300,27 @@ export function EvidenciasManager() {
                     <td className="py-3 px-4 text-muted-foreground text-xs font-mono">{ev.orden}</td>
                     <td className="py-3 px-4 font-semibold text-foreground">
                       {ev.nombre}
-                      {isPendiente && (
-                        <span className="block text-[10px] text-amber-500 font-normal">
-                          ⚡ Sugerida por docente (Pendiente de revisión)
-                        </span>
-                      )}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground text-xs hidden md:table-cell max-w-xs truncate">
                       {ev.descripcion || <span className="italic text-muted-foreground/50">Sin descripción</span>}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {isPendiente ? (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20">
-                          Pendiente
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/25">
+                          SUGERIDA
+                        </span>
+                      ) : isActiva ? (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/25">
+                          ACTIVA
+                        </span>
+                      ) : isUsadaAnterior || isInactivaCat ? (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/25">
+                          INACTIVA
                         </span>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActivo(ev)}
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:scale-105 ${
-                            ev.activo
-                              ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25'
-                              : 'bg-secondary text-muted-foreground border border-border hover:bg-secondary/80'
-                          }`}
-                          title="Clic para cambiar estado en el banco"
-                        >
-                          {ev.activo ? 'Disponible' : 'Inactiva'}
-                        </button>
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
+                          DISPONIBLE
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-center">
@@ -334,15 +331,19 @@ export function EvidenciasManager() {
                             const isP2 = p === 'P2';
                             const isP3 = p === 'P3';
                             const isP4 = p === 'P4';
+                            const isActivaEnEstePeriodo = isActiva && (ev.periodo_asignado?.includes(p) || false);
+
                             return (
                               <span
                                 key={p}
                                 className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                                  isP1 ? 'bg-blue-500/15 text-blue-500 border-blue-500/25' :
-                                  isP2 ? 'bg-amber-500/15 text-amber-500 border-amber-500/25' :
-                                  isP3 ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25' :
-                                  isP4 ? 'bg-purple-500/15 text-purple-500 border-purple-500/25' :
-                                  'bg-secondary text-muted-foreground border-border'
+                                  !isActivaEnEstePeriodo
+                                    ? 'bg-slate-500/15 text-slate-400 border-slate-500/25'
+                                    : isP1 ? 'bg-blue-500/15 text-blue-500 border-blue-500/25' :
+                                      isP2 ? 'bg-amber-500/15 text-amber-500 border-amber-500/25' :
+                                      isP3 ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25' :
+                                      isP4 ? 'bg-purple-500/15 text-purple-500 border-purple-500/25' :
+                                      'bg-secondary text-muted-foreground border-border'
                                 }`}
                               >
                                 {p}

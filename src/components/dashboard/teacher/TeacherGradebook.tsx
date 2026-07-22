@@ -440,19 +440,28 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
 
                 {/* Fila 2: Nombres y pesos de cada evidencia */}
                 <tr className="border-b border-border bg-secondary/50 text-[10px] font-bold text-muted-foreground tracking-wider">
-                  {activasEvidencias.map((ev) => (
-                    <th
-                      key={`h-${ev.id_evidencia}`}
-                      className="py-2 px-2 text-center border-r border-border font-semibold w-28"
-                    >
-                      <span className="block truncate max-w-[100px]" title={ev.nombre}>
-                        {ev.nombre}
-                      </span>
-                      <span className="block text-[9px] text-primary/80 font-normal mt-0.5">
-                        {Math.round(ev.peso * 100)}%
-                      </span>
-                    </th>
-                  ))}
+                  {activasEvidencias.map((ev) => {
+                    const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
+                    return (
+                      <th
+                        key={`h-${ev.id_evidencia}`}
+                        className="py-2 px-2 text-center border-r border-border font-semibold w-28"
+                      >
+                        <span className="block truncate max-w-[100px]" title={ev.nombre}>
+                          {ev.nombre}
+                        </span>
+                        {isPendiente ? (
+                          <span className="block text-[9px] text-amber-500 font-bold mt-0.5" title="Pendiente de aprobación por coordinación">
+                            [Pendiente]
+                          </span>
+                        ) : (
+                          <span className="block text-[9px] text-primary/80 font-normal mt-0.5">
+                            {Math.round(ev.peso * 100)}%
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                   <th className="py-2 px-4 text-center border-r border-border w-24">Definitiva</th>
                   <th className="py-2 px-4 text-center w-24">Desempeño</th>
                 </tr>
@@ -474,61 +483,65 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                       </td>
 
                       {activasEvidencias.map((ev, evIdx) => {
+                        const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
                         const grade = student.grades[ev.id_evidencia];
                         const notaVal = grade?.nota ?? null;
                         const cellKey = `${student.id_matricula}-${ev.id_evidencia}`;
                         const displayVal = localValues[cellKey] !== undefined ? localValues[cellKey] : (notaVal !== null ? notaVal.toString() : '');
+                        const hasPending = pendingChanges[cellKey] !== undefined;
 
                         return (
                           <td
                             key={`cell-${student.id_estudiante}-${ev.id_evidencia}`}
                             className="py-2 px-1 text-center border-r border-border relative group"
                           >
-                            <div className="inline-flex flex-col items-center">
-                              {(() => {
-                                const hasPending = pendingChanges[cellKey] !== undefined;
-                                return (
-                                  <>
-                                    <input
-                                      id={`grade-${studentIdx}-${evIdx}`}
-                                      type="text"
-                                      disabled={isPeriodoClosed}
-                                      value={displayVal}
-                                      onChange={(e) => {
-                                        const rawStr = e.target.value;
-                                        if (rawStr !== '' && !/^[0-5]([.,]\d?)?$/.test(rawStr)) {
-                                          return;
-                                        }
+                            {isPendiente ? (
+                              <div
+                                className="inline-flex items-center justify-center w-14 py-1 border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 rounded-lg text-[10px] font-semibold cursor-not-allowed mx-auto"
+                                title="Pendiente de aprobación por coordinación"
+                              >
+                                Pendiente
+                              </div>
+                            ) : (
+                              <div className="inline-flex flex-col items-center">
+                                <input
+                                  id={`grade-${studentIdx}-${evIdx}`}
+                                  type="text"
+                                  disabled={isPeriodoClosed}
+                                  value={displayVal}
+                                  onChange={(e) => {
+                                    const rawStr = e.target.value;
+                                    if (rawStr !== '' && !/^[0-5]([.,]\d?)?$/.test(rawStr)) {
+                                      return;
+                                    }
 
-                                        const valStr = rawStr.replace(',', '.');
-                                        setLocalValues((prev) => ({ ...prev, [cellKey]: rawStr }));
+                                    const valStr = rawStr.replace(',', '.');
+                                    setLocalValues((prev) => ({ ...prev, [cellKey]: rawStr }));
 
-                                        handleGradeChange(
-                                          studentIdx,
-                                          student.id_estudiante,
-                                          student.id_matricula,
-                                          ev.id_evidencia,
-                                          valStr
-                                        );
-                                      }}
-                                      onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
-                                      className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                                        hasPending
-                                          ? 'border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300'
-                                          : notaVal !== null && notaVal >= 3.0
-                                          ? 'border-border text-teal-600 dark:text-teal-400 font-bold'
-                                          : notaVal !== null
-                                          ? 'border-border text-rose-500 font-bold'
-                                          : 'border-border text-muted-foreground'
-                                      }`}
-                                    />
-                                    {hasPending && (
-                                      <span className="absolute bottom-0 text-[8px] text-amber-500 font-extrabold scale-75 animate-pulse">*</span>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
+                                    handleGradeChange(
+                                      studentIdx,
+                                      student.id_estudiante,
+                                      student.id_matricula,
+                                      ev.id_evidencia,
+                                      valStr
+                                    );
+                                  }}
+                                  onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
+                                  className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                                    hasPending
+                                      ? 'border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300'
+                                      : notaVal !== null && notaVal >= 3.0
+                                      ? 'border-border text-teal-600 dark:text-teal-400 font-bold'
+                                      : notaVal !== null
+                                      ? 'border-border text-rose-500 font-bold'
+                                      : 'border-border text-muted-foreground'
+                                  }`}
+                                />
+                                {hasPending && (
+                                  <span className="absolute bottom-0 text-[8px] text-amber-500 font-extrabold scale-75 animate-pulse">*</span>
+                                )}
+                              </div>
+                            )}
                           </td>
                         );
                       })}

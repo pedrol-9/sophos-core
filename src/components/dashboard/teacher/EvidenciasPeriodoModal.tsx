@@ -28,8 +28,8 @@ export function EvidenciasPeriodoModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Estado para la sugerencia de nueva evidencia
-  const [showSugerirForm, setShowSugerirForm] = useState(false);
+  // Control de vista deslizable/intercambiable (LIST vs SUGGEST)
+  const [activeView, setActiveView] = useState<'LIST' | 'SUGGEST'>('LIST');
   const [sugerirNombre, setSugerirNombre] = useState('');
   const [sugerirDesc, setSugerirDesc] = useState('');
   const [sugerirSaving, setSugerirSaving] = useState(false);
@@ -66,7 +66,7 @@ export function EvidenciasPeriodoModal({
     setEvidencias((prev) => {
       const updated = prev.map((ev) => {
         if (ev.id_evidencia === idEvidencia) {
-          if (ev.usadaEnPeriodoAnterior) return ev; // No permitir toggle si fue usada en periodo anterior
+          if (ev.usadaEnPeriodoAnterior) return ev;
           return { ...ev, activaEnPeriodo: !ev.activaEnPeriodo };
         }
         return ev;
@@ -139,14 +139,14 @@ export function EvidenciasPeriodoModal({
 
     setSugerirSaving(false);
     if (res.success) {
-      setSugerirSuccess('✓ Sugerencia enviada a Coordinación. Al ser aprobada, se activará en tu planilla.');
+      setSugerirSuccess('Sugerencia enviada correctamente a Coordinación. Al ser aprobada se activará en tu planilla.');
       setSugerirNombre('');
       setSugerirDesc('');
       setTimeout(() => {
-        setShowSugerirForm(false);
+        setActiveView('LIST');
         setSugerirSuccess('');
         load();
-      }, 1800);
+      }, 1600);
     } else {
       setError(res.error || 'Error al enviar la sugerencia.');
     }
@@ -184,14 +184,18 @@ export function EvidenciasPeriodoModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 text-foreground">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in slide-in-from-bottom-4 duration-300 text-foreground flex flex-col h-[580px]">
         
         {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div>
-            <h2 className="text-sm font-bold text-foreground">Configurar Evidencias del Periodo</h2>
+            <h2 className="text-sm font-bold text-foreground">
+              {activeView === 'LIST' ? 'Configurar Evidencias del Periodo' : 'Proponer Nueva Evidencia'}
+            </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Selecciona las evidencias disponibles que evaluarás y asigna sus pesos.
+              {activeView === 'LIST'
+                ? 'Selecciona las evidencias disponibles y asigna sus pesos.'
+                : 'Envía una sugerencia a Coordinación/Administración.'}
             </p>
           </div>
           <button
@@ -205,182 +209,219 @@ export function EvidenciasPeriodoModal({
           </button>
         </div>
 
-        {/* BOTÓN SUGERIR NUEVA EVIDENCIA */}
-        <div className="px-6 pt-4 pb-2 border-b border-border/50 bg-secondary/20 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground font-medium">
-            ¿No encuentras una evidencia en la lista?
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowSugerirForm(!showSugerirForm)}
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Sugerir Nueva Evidencia
-          </button>
-        </div>
-
-        {/* FORMULARIO INLINE DE SUGERENCIA */}
-        {showSugerirForm && (
-          <form onSubmit={handleSugerir} className="px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 space-y-3">
-            <h4 className="text-xs font-bold text-amber-600 dark:text-amber-300">
-              ⚡ Proponer Nueva Evidencia a Coordinación
-            </h4>
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold">Nombre de la Evidencia</label>
-              <input
-                type="text"
-                required
-                value={sugerirNombre}
-                onChange={(e) => setSugerirNombre(e.target.value)}
-                placeholder="Ej: Proyecto de Investigación Aplicada"
-                className="w-full bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold">Descripción</label>
-              <input
-                type="text"
-                value={sugerirDesc}
-                onChange={(e) => setSugerirDesc(e.target.value)}
-                placeholder="Describe brevemente el objetivo..."
-                className="w-full bg-background border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-              />
-            </div>
-            {sugerirSuccess && <p className="text-xs text-emerald-500 font-semibold">{sugerirSuccess}</p>}
-            <div className="flex justify-end gap-2 pt-1">
+        {/* BARRA SUPERIOR DE NAVEGACIÓN VISTA DE SUGERENCIA */}
+        <div className="px-6 py-2.5 border-b border-border/50 bg-secondary/20 flex items-center justify-between shrink-0">
+          {activeView === 'LIST' ? (
+            <>
+              <span className="text-xs text-muted-foreground font-medium">
+                ¿No encuentras una evidencia requerida?
+              </span>
               <button
                 type="button"
-                onClick={() => setShowSugerirForm(false)}
-                className="px-3 py-1 bg-secondary text-muted-foreground text-xs font-semibold rounded-lg"
+                onClick={() => { setError(''); setActiveView('SUGGEST'); }}
+                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
               >
-                Cancelar
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Sugerir Evidencia
               </button>
-              <button
-                type="submit"
-                disabled={sugerirSaving}
-                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-background font-bold text-xs rounded-lg shadow-xs cursor-pointer"
-              >
-                {sugerirSaving ? 'Enviando...' : 'Enviar a Aprobación'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* CONTENT */}
-        <div className="px-6 py-5 space-y-3 max-h-[55vh] overflow-y-auto custom-scrollbar">
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : evidencias.length === 0 ? (
-            <div className="py-10 text-center">
-              <svg className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-sm text-muted-foreground font-medium">No hay evidencias disponibles para seleccionar.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Usa la opción arriba para sugerir una nueva evidencia a coordinación.</p>
-            </div>
+            </>
           ) : (
-            evidencias.map((ev) => {
-              const isBlocked = ev.usadaEnPeriodoAnterior;
-              const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
-
-              return (
-                <div
-                  key={ev.id_evidencia}
-                  className={`rounded-xl border transition-all duration-200 ${
-                    isBlocked
-                      ? 'border-border bg-secondary/30 opacity-60'
-                      : isPendiente
-                      ? 'border-amber-500/30 bg-amber-500/5'
-                      : ev.activaEnPeriodo
-                      ? 'border-primary/30 bg-primary/10'
-                      : 'border-border bg-background'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    
-                    {/* Toggle Switch */}
-                    <button
-                      type="button"
-                      disabled={isBlocked || isPendiente}
-                      onClick={() => toggleEvidencia(ev.id_evidencia)}
-                      className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none shrink-0 ${
-                        isBlocked || isPendiente
-                          ? 'bg-secondary/80 cursor-not-allowed'
-                          : ev.activaEnPeriodo
-                          ? 'bg-primary cursor-pointer'
-                          : 'bg-secondary cursor-pointer'
-                      }`}
-                      aria-label={ev.activaEnPeriodo ? 'Desactivar' : 'Activar'}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${
-                          ev.activaEnPeriodo && !isBlocked ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-foreground truncate">{ev.nombre}</p>
-                        {isBlocked && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">
-                            Usada en {ev.periodoAnteriorNombre}
-                          </span>
-                        )}
-                        {isPendiente && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                            Pendiente Aprobación
-                          </span>
-                        )}
-                      </div>
-                      {ev.descripcion && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{ev.descripcion}</p>
-                      )}
-                    </div>
-
-                    {/* Peso (solo si activa) */}
-                    {ev.activaEnPeriodo && !isBlocked && (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          step={1}
-                          value={ev.peso === 0 ? '' : Math.round(ev.peso * 100)}
-                          onChange={(e) => handlePesoChange(ev.id_evidencia, e.target.value)}
-                          className="w-14 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
-                        />
-                        <span className="text-xs text-muted-foreground font-semibold">%</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Barra de progreso del peso */}
-                  {ev.activaEnPeriodo && !isBlocked && (
-                    <div className="px-4 pb-3">
-                      <div className="h-1 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(ev.peso * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+            <button
+              type="button"
+              onClick={() => { setError(''); setActiveView('LIST'); }}
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Volver a la lista de evidencias
+            </button>
           )}
         </div>
 
-        {/* FOOTER */}
-        {evidencias.length > 0 && (
-          <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-4">
+        {/* CONTENIDO INTERCAMBIABLE / DESLIZABLE (ALTO FIJO) */}
+        <div className="flex-1 px-6 py-4 overflow-y-auto custom-scrollbar">
+          {activeView === 'LIST' ? (
+            loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : evidencias.length === 0 ? (
+              <div className="py-12 text-center">
+                <svg className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-sm text-muted-foreground font-medium">No hay evidencias disponibles para seleccionar.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Usa el botón de arriba para proponer una nueva evidencia a coordinación.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {evidencias.map((ev) => {
+                  const isBlocked = ev.usadaEnPeriodoAnterior;
+                  const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
+
+                  return (
+                    <div
+                      key={ev.id_evidencia}
+                      className={`rounded-xl border transition-all duration-200 ${
+                        isBlocked
+                          ? 'border-border bg-secondary/30 opacity-60'
+                          : isPendiente
+                          ? 'border-amber-500/30 bg-amber-500/5'
+                          : ev.activaEnPeriodo
+                          ? 'border-primary/30 bg-primary/10'
+                          : 'border-border bg-background'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        
+                        {/* Toggle Switch */}
+                        <button
+                          type="button"
+                          disabled={isBlocked || isPendiente}
+                          onClick={() => toggleEvidencia(ev.id_evidencia)}
+                          className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none shrink-0 ${
+                            isBlocked || isPendiente
+                              ? 'bg-secondary/80 cursor-not-allowed'
+                              : ev.activaEnPeriodo
+                              ? 'bg-primary cursor-pointer'
+                              : 'bg-secondary cursor-pointer'
+                          }`}
+                          aria-label={ev.activaEnPeriodo ? 'Desactivar' : 'Activar'}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-xs transition-transform duration-300 ${
+                              ev.activaEnPeriodo && !isBlocked ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate">{ev.nombre}</p>
+                            {isBlocked && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-400 border border-slate-500/25">
+                                Usada en {ev.periodoAnteriorNombre}
+                              </span>
+                            )}
+                            {isPendiente && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/25">
+                                Pendiente de aprobación
+                              </span>
+                            )}
+                          </div>
+                          {ev.descripcion && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{ev.descripcion}</p>
+                          )}
+                        </div>
+
+                        {/* Peso (solo si activa) */}
+                        {ev.activaEnPeriodo && !isBlocked && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              step={1}
+                              value={ev.peso === 0 ? '' : Math.round(ev.peso * 100)}
+                              onChange={(e) => handlePesoChange(ev.id_evidencia, e.target.value)}
+                              className="w-14 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                            />
+                            <span className="text-xs text-muted-foreground font-semibold">%</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Barra de progreso del peso */}
+                      {ev.activaEnPeriodo && !isBlocked && (
+                        <div className="px-4 pb-3">
+                          <div className="h-1 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(ev.peso * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            /* VISTA B: FORMULARIO DE SUGERENCIA DE EVIDENCIA */
+            <form onSubmit={handleSugerir} className="space-y-4 py-2 animate-in fade-in duration-200">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                <p className="text-xs text-amber-600 dark:text-amber-300 font-medium">
+                  Al enviar la sugerencia, la evidencia ingresará al banco en revisión. Coordinación podrá aprobarla o modificarla para habilitar la calificación.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
+                  Nombre de la Evidencia *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={sugerirNombre}
+                  onChange={(e) => setSugerirNombre(e.target.value)}
+                  placeholder="Ej: Proyecto de Investigación Aplicada"
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-muted-foreground uppercase mb-1 font-semibold tracking-wider">
+                  Descripción u Objetivo (opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={sugerirDesc}
+                  onChange={(e) => setSugerirDesc(e.target.value)}
+                  placeholder="Describe brevemente lo que se evaluará en esta actividad..."
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors resize-none"
+                />
+              </div>
+
+              {sugerirSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-500 text-xs font-semibold">
+                  {sugerirSuccess}
+                </div>
+              )}
+
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-semibold">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveView('LIST')}
+                  className="px-4 py-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={sugerirSaving}
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {sugerirSaving ? 'Enviando...' : 'Enviar a Coordinación'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* FOOTER PARA VISTA DE LISTA */}
+        {activeView === 'LIST' && evidencias.length > 0 && (
+          <div className="px-6 py-4 border-t border-border flex items-center justify-between gap-4 shrink-0">
             
             {/* Total de pesos */}
             <div className="flex items-center gap-2">
