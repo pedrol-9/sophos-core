@@ -329,11 +329,37 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
           {/* Filas de periodos */}
           <div className="space-y-3">
             {periodos.map((p, idx) => (
-              <div key={p.numero_periodo} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] items-center gap-3 bg-background border border-border rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 w-20">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${p.activo ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                  <span className="text-xs font-bold text-foreground">P{p.numero_periodo}</span>
+              <div
+                key={p.numero_periodo}
+                onClick={() => {
+                  if (!p.activo) updatePeriodo(idx, 'activo', true);
+                }}
+                className={`relative grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr] items-center gap-4 border rounded-xl px-4 py-3 transition-all ${
+                  p.activo
+                    ? 'bg-primary/5 border-primary/40 shadow-xs'
+                    : 'bg-background border-border hover:border-muted-foreground/30 cursor-pointer'
+                }`}
+              >
+                {/* Badge "Activo" en la esquina superior derecha */}
+                {p.activo && (
+                  <span className="absolute -top-2.5 right-3 bg-primary text-primary-foreground text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs tracking-wide">
+                    Activo
+                  </span>
+                )}
+
+                <div className="flex items-center gap-2.5 w-20">
+                  <span
+                    className={`w-3 h-3 rounded-full shrink-0 transition-all ${
+                      p.activo
+                        ? 'bg-primary ring-4 ring-primary/20'
+                        : 'bg-muted-foreground/30 hover:bg-muted-foreground/60'
+                    }`}
+                  />
+                  <span className={`text-xs font-extrabold ${p.activo ? 'text-primary' : 'text-foreground'}`}>
+                    P{p.numero_periodo}
+                  </span>
                 </div>
+
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Inicio</label>
                   <input
@@ -343,6 +369,7 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
                     className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                   />
                 </div>
+
                 <div>
                   <label className="block text-[10px] text-muted-foreground uppercase tracking-wider mb-1 font-semibold">Fin</label>
                   <input
@@ -352,18 +379,6 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
                     className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-colors"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => updatePeriodo(idx, 'activo', true)}
-                  title="Marcar como activo"
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
-                    p.activo
-                      ? 'bg-primary/15 text-primary border border-primary/30'
-                      : 'bg-secondary text-muted-foreground border border-border hover:text-foreground'
-                  }`}
-                >
-                  {p.activo ? 'Activo' : 'Activar'}
-                </button>
               </div>
             ))}
           </div>
