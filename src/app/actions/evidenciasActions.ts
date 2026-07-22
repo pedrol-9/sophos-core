@@ -152,10 +152,12 @@ export async function getEvidenciasAdmin(opts?: {
 export async function getEvidenciasAdminFull(opts: {
   idMateria: string;
   grado: string;
+  idCurso?: string;
   anoLectivo?: number;
 }): Promise<{
   success: boolean;
   data?: EvidenciaAdminDetail[];
+  activePeriodoNumero?: number | null;
   stats?: {
     totalBanco: number;
     totalActivasPeriodo: number;
@@ -175,13 +177,39 @@ export async function getEvidenciasAdminFull(opts: {
     const idInstitucion = user.app_metadata?.id_institucion as string;
     const anoLectivo = opts.anoLectivo ?? new Date().getFullYear();
 
-    // 1. Obtener todas las evidencias del banco para esta materia + grado
+    // 1a. Obtener el nombre de la materia seleccionada para incluir materias hermanas con el mismo nombre
+    const { data: materiaObj } = await supabase
+      .from('materias')
+      .select('nombre')
+      .eq('id_materia', opts.idMateria)
+      .maybeSingle();
+
+    let matchingMateriaIds = [opts.idMateria];
+    if (materiaObj?.nombre) {
+      const { data: siblingMaterias } = await supabase
+        .from('materias')
+        .select('id_materia')
+        .eq('id_institucion', idInstitucion)
+        .ilike('nombre', materiaObj.nombre.trim());
+
+      if (siblingMaterias && siblingMaterias.length > 0) {
+        matchingMateriaIds = Array.from(new Set([...matchingMateriaIds, ...siblingMaterias.map((m) => m.id_materia)]));
+      }
+    }
+
+    // 1b. Obtener variantes de grado para búsqueda flexible
+    const extractedGrado = extractGrado(opts.grado || '');
+    const gradosToSearch = Array.from(
+      new Set([opts.grado, extractedGrado, `${extractedGrado}°`, `Grado ${extractedGrado}`].filter((g): g is string => Boolean(g && g.trim())))
+    );
+
+    // 1c. Obtener todas las evidencias del banco para esta materia + grado (flexible)
     const { data: evidencias, error: evErr } = await supabase
       .from('evidencias')
       .select('*')
       .eq('id_institucion', idInstitucion)
-      .eq('id_materia', opts.idMateria)
-      .eq('grado', opts.grado)
+      .in('id_materia', matchingMateriaIds)
+      .in('grado', gradosToSearch)
       .eq('ano_lectivo', anoLectivo)
       .order('orden', { ascending: true });
 
@@ -209,13 +237,60 @@ export async function getEvidenciasAdminFull(opts: {
     const activePeriod = (periodos || []).find((p) => p.activo);
     const evIds = list.map((e) => e.id_evidencia);
 
-    // 3. Cargar configuraciones de evidencias asociadas directamente por id_evidencia
-    const { data: cfgs } = await supabase
-      .from('configuracion_evidencias_periodo')
-      .select('id_evidencia, id_periodo, activo, peso')
-      .in('id_evidencia', evIds);
+    // 2b. Si se especifica un curso (ej: 11-A), obtener las asignaciones de ese curso
+    let targetAsignacionIds: string[] = [];
+    if (opts.idCurso) {
+      const { data: targetCurso } = await supabase
+        .from('cursos')
+        .select('nombre')
+        .eq('id_curso', opts.idCurso)
+        .maybeSingle();
 
-    const configRecords = cfgs || [];
+      let targetCursoIds = [opts.idCurso];
+      if (targetCurso?.nombre) {
+        const { data: siblingCursos } = await supabase
+          .from('cursos')
+          .select('id_curso')
+          .eq('id_institucion', idInstitucion)
+          .ilike('nombre', targetCurso.nombre.trim());
+        if (siblingCursos && siblingCursos.length > 0) {
+          targetCursoIds = Array.from(new Set([...targetCursoIds, ...siblingCursos.map((c) => c.id_curso)]));
+        }
+      }
+
+      const { data: asigs } = await supabase
+        .from('asignaciones_academicas')
+        .select('id_asignacion')
+        .in('id_curso', targetCursoIds)
+        .in('id_materia', matchingMateriaIds);
+
+      if (asigs && asigs.length > 0) {
+        targetAsignacionIds = asigs.map((a) => a.id_asignacion);
+      }
+    }
+
+    // 3. Cargar configuraciones de evidencias asociadas directamente por id_evidencia
+    let configRecords: any[] = [];
+
+    if (opts.idCurso) {
+      if (targetAsignacionIds.length > 0) {
+        const { data: cfgs } = await supabase
+          .from('configuracion_evidencias_periodo')
+          .select('id_evidencia, id_periodo, activo, peso, id_asignacion')
+          .in('id_evidencia', evIds)
+          .in('id_asignacion', targetAsignacionIds);
+        configRecords = cfgs || [];
+      } else {
+        // No hay asignaciones académicas para este curso -> sin configuraciones activas
+        configRecords = [];
+      }
+    } else {
+      const { data: cfgs } = await supabase
+        .from('configuracion_evidencias_periodo')
+        .select('id_evidencia, id_periodo, activo, peso, id_asignacion')
+        .in('id_evidencia', evIds);
+      configRecords = cfgs || [];
+    }
 
     let totalActivasPeriodo = 0;
     let totalUsadasAnteriores = 0;
@@ -277,6 +352,7 @@ export async function getEvidenciasAdminFull(opts: {
     return {
       success: true,
       data: result,
+      activePeriodoNumero: activePeriod?.numero_periodo ?? null,
       stats: {
         totalBanco: list.filter((e) => e.activo !== false && e.estado_aprobacion !== 'RECHAZADA').length,
         totalActivasPeriodo,
@@ -1100,6 +1176,195 @@ export async function upsertCalificacionesBatch(
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error en servidor' };
+  }
+}
+
+/**
+ * Sincroniza la información de la base de datos de configuracion_evidencias_periodo
+ * para 11-A y 11-B:
+ * - 11-B hereda las evidencias e historial de P1 y P2 idénticos a 11-A.
+ * - Para P3 (periodo activo):
+ *   - 11-A activa únicamente 'Evidencia de prueba 1' (peso 100%).
+ *   - 11-B activa únicamente 'Evidencia de prueba 3' (peso 100%).
+ */
+export async function syncEvidencias11A11BData(): Promise<{ success: boolean; error?: string; message?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Sin sesión.' };
+    const idInstitucion = user.app_metadata?.id_institucion as string;
+
+    // 1. Cargar periodos P1, P2, P3
+    const { data: periodos } = await supabase
+      .from('periodos_academicos')
+      .select('id_periodo, numero_periodo, activo')
+      .eq('id_institucion', idInstitucion)
+      .order('numero_periodo', { ascending: true });
+
+    if (!periodos || periodos.length === 0) return { success: false, error: 'No hay periodos académicos.' };
+
+    const p1 = periodos.find((p) => p.numero_periodo === 1);
+    const p2 = periodos.find((p) => p.numero_periodo === 2);
+    const p3 = periodos.find((p) => p.numero_periodo === 3 || p.activo);
+
+    // 2. Cargar cursos 11-A y 11-B
+    const { data: cursos } = await supabase
+      .from('cursos')
+      .select('id_curso, nombre')
+      .eq('id_institucion', idInstitucion);
+
+    const curso11A = cursos?.find((c) => c.nombre.trim() === '11-A' || c.nombre.includes('11-A') || c.nombre.includes('11A'));
+    const curso11B = cursos?.find((c) => c.nombre.trim() === '11-B' || c.nombre.includes('11-B') || c.nombre.includes('11B'));
+
+    if (!curso11A || !curso11B) {
+      return { success: false, error: 'No se encontraron los cursos 11-A y/o 11-B en la base de datos.' };
+    }
+
+    // 3. Obtener la materia de Matemáticas e IDs hermanas
+    const { data: materiasMat } = await supabase
+      .from('materias')
+      .select('id_materia')
+      .eq('id_institucion', idInstitucion)
+      .ilike('nombre', '%matemátic%');
+
+    const matIds = (materiasMat || []).map((m) => m.id_materia);
+
+    // 3b. Obtener asignaciones académicas ÚNICAMENTE de Matemáticas para 11-A y 11-B
+    const { data: asigs11A } = await supabase
+      .from('asignaciones_academicas')
+      .select('id_asignacion')
+      .eq('id_institucion', idInstitucion)
+      .eq('id_curso', curso11A.id_curso)
+      .in('id_materia', matIds.length > 0 ? matIds : ['none']);
+
+    const { data: asigs11B } = await supabase
+      .from('asignaciones_academicas')
+      .select('id_asignacion')
+      .eq('id_institucion', idInstitucion)
+      .eq('id_curso', curso11B.id_curso)
+      .in('id_materia', matIds.length > 0 ? matIds : ['none']);
+
+    const idsAsig11A = (asigs11A || []).map((a) => a.id_asignacion);
+    const idsAsig11B = (asigs11B || []).map((a) => a.id_asignacion);
+
+    if (idsAsig11A.length === 0 || idsAsig11B.length === 0) {
+      return { success: false, error: 'Faltan asignaciones académicas para 11-A o 11-B.' };
+    }
+
+    // 4. Buscar evidencias de Matemáticas
+    const { data: evidencias } = await supabase
+      .from('evidencias')
+      .select('id_evidencia, nombre')
+      .eq('id_institucion', idInstitucion);
+
+    const evPrueba1 = evidencias?.find((e) => e.nombre.toLowerCase().includes('prueba 1') || e.nombre.toLowerCase().includes('evidencia de prueba 1'));
+    const evPrueba3 = evidencias?.find((e) => e.nombre.toLowerCase().includes('prueba 3') || e.nombre.toLowerCase().includes('evidencia de prueba 3'));
+
+    // 5. Clonar configuraciones de P1 y P2 de 11-A hacia 11-B para todas sus asignaciones
+    if (p1) {
+      const { data: cfgP1_11A } = await supabase
+        .from('configuracion_evidencias_periodo')
+        .select('*')
+        .in('id_asignacion', idsAsig11A)
+        .eq('id_periodo', p1.id_periodo);
+
+      if (cfgP1_11A && cfgP1_11A.length > 0) {
+        await supabase
+          .from('configuracion_evidencias_periodo')
+          .delete()
+          .in('id_asignacion', idsAsig11B)
+          .eq('id_periodo', p1.id_periodo);
+
+        for (const targetAsigId of idsAsig11B) {
+          for (const item of cfgP1_11A) {
+            await supabase.from('configuracion_evidencias_periodo').insert({
+              id_asignacion: targetAsigId,
+              id_periodo: p1.id_periodo,
+              id_evidencia: item.id_evidencia,
+              activo: item.activo,
+              peso: item.peso,
+            });
+          }
+        }
+      }
+    }
+
+    if (p2) {
+      const { data: cfgP2_11A } = await supabase
+        .from('configuracion_evidencias_periodo')
+        .select('*')
+        .in('id_asignacion', idsAsig11A)
+        .eq('id_periodo', p2.id_periodo);
+
+      if (cfgP2_11A && cfgP2_11A.length > 0) {
+        await supabase
+          .from('configuracion_evidencias_periodo')
+          .delete()
+          .in('id_asignacion', idsAsig11B)
+          .eq('id_periodo', p2.id_periodo);
+
+        for (const targetAsigId of idsAsig11B) {
+          for (const item of cfgP2_11A) {
+            await supabase.from('configuracion_evidencias_periodo').insert({
+              id_asignacion: targetAsigId,
+              id_periodo: p2.id_periodo,
+              id_evidencia: item.id_evidencia,
+              activo: item.activo,
+              peso: item.peso,
+            });
+          }
+        }
+      }
+    }
+
+    // 6. Configurar P3 (Periodo Activo) de forma limpia
+    if (p3) {
+      await supabase
+        .from('configuracion_evidencias_periodo')
+        .delete()
+        .in('id_asignacion', idsAsig11A)
+        .eq('id_periodo', p3.id_periodo);
+
+      await supabase
+        .from('configuracion_evidencias_periodo')
+        .delete()
+        .in('id_asignacion', idsAsig11B)
+        .eq('id_periodo', p3.id_periodo);
+
+      // 11-A P3: Evidencia de prueba 1
+      if (evPrueba1) {
+        for (const asigId of idsAsig11A) {
+          await supabase.from('configuracion_evidencias_periodo').insert({
+            id_asignacion: asigId,
+            id_periodo: p3.id_periodo,
+            id_evidencia: evPrueba1.id_evidencia,
+            activo: true,
+            peso: 1.0,
+          });
+        }
+      }
+
+      // 11-B P3: Evidencia de prueba 3
+      if (evPrueba3) {
+        for (const asigId of idsAsig11B) {
+          await supabase.from('configuracion_evidencias_periodo').insert({
+            id_asignacion: asigId,
+            id_periodo: p3.id_periodo,
+            id_evidencia: evPrueba3.id_evidencia,
+            activo: true,
+            peso: 1.0,
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Base de datos sincronizada: P1 y P2 de 11-B clonados de 11-A. P3: Prueba 1 para 11-A y Prueba 3 para 11-B.'
+    };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Error al sincronizar.' };
   }
 }
 

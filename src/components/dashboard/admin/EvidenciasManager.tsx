@@ -7,6 +7,7 @@ import {
   deleteEvidencia,
   aprobarEvidenciaAdmin,
   rechazarEvidenciaAdmin,
+  syncEvidencias11A11BData,
   EvidenciaAdminDetail,
 } from '@/app/actions/evidenciasActions';
 import { createClient } from '@/utils/supabase/client';
@@ -18,7 +19,10 @@ export function EvidenciasManager() {
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [selectedMateria, setSelectedMateria] = useState('');
   const [selectedGrado, setSelectedGrado] = useState('6');
+  const [cursos, setCursos] = useState<{ id_curso: string; nombre: string }[]>([]);
+  const [selectedCurso, setSelectedCurso] = useState('');
   const [evidencias, setEvidencias] = useState<EvidenciaAdminDetail[]>([]);
+  const [activePeriodoNumero, setActivePeriodoNumero] = useState<number | null>(null);
   const [stats, setStats] = useState({
     totalBanco: 0,
     totalActivasPeriodo: 0,
@@ -39,11 +43,15 @@ export function EvidenciasManager() {
 
   const GRADOS = ['1','2','3','4','5','6','7','8','9','10','11'];
 
-  // Cargar materias al montar
+  // Cargar materias al montar y sincronizar DB
   useEffect(() => {
     async function loadInitialData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      // Ejecutar sincronización de BD para 11-A y 11-B
+      await syncEvidencias11A11BData();
+
       const idInst = user.app_metadata?.id_institucion;
 
       const { data } = await supabase
@@ -60,31 +68,66 @@ export function EvidenciasManager() {
     loadInitialData();
   }, [supabase]);
 
+  // Cargar cursos al cambiar de grado
+  useEffect(() => {
+    async function loadCursos() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const idInst = user.app_metadata?.id_institucion;
+
+      const { data } = await supabase
+        .from('cursos')
+        .select('id_curso, nombre')
+        .eq('id_institucion', idInst)
+        .order('nombre');
+
+      if (data) {
+        const matching = data.filter((c) => {
+          const digits = c.nombre.replace(/[^0-9]/g, '');
+          return digits === selectedGrado || c.nombre.startsWith(selectedGrado);
+        });
+        setCursos(matching);
+        setSelectedCurso('');
+      }
+    }
+    loadCursos();
+  }, [selectedGrado, supabase]);
+
   const loadEvidencias = useCallback(() => {
     if (!selectedMateria) return;
     setLoading(true);
     setError('');
-    getEvidenciasAdminFull({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
+    getEvidenciasAdminFull({
+      idMateria: selectedMateria,
+      grado: selectedGrado,
+      idCurso: selectedCurso || undefined,
+    }).then((res) => {
       setLoading(false);
       if (res.success) {
         setEvidencias(res.data || []);
+        if (res.activePeriodoNumero !== undefined) setActivePeriodoNumero(res.activePeriodoNumero);
         if (res.stats) setStats(res.stats);
       } else {
         setError(res.error || 'Error al cargar evidencias.');
       }
     });
-  }, [selectedMateria, selectedGrado]);
+  }, [selectedMateria, selectedGrado, selectedCurso]);
 
   useEffect(() => {
     let active = true;
     if (!selectedMateria) return;
     setLoading(true);
-    getEvidenciasAdminFull({ idMateria: selectedMateria, grado: selectedGrado }).then((res) => {
+    getEvidenciasAdminFull({
+      idMateria: selectedMateria,
+      grado: selectedGrado,
+      idCurso: selectedCurso || undefined,
+    }).then((res) => {
       if (!active) return;
       setLoading(false);
       if (res.success) {
         setError('');
         setEvidencias(res.data || []);
+        if (res.activePeriodoNumero !== undefined) setActivePeriodoNumero(res.activePeriodoNumero);
         if (res.stats) setStats(res.stats);
       } else {
         setError(res.error || 'Error al cargar evidencias.');
@@ -92,7 +135,7 @@ export function EvidenciasManager() {
       }
     });
     return () => { active = false; };
-  }, [selectedMateria, selectedGrado]);
+  }, [selectedMateria, selectedGrado, selectedCurso]);
 
   function openCreateForm() {
     setEditTarget(null);
@@ -209,6 +252,35 @@ export function EvidenciasManager() {
               ))}
             </select>
           </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Curso</label>
+            <select
+              value={selectedCurso}
+              onChange={(e) => setSelectedCurso(e.target.value)}
+              className="bg-card border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              <option value="" className="bg-card text-foreground">-</option>
+              {cursos.map((c) => (
+                <option key={c.id_curso} value={c.id_curso} className="bg-card text-foreground">
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Botón Refrescar Estado de la Tabla */}
+          <button
+            type="button"
+            onClick={loadEvidencias}
+            title="Refrescar estado de evidencias"
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-slate-100 border border-slate-700 hover:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold transition-all shadow-xs cursor-pointer shrink-0"
+          >
+            <svg className="w-4 h-4 text-white/90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="hidden sm:inline">Actualizar estado</span>
+          </button>
         </div>
 
         <button
@@ -258,7 +330,17 @@ export function EvidenciasManager() {
       )}
 
       {/* TABLA UNIFICADA DE EVIDENCIAS */}
-      {loading ? (
+      {!selectedCurso ? (
+        <div className="py-16 text-center border border-border border-dashed rounded-2xl bg-card/40">
+          <svg className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <p className="text-muted-foreground text-sm font-semibold">Selecciona un Curso específico (ej. 11-A, 11-B)</p>
+          <p className="text-muted-foreground/60 text-xs mt-1 max-w-sm mx-auto">
+            Elige el curso arriba para visualizar las evidencias activas e históricas de ese grupo.
+          </p>
+        </div>
+      ) : loading ? (
         <div className="text-sm text-muted-foreground py-8 text-center font-medium">Cargando evidencias...</div>
       ) : evidencias.length === 0 ? (
         <div className="py-16 text-center border border-border border-dashed rounded-2xl bg-card/40">
@@ -291,7 +373,6 @@ export function EvidenciasManager() {
                 const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
                 const isActiva = Boolean(ev.esActivaEnPeriodoVigente);
                 const isUsadaAnterior = Boolean(ev.usadaEnPeriodoAnterior && !isActiva);
-                const isInactivaCat = !ev.activo;
 
                 return (
                   <tr key={ev.id_evidencia} className={`hover:bg-secondary/40 transition-colors ${
@@ -313,12 +394,12 @@ export function EvidenciasManager() {
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/25">
                           ACTIVO
                         </span>
-                      ) : isUsadaAnterior || isInactivaCat ? (
+                      ) : isUsadaAnterior ? (
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/25">
                           INACTIVA
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/25">
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                           DISPONIBLE
                         </span>
                       )}
@@ -331,20 +412,21 @@ export function EvidenciasManager() {
                             const isP2 = p === 'P2';
                             const isP3 = p === 'P3';
                             const isP4 = p === 'P4';
-                            const isActivaEnEstePeriodo = isActiva && (ev.periodo_asignado?.includes(p) || false);
+                            const isActivaEnEsteP = isActiva && activePeriodoNumero !== null && p === `P${activePeriodoNumero}`;
 
                             return (
                               <span
                                 key={p}
                                 className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                                  !isActivaEnEstePeriodo
-                                    ? 'bg-slate-500/15 text-slate-400 border-slate-500/25'
-                                    : isP1 ? 'bg-blue-500/15 text-blue-500 border-blue-500/25' :
+                                  isActivaEnEsteP
+                                    ? isP1 ? 'bg-blue-500/15 text-blue-500 border-blue-500/25' :
                                       isP2 ? 'bg-amber-500/15 text-amber-500 border-amber-500/25' :
                                       isP3 ? 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25' :
                                       isP4 ? 'bg-purple-500/15 text-purple-500 border-purple-500/25' :
-                                      'bg-secondary text-muted-foreground border-border'
+                                      'bg-sky-500/15 text-sky-400 border-sky-500/25'
+                                    : 'bg-slate-500/15 text-slate-400 border-slate-500/25'
                                 }`}
+                                title={isActivaEnEsteP ? `Activa en el periodo vigente (${p})` : `Usada en periodo ${p}`}
                               >
                                 {p}
                               </span>
@@ -361,16 +443,20 @@ export function EvidenciasManager() {
                           {ev.periodosUsadosNombres.map((p) => {
                             const peso = ev.pesosPorPeriodo?.[p] ?? ev.peso_periodo;
                             if (peso === null || peso === undefined) {
-                              return (
-                                <span key={p} className="text-muted-foreground/40 font-mono">-</span>
-                              );
+                              return <span key={p} className="text-muted-foreground/40 font-mono">-</span>;
                             }
                             const isMultiple = ev.periodosUsadosNombres!.length > 1;
-                            const pct = `${(peso * 100).toFixed(0)}%`;
+                            const pct = `${Math.round(peso * 100)}%`;
+                            const isActivaEnEsteP = isActiva && activePeriodoNumero !== null && p === `P${activePeriodoNumero}`;
+
                             return (
                               <span
                                 key={p}
-                                className={`font-bold ${isActiva ? 'text-emerald-500' : 'text-emerald-600 dark:text-emerald-400'}`}
+                                className={`font-bold ${
+                                  isActivaEnEsteP
+                                    ? 'text-emerald-500 dark:text-emerald-400 font-extrabold'
+                                    : 'text-muted-foreground/70 dark:text-muted-foreground/50 font-normal'
+                                }`}
                                 title={`Peso en ${p}: ${pct}`}
                               >
                                 {isMultiple ? `${p}: ${pct}` : pct}

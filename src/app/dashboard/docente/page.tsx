@@ -21,6 +21,12 @@ import {
 } from '@/app/actions/observador-actions';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+function extractGrado(nombreCurso: string): string {
+  if (!nombreCurso) return '';
+  const match = nombreCurso.match(/(\d+)/);
+  return match ? match[1] : nombreCurso;
+}
+
 export default function DocenteDashboard() {
   const router = useRouter();
   const supabase = createClient();
@@ -32,49 +38,11 @@ export default function DocenteDashboard() {
   const [assignments, setAssignments] = useState<AcademicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Filter state
-  const [filterGrade, setFilterGrade] = useState<string>('');
-  const [filterSubject, setFilterSubject] = useState<string>('');
-
-  // Compute unique grades and subjects from academic assignments
-  const uniqueGrades = Array.from(
-    new Set(assignments.map(ass => ass.cursos?.nombre).filter(Boolean))
-  ).sort() as string[];
-
-  const uniqueSubjects = Array.from(
-    new Set(assignments.map(ass => ass.materias?.nombre).filter(Boolean))
-  ).sort() as string[];
-
-  // Dynamic available options for cross-filtering
-  const availableGrades = filterSubject
-    ? Array.from(
-        new Set(
-          assignments
-            .filter(ass => ass.materias?.nombre === filterSubject)
-            .map(ass => ass.cursos?.nombre)
-            .filter(Boolean)
-        )
-      ).sort() as string[]
-    : uniqueGrades;
-
-  const availableSubjects = filterGrade
-    ? Array.from(
-        new Set(
-          assignments
-            .filter(ass => ass.cursos?.nombre === filterGrade)
-            .map(ass => ass.materias?.nombre)
-            .filter(Boolean)
-        )
-      ).sort() as string[]
-    : uniqueSubjects;
-
-  // Filtered assignments
-  const filteredAssignments = assignments.filter(ass => {
-    const matchGrade = !filterGrade || ass.cursos?.nombre === filterGrade;
-    const matchSubject = !filterSubject || ass.materias?.nombre === filterSubject;
-    return matchGrade && matchSubject;
-  });
+  
+  // Header Filter State
+  const [selectedMateriaName, setSelectedMateriaName] = useState<string>('');
+  const [selectedGradoNum, setSelectedGradoNum] = useState<string>('');
+  const [selectedCursoId, setSelectedCursoId] = useState<string>('');
 
   // Selected state for grading/attendance
   const [selectedAssignment, setSelectedAssignment] = useState<AcademicAssignment | null>(null);
@@ -127,8 +95,17 @@ export default function DocenteDashboard() {
       const res = await getTeacherAssignments();
       if (res.error) {
         setError(res.error);
-      } else if (res.data) {
+      } else if (res.data && res.data.length > 0) {
         setAssignments(res.data);
+        const uSubs = Array.from(new Set(res.data.map(a => a.materias?.nombre).filter((s): s is string => Boolean(s))));
+        if (uSubs.length === 1) {
+          setSelectedMateriaName(uSubs[0]);
+        } else {
+          setSelectedMateriaName('');
+        }
+        setSelectedGradoNum('');
+        setSelectedCursoId('');
+        setSelectedAssignment(null);
       }
       setLoading(false);
     }
@@ -347,6 +324,66 @@ export default function DocenteDashboard() {
     router.refresh();
   };
 
+  const renderSidebarNav = (isMobile = false) => (
+    <nav className="p-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+      <div className="space-y-1.5">
+        <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1 mb-2">
+          {selectedAssignment ? `Gestionar: ${selectedAssignment.cursos?.nombre}` : 'Menú Principal'}
+        </p>
+
+        <button
+          disabled={!selectedAssignment}
+          onClick={() => {
+            setActiveTab('courses');
+            setSelectedStudent(null);
+            if (isMobile) setMobileMenuOpen(false);
+          }}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            activeTab === 'courses' && selectedAssignment
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+          }`}
+        >
+          <IconNotebook className="w-4 h-4" /> Calificar Alumnos
+        </button>
+
+        <button
+          disabled={!selectedAssignment}
+          onClick={() => {
+            setActiveTab('attendance_tab');
+            setSelectedStudent(null);
+            if (isMobile) setMobileMenuOpen(false);
+          }}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            activeTab === 'attendance_tab'
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+          }`}
+        >
+          <IconChecklist className="w-4 h-4" /> Control de Faltas
+        </button>
+
+        <button
+          disabled={!selectedAssignment}
+          onClick={() => {
+            setActiveTab('observador_tab');
+            setSelectedStudent(null);
+            if (isMobile) setMobileMenuOpen(false);
+          }}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            activeTab === 'observador_tab'
+              ? 'bg-primary text-primary-foreground shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg> Observador Digital
+        </button>
+      </div>
+    </nav>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
@@ -382,74 +419,7 @@ export default function DocenteDashboard() {
               </span>
             </div>
           </div>
-
-          {/* Navigation */}
-          <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
-            <button
-              onClick={() => {
-                setActiveTab('courses');
-                setSelectedAssignment(null);
-                setSelectedStudent(null);
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                activeTab === 'courses' && !selectedAssignment
-                  ? 'bg-primary/15 border-l-2 border-primary text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-              }`}
-            >
-              <IconNotebook /> Mis Asignaturas
-            </button>
-            
-            {/* Contextual navigation */}
-            {selectedAssignment && (
-              <div className="pl-4 pt-2 mt-2 border-l border-border space-y-1">
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-3 mb-2">
-                  Curso: {selectedAssignment.cursos?.nombre}
-                </p>
-                <button
-                  onClick={() => {
-                    setActiveTab('courses');
-                    setSelectedStudent(null);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    activeTab === 'courses'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  <IconNotebook className="w-3.5 h-3.5" /> Calificar Alumnos
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('attendance_tab');
-                    setSelectedStudent(null);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    activeTab === 'attendance_tab'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  <IconChecklist className="w-3.5 h-3.5" /> Control de Faltas
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('observador_tab');
-                    setSelectedStudent(null);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    activeTab === 'observador_tab'
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg> Observador Digital
-                </button>
-              </div>
-            )}
-          </nav>
+          {renderSidebarNav()}
         </div>
 
         {/* Profile Card, Theme Toggle & Logout */}
@@ -468,13 +438,15 @@ export default function DocenteDashboard() {
                 <p className="text-[10px] text-muted-foreground truncate">Docente</p>
               </div>
             </div>
+
             <ThemeToggle />
           </div>
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-background border border-border hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 text-muted-foreground text-xs font-semibold transition-all duration-200 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer"
           >
-            <IconLogout /> Cerrar sesión
+            <IconLogout /> Cerrar Sesión
           </button>
         </div>
       </aside>
@@ -509,75 +481,7 @@ export default function DocenteDashboard() {
                 </button>
               </div>
 
-              <nav className="p-4 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
-                <button
-                  onClick={() => {
-                    setActiveTab('courses');
-                    setSelectedAssignment(null);
-                    setSelectedStudent(null);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    activeTab === 'courses' && !selectedAssignment
-                      ? 'bg-primary/15 border-l-2 border-primary text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  <IconNotebook /> Mis Asignaturas
-                </button>
-
-                {selectedAssignment && (
-                  <div className="pl-4 pt-2 mt-2 border-l border-border space-y-1">
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-3 mb-2">
-                      Curso: {selectedAssignment.cursos?.nombre}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setActiveTab('courses');
-                        setSelectedStudent(null);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        activeTab === 'courses'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      <IconNotebook className="w-3.5 h-3.5" /> Calificar Alumnos
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('attendance_tab');
-                        setSelectedStudent(null);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        activeTab === 'attendance_tab'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      <IconChecklist className="w-3.5 h-3.5" /> Control de Faltas
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('observador_tab');
-                        setSelectedStudent(null);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        activeTab === 'observador_tab'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg> Observador Digital
-                    </button>
-                  </div>
-                )}
-              </nav>
+              {renderSidebarNav(true)}
             </div>
 
             <div className="p-4 border-t border-border space-y-3 bg-secondary/30 shrink-0">
@@ -611,43 +515,123 @@ export default function DocenteDashboard() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
         
-        {/* Header */}
-        <header className="px-4 py-4 md:px-8 md:py-6 border-b border-border flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Header Superior con Control Bar Integrada */}
+        <header className="px-4 py-3 border-b border-border sticky top-0 bg-background/85 backdrop-blur-md z-20 shadow-2xs">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-3 text-center lg:text-left relative">
+            {/* Botón Menú Hamburguesa en Móvil (Extremo Izquierdo Absoluto) */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground md:hidden shrink-0 cursor-pointer"
+              className="p-2 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground md:hidden shrink-0 cursor-pointer absolute left-0 top-0"
               title="Abrir menú"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">
-                {!selectedAssignment 
-                  ? 'Mis Asignaturas Asignadas' 
-                  : `${selectedAssignment.materias?.nombre} - Curso ${selectedAssignment.cursos?.nombre}`}
+
+            {/* Título & Badges (Centrados en Móvil y Pantallas Medianas < lg) */}
+            <div className="flex flex-col items-center lg:items-start justify-center lg:justify-start gap-1 min-w-0 w-full lg:w-auto">
+              <div className="flex items-center justify-center lg:justify-start gap-2">
+                <span className="text-xs font-bold text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                  Portal Docente
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">|</span>
+                <span className="text-xs font-medium text-muted-foreground hidden sm:inline">
+                  {user?.user_metadata?.nombre_completo || 'Docente'}
+                </span>
+              </div>
+              <h1 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate mt-0.5 text-center lg:text-left">
+                {selectedAssignment 
+                  ? `Gestionar: ${selectedAssignment.cursos?.nombre} (${selectedAssignment.materias?.nombre})`
+                  : 'Gestión Académica Docente'}
               </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
-                {!selectedAssignment 
-                  ? 'Selecciona una asignatura para registrar calificaciones o inasistencias' 
-                  : `Gestionando periodo lectivo ${selectedAssignment.ano_lectivo}`}
-              </p>
+            </div>
+
+            {/* Selector Bar Estilo Admin (Centrado en Móvil y Pantallas Medianas < lg) */}
+            <div className="flex flex-wrap gap-2.5 sm:gap-4 items-center lg:items-end justify-center lg:justify-start w-full lg:w-auto">
+              {/* Materia */}
+              <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-1">
+                <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Materia</label>
+                <select
+                  value={selectedMateriaName}
+                  onChange={(e) => {
+                    const newSub = e.target.value;
+                    setSelectedMateriaName(newSub);
+                    setSelectedGradoNum('');
+                    setSelectedCursoId('');
+                    setSelectedAssignment(null);
+                  }}
+                  className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[140px] sm:min-w-[170px] cursor-pointer text-center lg:text-left"
+                >
+                  {Array.from(new Set(assignments.map(a => a.materias?.nombre).filter((s): s is string => Boolean(s)))).length > 1 && (
+                    <option value="" className="bg-card text-foreground">-</option>
+                  )}
+                  {Array.from(new Set(assignments.map(a => a.materias?.nombre).filter((s): s is string => Boolean(s)))).map((subject) => (
+                    <option key={subject} value={subject} className="bg-card text-foreground">{subject}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Grado */}
+              <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-1">
+                <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Grado</label>
+                <select
+                  value={selectedGradoNum}
+                  onChange={(e) => {
+                    const newGrad = e.target.value;
+                    setSelectedGradoNum(newGrad);
+                    setSelectedCursoId('');
+                    setSelectedAssignment(null);
+                  }}
+                  className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[80px] cursor-pointer text-center lg:text-left"
+                >
+                  <option value="" className="bg-card text-foreground">-</option>
+                  {Array.from(
+                    new Set(
+                      assignments
+                        .filter(a => !selectedMateriaName || a.materias?.nombre === selectedMateriaName)
+                        .map(a => extractGrado(a.cursos?.nombre || ''))
+                        .filter((g): g is string => Boolean(g))
+                    )
+                  ).map((grade) => (
+                    <option key={grade} value={grade} className="bg-card text-foreground">{grade}°</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Curso */}
+              <div className="flex flex-col items-center lg:items-start text-center lg:text-left gap-1">
+                <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Curso</label>
+                <select
+                  value={selectedCursoId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedCursoId(id);
+                    const match = assignments.find(a => a.id_asignacion === id);
+                    if (match) {
+                      handleSelectAssignment(match, activeTab === 'attendance_tab' ? 'attendance' : 'grade');
+                    } else {
+                      setSelectedAssignment(null);
+                    }
+                  }}
+                  className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs sm:text-sm font-semibold text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-[120px] cursor-pointer text-center lg:text-left"
+                >
+                  <option value="" className="bg-card text-foreground">-</option>
+                  {assignments
+                    .filter((a) => {
+                      const matchSub = !selectedMateriaName || a.materias?.nombre === selectedMateriaName;
+                      const matchGr = !selectedGradoNum || extractGrado(a.cursos?.nombre || '') === selectedGradoNum;
+                      return matchSub && matchGr;
+                    })
+                    .map((a) => (
+                      <option key={a.id_asignacion} value={a.id_asignacion} className="bg-card text-foreground">
+                        {a.cursos?.nombre}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
           </div>
-          
-          {selectedAssignment && (
-            <button
-              onClick={() => {
-                setSelectedAssignment(null);
-                setSelectedStudent(null);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all cursor-pointer shrink-0 ml-2"
-            >
-              ← <span className="hidden sm:inline">Volver al listado</span><span className="sm:hidden">Volver</span>
-            </button>
-          )}
         </header>
 
         {/* View content */}
@@ -658,128 +642,18 @@ export default function DocenteDashboard() {
             </div>
           )}
 
-          {/* VIEW 1: Grid of courses (No course selected) */}
+          {/* Estado Inicial cuando no se ha seleccionado Grado y Curso */}
           {!selectedAssignment && (
-            <div className="space-y-6">
-              {/* Filter controls */}
-              {assignments.length > 0 && (
-                <div className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl bg-card border border-border backdrop-blur-md items-center justify-between shadow-xs">
-                  <div className="flex flex-wrap gap-4 w-full sm:w-auto">
-                    {/* Grado Selector */}
-                    <div className="flex flex-col gap-1.5 min-w-[150px] w-full sm:w-auto">
-                      <label htmlFor="filter-grade" className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                        Grado
-                      </label>
-                      <select
-                        id="filter-grade"
-                        value={filterGrade}
-                        onChange={(e) => setFilterGrade(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer"
-                      >
-                        <option value="" className="bg-card text-foreground">Todos los grados</option>
-                        {availableGrades.map(grade => (
-                          <option key={grade} value={grade} className="bg-card text-foreground">
-                            {grade}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Materia Selector */}
-                    <div className="flex flex-col gap-1.5 min-w-[180px] w-full sm:w-auto">
-                      <label htmlFor="filter-subject" className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                        Materia
-                      </label>
-                      <select
-                        id="filter-subject"
-                        value={filterSubject}
-                        onChange={(e) => setFilterSubject(e.target.value)}
-                        className="px-3.5 py-2 rounded-xl bg-background border border-border text-foreground text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer"
-                      >
-                        <option value="" className="bg-card text-foreground">Todas las materias</option>
-                        {availableSubjects.map(subject => (
-                          <option key={subject} value={subject} className="bg-card text-foreground">
-                            {subject}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Summary / Reset */}
-                  <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                    <span className="text-xs text-muted-foreground font-medium">
-                      Mostrando <strong className="text-foreground">{filteredAssignments.length}</strong> de <strong className="text-foreground">{assignments.length}</strong> materias
-                    </span>
-                    {(filterGrade || filterSubject) && (
-                      <button
-                        onClick={() => {
-                          setFilterGrade('');
-                          setFilterSubject('');
-                        }}
-                        className="px-3.5 py-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all cursor-pointer"
-                      >
-                        Limpiar filtros
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Grid of cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                  <p className="text-muted-foreground text-sm col-span-full">Cargando materias...</p>
-                ) : assignments.length === 0 ? (
-                  <div className="col-span-full py-16 text-center border border-border border-dashed rounded-2xl bg-card">
-                    <p className="text-muted-foreground mb-2">No tienes asignaciones académicas configuradas para este año.</p>
-                  </div>
-                ) : filteredAssignments.length === 0 ? (
-                  <div className="col-span-full py-16 text-center border border-border border-dashed rounded-2xl bg-card">
-                    <p className="text-muted-foreground mb-3">No se encontraron materias que coincidan con los filtros seleccionados.</p>
-                    <button
-                      onClick={() => {
-                        setFilterGrade('');
-                        setFilterSubject('');
-                      }}
-                      className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      Restablecer filtros
-                    </button>
-                  </div>
-                ) : (
-                  filteredAssignments.map(ass => (
-                    <div 
-                      key={ass.id_asignacion} 
-                      className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all duration-300 relative overflow-hidden shadow-xs"
-                    >
-                      <div className="absolute top-0 right-0 p-4 text-primary/10 group-hover:text-primary/20 transition-colors">
-                        <IconNotebook className="w-10 h-10" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary px-2 py-0.5 rounded">
-                        {ass.materias?.area || 'Asignatura'}
-                      </span>
-                      <h3 className="text-xl font-bold text-foreground mt-3 mb-1">{ass.materias?.nombre}</h3>
-                      <p className="text-sm text-muted-foreground mb-6">Curso: <strong className="text-foreground">{ass.cursos?.nombre}</strong></p>
-                      
-                      <div className="flex gap-3 pt-3 border-t border-border">
-                        <button 
-                          onClick={() => handleSelectAssignment(ass, 'grade')}
-                          className="flex-1 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow-xs cursor-pointer"
-                        >
-                          Calificar
-                        </button>
-                        <button 
-                          onClick={() => handleSelectAssignment(ass, 'attendance')}
-                          className="flex-1 py-2 rounded-xl bg-secondary border border-border text-foreground hover:bg-secondary/80 text-xs font-semibold transition-all cursor-pointer"
-                        >
-                          Control Faltas
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+            <div className="p-12 text-center rounded-3xl border border-dashed border-border bg-card/40 backdrop-blur-md shadow-2xs max-w-2xl mx-auto my-8">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mx-auto mb-4 text-2xl">
+                🏫
               </div>
+              <h2 className="text-lg font-bold text-foreground">
+                Selecciona un Grado y Curso
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                Selecciona la materia, grado y curso en la barra superior para habilitar la planilla de calificaciones, control de faltas y seguimiento del observador.
+              </p>
             </div>
           )}
 
