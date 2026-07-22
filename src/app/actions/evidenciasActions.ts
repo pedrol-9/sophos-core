@@ -26,6 +26,7 @@ export type EvidenciaAdminDetail = EvidenciaRow & {
   usadaEnPeriodoAnterior?: boolean;
   periodoAnteriorNombre?: string | null;
   periodosUsadosNombres?: string[];
+  esActivaEnPeriodoVigente?: boolean;
 };
 
 export type ConfigEvidenciaPeriodo = {
@@ -226,9 +227,6 @@ export async function getEvidenciasAdminFull(opts: {
           } else if (activePeriod && per.numero_periodo < activePeriod.numero_periodo) {
             usadaEnAnterior = true;
           }
-          if (pesoPeriodo === null && cfg.peso !== undefined && cfg.peso !== null) {
-            pesoPeriodo = Number(cfg.peso);
-          }
         }
       });
 
@@ -240,10 +238,11 @@ export async function getEvidenciasAdminFull(opts: {
       return {
         ...ev,
         periodo_asignado: periodosUsadosNombres.join(', ') || null,
-        peso_periodo: pesoPeriodo,
+        peso_periodo: esActivaEnPeriodoVigente ? pesoPeriodo : null,
         usadaEnPeriodoAnterior: usadaEnAnterior,
         periodoAnteriorNombre: periodosUsadosNombres[0] || null,
         periodosUsadosNombres,
+        esActivaEnPeriodoVigente,
       };
     });
 

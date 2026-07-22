@@ -289,7 +289,7 @@ export function EvidenciasManager() {
             <tbody className="divide-y divide-border">
               {evidencias.map((ev) => {
                 const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
-                const isActiva = ev.peso_periodo !== null && ev.peso_periodo !== undefined && ev.peso_periodo > 0;
+                const isActiva = Boolean(ev.esActivaEnPeriodoVigente);
                 const isUsadaAnterior = Boolean(ev.usadaEnPeriodoAnterior && !isActiva);
                 const isInactivaCat = !ev.activo;
 
@@ -311,7 +311,7 @@ export function EvidenciasManager() {
                         </span>
                       ) : isActiva ? (
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/25">
-                          ACTIVA
+                          ACTIVO
                         </span>
                       ) : isUsadaAnterior || isInactivaCat ? (
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-500/15 text-slate-400 border border-slate-500/25">
