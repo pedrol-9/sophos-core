@@ -71,16 +71,32 @@ export type GradesheetStudentEvidencias = {
  */
 function extractGrado(nombreCurso: string): string {
   if (!nombreCurso) return '';
-  const match = nombreCurso.match(/(\d+)/);
+  const str = nombreCurso.trim();
+  const lower = str.toLowerCase();
+
+  // 1. Coincidencia por palabras en español o notación ordinal (ej: "Sexto A" → "6")
+  if (lower.includes('primero') || lower.includes('1°') || lower.includes('1ro')) return '1';
+  if (lower.includes('segundo') || lower.includes('2°') || lower.includes('2do')) return '2';
+  if (lower.includes('tercero') || lower.includes('3°') || lower.includes('3ro')) return '3';
+  if (lower.includes('cuarto') || lower.includes('4°') || lower.includes('4to')) return '4';
+  if (lower.includes('quinto') || lower.includes('5°') || lower.includes('5to')) return '5';
+  if (lower.includes('sexto') || lower.includes('6°') || lower.includes('6to')) return '6';
+  if (lower.includes('séptimo') || lower.includes('septimo') || lower.includes('7°') || lower.includes('7mo')) return '7';
+  if (lower.includes('octavo') || lower.includes('8°') || lower.includes('8vo')) return '8';
+  if (lower.includes('noveno') || lower.includes('9°') || lower.includes('9no')) return '9';
+  if (lower.includes('décimo') || lower.includes('decimo') || lower.includes('10°')) return '10';
+  if (lower.includes('undécimo') || lower.includes('undecimo') || lower.includes('once') || lower.includes('11°')) return '11';
+
+  // 2. Extracción numérica
+  const match = str.match(/(\d+)/);
   if (match) {
     const num = match[1];
     if (num.length >= 3) {
-      // Si tiene 3 dígitos o más (ej: "601" o "1002"), quitamos los últimos dos dígitos
       return num.slice(0, -2);
     }
     return num;
   }
-  return nombreCurso.trim();
+  return str;
 }
 
 // ─── ACCIONES DEL ADMINISTRADOR ──────────────────────────────────────────────
@@ -572,17 +588,18 @@ export async function getEvidenciasForAsignacion(
 
     const extractedGrado = extractGrado(curso.nombre || '');
     const cursoGrado = (curso as any).grado || '';
+    const rawDigits = (curso.nombre || '').replace(/[^0-9]/g, '');
+
     const gradosToSearch = Array.from(
-      new Set([extractedGrado, curso.nombre, cursoGrado].filter((g): g is string => Boolean(g && g.trim())))
+      new Set([extractedGrado, rawDigits, curso.nombre, cursoGrado].filter((g): g is string => Boolean(g && g.trim())))
     );
 
-    // 3. Buscar evidencias disponibles para este grado+materia
+    // 3. Buscar evidencias disponibles para esta materia e institución
     const { data: rawEvidencias, error: evErr } = await supabase
       .from('evidencias')
       .select('*')
       .eq('id_institucion', asignacion.id_institucion)
       .eq('id_materia', asignacion.id_materia)
-      .in('grado', gradosToSearch)
       .neq('estado_aprobacion', 'RECHAZADA')
       .eq('activo', true)
       .order('orden', { ascending: true });
@@ -592,7 +609,19 @@ export async function getEvidenciasForAsignacion(
       return { success: true, data: [] };
     }
 
-    const evidencias = rawEvidencias.map((row: any) => ({
+    // Filtrar por grado coincidente (ej. "6" coincide con "6", "6A", "601", "Sexto A")
+    const matchingEvidencias = rawEvidencias.filter((ev: any) => {
+      if (!ev.grado) return true;
+      const evGradoExtracted = extractGrado(ev.grado);
+      return (
+        gradosToSearch.includes(ev.grado) ||
+        (extractedGrado && evGradoExtracted === extractedGrado) ||
+        (extractedGrado && ev.grado.startsWith(extractedGrado)) ||
+        (evGradoExtracted && extractedGrado.startsWith(evGradoExtracted))
+      );
+    });
+
+    const evidencias = matchingEvidencias.map((row: any) => ({
       ...row,
       estado_aprobacion: row.estado_aprobacion || 'APROBADA',
     }));
