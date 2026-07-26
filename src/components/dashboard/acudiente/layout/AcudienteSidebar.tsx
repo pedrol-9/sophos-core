@@ -2,7 +2,7 @@
 
 import { User } from '@supabase/supabase-js';
 import { IconNotebook, IconChecklist, IconLogout, IconUser } from '@/components/icons';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 interface AcudienteSidebarProps {
   user: User | null;

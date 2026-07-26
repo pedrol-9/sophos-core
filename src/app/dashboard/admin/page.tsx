@@ -4,16 +4,18 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { IconPlus } from '@/components/icons';
-import { Sidebar } from '@/components/dashboard/Sidebar';
-import { StatsGrid } from '@/components/dashboard/StatsGrid';
-import { BulkImportModal } from '@/components/dashboard/BulkImportModal';
 import { useAdminDashboard } from '@/hooks/useAdminDashboard';
-import { StudentList } from '@/components/dashboard/admin/StudentList';
-import { StudentDetail } from '@/components/dashboard/admin/StudentDetail';
-import { OnboardingWizard } from '@/components/dashboard/admin/OnboardingWizard';
-import { AjustesAcademicos } from '@/components/dashboard/admin/AjustesAcademicos';
-import { SubscriptionManager } from '@/components/dashboard/admin/SubscriptionManager';
-import { CierrePeriodoManager } from '@/components/dashboard/admin/CierrePeriodoManager';
+import {
+  Sidebar,
+  StatsGrid,
+  BulkImportModal,
+  StudentList,
+  StudentDetail,
+  OnboardingWizard,
+  AjustesAcademicos,
+  SubscriptionManager,
+  CierrePeriodoManager,
+} from '@/components/dashboard/admin';
 import {
   createCourse,
   createSubject,

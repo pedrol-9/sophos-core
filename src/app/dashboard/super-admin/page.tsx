@@ -13,7 +13,7 @@ import {
   SaaSMetrics,
   InstitutionSaaSInfo
 } from '@/app/actions/superadmin-actions';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();

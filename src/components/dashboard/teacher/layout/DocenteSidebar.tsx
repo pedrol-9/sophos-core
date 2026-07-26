@@ -3,7 +3,7 @@
 import { User } from '@supabase/supabase-js';
 import { type AcademicAssignment } from '@/app/actions/teacher-actions';
 import { IconNotebook, IconChecklist, IconLogout } from '@/components/icons';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 interface DocenteSidebarProps {
   user: User | null;

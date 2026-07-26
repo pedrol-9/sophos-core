@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { StudentSubject } from './types';
+import { StudentSubject } from '../types';
 import { IconSparkles } from '@/components/icons';
 
 interface AcudienteGradesTabProps {

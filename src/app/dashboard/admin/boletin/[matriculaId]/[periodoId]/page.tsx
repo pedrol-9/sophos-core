@@ -1,5 +1,5 @@
 import { getStudentBulletin } from '@/app/actions/cierre-actions';
-import { PrintButton, CloseButton } from '@/components/dashboard/admin/PrintActions';
+import { PrintButton, CloseButton } from '@/components/dashboard/admin';
 
 interface BoletinPageProps {
   params: Promise<{

@@ -1,6 +1,6 @@
 'use client';
 
-import { AbsenceRecord } from './types';
+import { AbsenceRecord } from '../types';
 
 interface AcudienteAbsencesTabProps {
   absences: AbsenceRecord[];

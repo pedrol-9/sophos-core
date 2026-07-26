@@ -12,18 +12,20 @@ import {
   type AcademicAssignment,
   type CourseStudent,
 } from '@/app/actions/teacher-actions';
-import { TeacherGradebook } from '@/components/dashboard/teacher/TeacherGradebook';
+import {
+  TeacherGradebook,
+  DocenteHeader,
+  DocenteSidebar,
+  TeacherAttendanceTab,
+  TeacherObservadorTab,
+  TeacherGradeModal,
+  TeacherObservadorModal,
+} from '@/components/dashboard/teacher';
 import {
   createObservacion,
   getStudentObservations,
   type ObservadorRecord,
 } from '@/app/actions/observador-actions';
-import { DocenteHeader } from '@/components/dashboard/teacher/DocenteHeader';
-import { DocenteSidebar } from '@/components/dashboard/teacher/DocenteSidebar';
-import { TeacherAttendanceTab } from '@/components/dashboard/teacher/TeacherAttendanceTab';
-import { TeacherObservadorTab } from '@/components/dashboard/teacher/TeacherObservadorTab';
-import { TeacherGradeModal } from '@/components/dashboard/teacher/TeacherGradeModal';
-import { TeacherObservadorModal } from '@/components/dashboard/teacher/TeacherObservadorModal';
 
 export default function DocenteDashboard() {
   const router = useRouter();

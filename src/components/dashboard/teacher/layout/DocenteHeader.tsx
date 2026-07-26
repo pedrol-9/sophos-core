@@ -46,13 +46,15 @@ export function DocenteHeader({
         .map((a) => extractGrado(a.cursos?.nombre || ''))
         .filter((g): g is string => Boolean(g))
     )
-  );
+  ).sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
 
-  const cursosDisponibles = assignments.filter((a) => {
-    const matchSub = !selectedMateriaName || a.materias?.nombre === selectedMateriaName;
-    const matchGr = !selectedGradoNum || extractGrado(a.cursos?.nombre || '') === selectedGradoNum;
-    return matchSub && matchGr;
-  });
+  const cursosDisponibles = assignments
+    .filter((a) => {
+      const matchSub = !selectedMateriaName || a.materias?.nombre === selectedMateriaName;
+      const matchGr = !selectedGradoNum || extractGrado(a.cursos?.nombre || '') === selectedGradoNum;
+      return matchSub && matchGr;
+    })
+    .sort((a, b) => (a.cursos?.nombre || '').localeCompare(b.cursos?.nombre || '', undefined, { numeric: true }));
 
   return (
     <header className="px-4 py-3 border-b border-border sticky top-0 bg-background/85 backdrop-blur-md z-20 shadow-2xs">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 import {
   IconHome, IconBuilding, IconNotebook, IconSparkles, 
   IconSettings, IconLogout, IconUser, IconCreditCard,

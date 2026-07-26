@@ -1,6 +1,6 @@
 'use client';
 
-import { ObservadorRecord } from './types';
+import { ObservadorRecord } from '../types';
 
 interface AcudienteObservadorTabProps {
   observadorLogs: ObservadorRecord[];
