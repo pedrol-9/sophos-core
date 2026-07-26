@@ -341,7 +341,32 @@ export function EvidenciasManager() {
           </p>
         </div>
       ) : loading ? (
-        <div className="text-sm text-muted-foreground py-8 text-center font-medium">Cargando evidencias...</div>
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-xs overflow-hidden animate-pulse">
+          <div className="flex items-center justify-between pb-3 border-b border-border/60">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <svg className="w-4 h-4 animate-spin text-primary" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <div className="h-4 w-44 bg-secondary rounded-md" />
+                <div className="h-3 w-60 bg-secondary/60 rounded-md" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center justify-between p-3.5 bg-secondary/30 border border-border/40 rounded-xl">
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3.5 bg-secondary/80 rounded-md w-1/3" />
+                  <div className="h-2.5 bg-secondary/50 rounded-md w-2/3" />
+                </div>
+                <div className="h-6 w-20 bg-secondary/60 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : evidencias.length === 0 ? (
         <div className="py-16 text-center border border-border border-dashed rounded-2xl bg-card/40">
           <svg className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

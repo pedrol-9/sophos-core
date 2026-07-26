@@ -16,6 +16,9 @@ import {
 } from '@/app/actions/evidenciasActions';
 import { EvidenciasPeriodoModal } from '@/components/dashboard/teacher/EvidenciasPeriodoModal';
 import { UploadGradebookModal } from '@/components/dashboard/teacher/UploadGradebookModal';
+import { GradebookToolbar } from './gradebook/GradebookToolbar';
+import { GradebookSkeleton } from './gradebook/GradebookSkeleton';
+import { GradebookTable } from './gradebook/GradebookTable';
 
 interface TeacherGradebookProps {
   idAsignacion: string;
@@ -39,26 +42,10 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   const [showEvidenciasModal, setShowEvidenciasModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [dataLoading, setDataLoading] = useState(false);
   const [isExpandedWindow, setIsExpandedWindow] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const toggleFullscreen = async () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      try {
-        await containerRef.current.requestFullscreen();
-        setIsFullscreen(true);
-      } catch (err) {
-        console.error('Error requestFullscreen:', err);
-      }
-    } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      }
-    }
-  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,8 +78,6 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   // Cambios pendientes por guardar
   const [pendingChanges, setPendingChanges] = useState<Record<string, CalificacionBatchItem>>({});
   const [savingBatch, setSavingBatch] = useState(false);
-
-  // Almacena los valores temporales en string
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
 
   // Modal de confirmación / alerta personalizado
@@ -104,60 +89,98 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     onConfirm?: () => void;
   } | null>(null);
 
-  const activePeriodo = periodos.find((p) => p.activo);
-  const isPeriodoClosed = !!(selectedPeriodo && activePeriodo && selectedPeriodo.numero_periodo < activePeriodo.numero_periodo);
-
-  // ─── CARGA DE PARAMETRIZACIÓN ─────────────────────────────────────────────
+  // 1. Cargar parametrización de la institución al montar
   useEffect(() => {
-    async function loadConfig() {
+    async function loadParametrizacion() {
       setLoading(true);
-      const res = await getParametrizacionDocente(idAsignacion);
-      if (res.success) {
-        setPeriodos(res.periodos || []);
-        setEscalas(res.escalas || []);
-        const active = res.periodos?.find((p) => p.activo) || res.periodos?.[0] || null;
-        setSelectedPeriodo(active);
-      } else {
-        setErrorMsg(res.error || 'No se pudo obtener la configuración institucional.');
-      }
-      setLoading(false);
-    }
-    loadConfig();
-  }, [idAsignacion]);
-
-  // ─── CARGA DE EVIDENCIAS Y ESTUDIANTES AL CAMBIAR PERIODO O GUARDAR CONFIG ──
-  useEffect(() => {
-    if (!selectedPeriodo) return;
-
-    async function loadData() {
-      setStudents([]);
-      setEvidencias([]);
       setErrorMsg('');
 
-      const [evRes, studRes] = await Promise.all([
-        getEvidenciasForAsignacion(idAsignacion, selectedPeriodo!.id_periodo),
-        getGradesheetByEvidencias(idCurso, idAsignacion, selectedPeriodo!.id_periodo),
+      const res = await getParametrizacionDocente(idAsignacion);
+      if (!res.success || !res.periodos) {
+        setErrorMsg(res.error || 'Error al cargar la parametrización académica.');
+        setLoading(false);
+        return;
+      }
+
+      const activePer = res.periodos.find((p: PeriodoInfo) => p.activo) || res.periodos[0] || null;
+
+      setPeriodos(res.periodos);
+      setSelectedPeriodo(activePer);
+      setEscalas(res.escalas || []);
+      setLoading(false);
+    }
+
+    loadParametrizacion();
+  }, [idAsignacion]);
+
+  // 2. Cargar evidencias y calificaciones cuando cambia el periodo seleccionado
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      if (!selectedPeriodo) return;
+
+      setDataLoading(true);
+      setErrorMsg('');
+
+      const [evRes, sheetRes] = await Promise.all([
+        getEvidenciasForAsignacion(idAsignacion, selectedPeriodo.id_periodo),
+        getGradesheetByEvidencias(idCurso, idAsignacion, selectedPeriodo.id_periodo),
       ]);
 
-      if (evRes.success) {
-        setEvidencias(evRes.data || []);
+      if (!isMounted) return;
+
+      if (!evRes.success) {
+        setErrorMsg(evRes.error || 'Error al cargar las evidencias del periodo.');
       } else {
-        setErrorMsg(evRes.error || 'Error al cargar evidencias.');
+        setEvidencias(evRes.data || []);
       }
 
-      if (studRes.success) {
-        setStudents(studRes.data || []);
+      if (!sheetRes.success) {
+        setErrorMsg(sheetRes.error || 'Error al cargar las calificaciones del curso.');
       } else {
-        setErrorMsg((prev) => (prev ? `${prev} ${studRes.error}` : studRes.error || 'Error al cargar estudiantes.'));
+        setStudents(sheetRes.data || []);
       }
+
+      setDataLoading(false);
     }
 
     loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [idAsignacion, idCurso, selectedPeriodo, refreshTrigger]);
 
-  // ─── MANEJO DE CAMBIO DE NOTA LOCAL ────────────────────────────────────────
+  const activePeriodo = periodos.find((p) => p.activo);
+  const isPeriodoClosed = Boolean(
+    activePeriodo && selectedPeriodo && selectedPeriodo.numero_periodo < activePeriodo.numero_periodo
+  );
+
+  const handleSelectPeriodo = (p: PeriodoInfo) => {
+    if (selectedPeriodo?.id_periodo === p.id_periodo || dataLoading) return;
+    if (Object.keys(pendingChanges).length > 0) {
+      setModalConfig({
+        show: true,
+        title: 'Cambios sin Guardar',
+        message:
+          'Tienes calificaciones modificadas que no se han guardado. ¿Seguro que deseas cambiar de periodo y perder estos cambios?',
+        type: 'confirm',
+        onConfirm: () => {
+          setPendingChanges({});
+          setLocalValues({});
+          setSelectedPeriodo(p);
+        },
+      });
+      return;
+    }
+    setLocalValues({});
+    setSelectedPeriodo(p);
+  };
+
+  // Manejar cambio en un input de nota
   const handleGradeChange = (
-    studentIndex: number,
+    studentIdx: number,
     idEstudiante: string,
     idMatricula: string,
     idEvidencia: string,
@@ -165,163 +188,157 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
   ) => {
     if (isPeriodoClosed) return;
 
-    const cellKey = `${idMatricula}-${idEvidencia}`;
+    let notaNum: number | null = null;
 
-    if (rawVal.trim() === '') {
-      setPendingChanges((prev) => ({
-        ...prev,
-        [cellKey]: {
-          idMatricula,
-          idEvidencia,
-          nota: null,
-        },
-      }));
-      setStudents((prev) => {
-        const updated = [...prev];
-        const student = { ...updated[studentIndex] };
-        student.grades = {
-          ...student.grades,
-          [idEvidencia]: {
-            ...student.grades[idEvidencia],
-            nota: null,
-          },
-        };
-        updated[studentIndex] = student;
-        return updated;
-      });
-      return;
+    if (rawVal.trim() !== '') {
+      const parsed = parseFloat(rawVal);
+      if (isNaN(parsed) || parsed < 0.0 || parsed > 5.0) {
+        return;
+      }
+      notaNum = parsed;
     }
 
-    const parsed = parseFloat(rawVal);
-    if (isNaN(parsed) || parsed < 0.0 || parsed > 5.0) return;
+    const cellKey = `${idMatricula}-${idEvidencia}`;
+
+    setStudents((prevStudents) => {
+      const copy = [...prevStudents];
+      const studentObj = { ...copy[studentIdx] };
+      const currentGrades = { ...studentObj.grades };
+
+      if (notaNum === null) {
+        delete currentGrades[idEvidencia];
+      } else {
+        currentGrades[idEvidencia] = {
+          id_calificacion: currentGrades[idEvidencia]?.id_calificacion || null,
+          id_evidencia: idEvidencia,
+          nota: notaNum,
+          comentario_docente: currentGrades[idEvidencia]?.comentario_docente || null,
+        };
+      }
+
+      studentObj.grades = currentGrades;
+      copy[studentIdx] = studentObj;
+      return copy;
+    });
 
     setPendingChanges((prev) => ({
       ...prev,
       [cellKey]: {
         idMatricula,
         idEvidencia,
-        nota: parsed,
+        nota: notaNum,
       },
     }));
-
-    setStudents((prev) => {
-      const updated = [...prev];
-      const student = { ...updated[studentIndex] };
-      student.grades = {
-        ...student.grades,
-        [idEvidencia]: {
-          ...student.grades[idEvidencia],
-          nota: parsed,
-        },
-      };
-      updated[studentIndex] = student;
-      return updated;
-    });
   };
 
-  // ─── NAVEGACIÓN TECLADO ───────────────────────────────────────────────────
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    studentIndex: number,
-    evidenciaIndex: number
-  ) => {
-    const totalStudents = students.length;
-    const totalEvidencias = evidencias.filter((ev) => ev.activaEnPeriodo).length;
-
-    let targetStudent = studentIndex;
-    let targetEvidencia = evidenciaIndex;
-
-    switch (e.key) {
-      case 'ArrowDown':
-      case 'Enter':
-        e.preventDefault();
-        targetStudent = Math.min(studentIndex + 1, totalStudents - 1);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        targetStudent = Math.max(studentIndex - 1, 0);
-        break;
-      case 'ArrowRight':
-        if (e.currentTarget.selectionStart === e.currentTarget.value.length) {
-          targetEvidencia = Math.min(evidenciaIndex + 1, totalEvidencias - 1);
-        }
-        break;
-      case 'ArrowLeft':
-        if (e.currentTarget.selectionStart === 0) {
-          targetEvidencia = Math.max(evidenciaIndex - 1, 0);
-        }
-        break;
-      default:
-        return;
-    }
-
-    const targetInput = document.getElementById(`grade-${targetStudent}-${targetEvidencia}`);
-    if (targetInput) {
-      (targetInput as HTMLInputElement).focus();
-      (targetInput as HTMLInputElement).select();
-    }
-  };
-
-  // ─── GUARDADO EN BATCH ────────────────────────────────────────────────────
+  // Guardar cambios en lote
   const handleSaveChanges = async () => {
+    if (!selectedPeriodo) return;
     const items = Object.values(pendingChanges);
-    if (items.length === 0 || !selectedPeriodo) return;
+    if (items.length === 0) return;
 
     setSavingBatch(true);
-    const res = await upsertCalificacionesBatch(idAsignacion, selectedPeriodo.id_periodo, items);
-    setSavingBatch(false);
+    setErrorMsg('');
 
-    if (res.success) {
-      setPendingChanges({});
-      setLocalValues({});
-      setModalConfig({
-        show: true,
-        title: '¡Guardado Exitoso!',
-        message: `Se actualizaron correctamente ${items.length} calificaciones en la base de datos.`,
-        type: 'success',
-      });
-    } else {
+    const res = await upsertCalificacionesBatch(idAsignacion, selectedPeriodo.id_periodo, items);
+
+    if (!res.success) {
+      setErrorMsg(res.error || 'Error al guardar los cambios.');
       setModalConfig({
         show: true,
         title: 'Error al Guardar',
-        message: res.error || 'No se pudieron guardar algunos registros. Revisa tu conexión.',
+        message: `Error al guardar los cambios: ${res.error || 'Ocurrió un error inesperado'}`,
         type: 'error',
       });
+    } else {
+      setPendingChanges({});
+      setModalConfig({
+        show: true,
+        title: 'Calificaciones Guardadas',
+        message: '¡Todas las calificaciones se han guardado exitosamente!',
+        type: 'success',
+      });
+      setRefreshTrigger((prev) => prev + 1);
+    }
+
+    setSavingBatch(false);
+  };
+
+  // Manejar navegación con teclado
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, studentIdx: number, evIdx: number) => {
+    const activasEvidencias = evidencias.filter((e) => e.activaEnPeriodo);
+    const totalStudents = students.length;
+    const totalEvidencias = activasEvidencias.length;
+
+    let targetStudent = studentIdx;
+    let targetEv = evIdx;
+
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+      e.preventDefault();
+      targetStudent = Math.min(totalStudents - 1, studentIdx + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      targetStudent = Math.max(0, studentIdx - 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (evIdx < totalEvidencias - 1) {
+        targetEv = evIdx + 1;
+      } else if (studentIdx < totalStudents - 1) {
+        targetStudent = studentIdx + 1;
+        targetEv = 0;
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (evIdx > 0) {
+        targetEv = evIdx - 1;
+      } else if (studentIdx > 0) {
+        targetStudent = studentIdx - 1;
+        targetEv = totalEvidencias - 1;
+      }
+    } else {
+      return;
+    }
+
+    const nextInputId = `grade-${targetStudent}-${targetEv}`;
+    const nextEl = document.getElementById(nextInputId) as HTMLInputElement | null;
+    if (nextEl) {
+      nextEl.focus();
+      nextEl.select();
     }
   };
 
-  // ─── CÁLCULO DE DEFINITIVA ────────────────────────────────────────────────
+  // Cálculos de Definitiva y Desempeño
   const calculateDefinitiva = (student: GradesheetStudentEvidencias): number => {
-    const activas = evidencias.filter((ev) => ev.activaEnPeriodo);
+    const activas = evidencias.filter((e) => e.activaEnPeriodo && e.estado_aprobacion !== 'PENDIENTE');
     if (activas.length === 0) return 0;
 
-    let sumaPonderada = 0;
-    let pesoTotal = 0;
+    let totalWeight = 0;
+    let weightedSum = 0;
 
     activas.forEach((ev) => {
-      const g = student.grades[ev.id_evidencia];
-      if (g && g.nota !== null && g.nota !== undefined) {
-        sumaPonderada += g.nota * ev.peso;
-        pesoTotal += ev.peso;
+      const gradeRow = student.grades[ev.id_evidencia];
+      if (gradeRow && gradeRow.nota !== null) {
+        weightedSum += gradeRow.nota * ev.peso;
+        totalWeight += ev.peso;
       }
     });
 
-    if (pesoTotal === 0) return 0;
-    return parseFloat((sumaPonderada / (pesoTotal || 1)).toFixed(2));
+    if (totalWeight === 0) return 0;
+    return weightedSum / totalWeight;
   };
 
-  // ─── ETIQUETA DE DESEMPEÑO DECRETO 1290 ────────────────────────────────────
-  const getDesempenoLabel = (nota: number): string => {
-    if (nota === 0) return '-';
-    for (const esc of escalas) {
-      if (nota >= esc.nota_minima && nota <= esc.nota_maxima) {
-        return esc.nombre_desempeno;
-      }
+  const getDesempenoLabel = (definitiva: number): string => {
+    if (definitiva === 0 || isNaN(definitiva)) return 'SIN NOTA';
+    if (escalas.length === 0) {
+      if (definitiva >= 4.6) return 'SUPERIOR';
+      if (definitiva >= 4.0) return 'ALTO';
+      if (definitiva >= 3.0) return 'BASICO';
+      return 'BAJO';
     }
-    return '-';
-  };
 
-  const activasEvidencias = evidencias.filter((e) => e.activaEnPeriodo);
+    const match = escalas.find((es) => definitiva >= es.nota_minima && definitiva <= es.nota_maxima);
+    return match ? match.nombre_desempeno.toUpperCase() : 'DESCONOCIDO';
+  };
 
   if (loading) {
     return (
@@ -342,166 +359,23 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
       }`}
     >
       {/* TOOLBAR */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-5 bg-card border border-border rounded-2xl shadow-xs">
-        {/* Info Asignación */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">Planilla de Notas</h2>
-              {(isExpandedWindow || isFullscreen) && (
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                  ↔️ Modo Completo
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Registro continuo de calificaciones por evidencia.</p>
-          </div>
-        </div>
-
-        {/* Selector de Periodo */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Periodo:</label>
-          <div className="flex gap-1.5 flex-wrap">
-            {(() => {
-              const maxPeriodoNum = activePeriodo ? activePeriodo.numero_periodo : 1;
-              const visiblePeriodos = periodos.filter((p) => p.numero_periodo <= maxPeriodoNum);
-
-              return visiblePeriodos.map((p) => {
-                const isSelected = selectedPeriodo?.id_periodo === p.id_periodo;
-                const isConcluido = activePeriodo && p.numero_periodo < activePeriodo.numero_periodo;
-
-                return (
-                  <button
-                    key={p.id_periodo}
-                    type="button"
-                    onClick={() => {
-                      if (Object.keys(pendingChanges).length > 0) {
-                        setModalConfig({
-                          show: true,
-                          title: 'Cambios sin Guardar',
-                          message: 'Tienes calificaciones modificadas que no se han guardado. ¿Seguro que deseas cambiar de periodo y perder estos cambios?',
-                          type: 'confirm',
-                          onConfirm: () => {
-                            setPendingChanges({});
-                            setLocalValues({});
-                            setSelectedPeriodo(p);
-                          }
-                        });
-                        return;
-                      }
-                      setLocalValues({});
-                      setSelectedPeriodo(p);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-primary border-primary text-primary-foreground shadow-xs'
-                        : isConcluido
-                        ? 'bg-secondary border-border text-muted-foreground/50 hover:text-foreground'
-                        : 'bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground'
-                    }`}
-                  >
-                    P{p.numero_periodo} {p.activo && '•'}
-                  </button>
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Acciones */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Botón Guardar Cambios */}
-          {Object.keys(pendingChanges).length > 0 && (
-            <button
-              type="button"
-              disabled={savingBatch}
-              onClick={handleSaveChanges}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 hover:bg-amber-400 text-xs font-bold transition-all shadow-md animate-pulse cursor-pointer flex-1 sm:flex-initial"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-              </svg>
-              {savingBatch ? 'Guardando...' : `Guardar (${Object.keys(pendingChanges).length})`}
-            </button>
-          )}
-
-          {/* Botón Evidencias del Periodo */}
-          <button
-            type="button"
-            disabled={isPeriodoClosed}
-            onClick={() => setShowEvidenciasModal(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-1 sm:flex-initial"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            Evidencias
-          </button>
-
-          {/* Botón Carga Masiva CSV */}
-          <button
-            type="button"
-            disabled={isPeriodoClosed}
-            onClick={() => setShowBulkModal(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-foreground text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex-1 sm:flex-initial"
-          >
-            <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            Importar
-          </button>
-
-          {/* Botón Refrescar Planilla */}
-          <button
-            type="button"
-            onClick={() => setRefreshTrigger((prev) => prev + 1)}
-            title="Refrescar planilla"
-            className="p-2 rounded-xl bg-secondary border border-border hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-all cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-
-          {/* BOTÓN MAXIMIZAR TABLA (MODO HORIZONTAL / PANTALLA COMPLETA) */}
-          {!isExpandedWindow && !isFullscreen ? (
-            <button
-              type="button"
-              onClick={() => setIsExpandedWindow(true)}
-              title="Agrandar tabla a pantalla completa (Modo Horizontal)"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-              </svg>
-              <span>Agrandar Tabla 📱</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen().catch(() => {});
-                }
-                setIsExpandedWindow(false);
-                setIsFullscreen(false);
-              }}
-              title="Restaurar tamaño normal"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary border border-border text-foreground hover:bg-secondary/80 text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-              </svg>
-              <span>Restaurar ✕</span>
-            </button>
-          )}
-        </div>
-      </div>
+      <GradebookToolbar
+        isExpandedWindow={isExpandedWindow}
+        isFullscreen={isFullscreen}
+        periodos={periodos}
+        selectedPeriodo={selectedPeriodo}
+        activePeriodo={activePeriodo}
+        dataLoading={dataLoading}
+        pendingChangesCount={Object.keys(pendingChanges).length}
+        savingBatch={savingBatch}
+        isPeriodoClosed={isPeriodoClosed}
+        onSelectPeriodo={handleSelectPeriodo}
+        onSaveChanges={handleSaveChanges}
+        onOpenEvidenciasModal={() => setShowEvidenciasModal(true)}
+        onOpenBulkModal={() => setShowBulkModal(true)}
+        onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
+        onExpandWindow={setIsExpandedWindow}
+      />
 
       {/* ERRORES */}
       {errorMsg && (
@@ -510,218 +384,40 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
         </div>
       )}
 
-      {/* ESTADO: Sin evidencias configuradas */}
-      {!loading && evidencias.length === 0 && (
+      {/* ESTADO 1: Cargando datos del periodo (Skeleton Shimmer Premium) */}
+      {dataLoading ? (
+        <GradebookSkeleton
+          isExpandedWindow={isExpandedWindow}
+          isFullscreen={isFullscreen}
+          selectedPeriodoNumero={selectedPeriodo?.numero_periodo}
+        />
+      ) : !loading && evidencias.length === 0 ? (
         <div className="py-16 text-center border border-border border-dashed rounded-2xl bg-card">
           <svg className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <p className="text-muted-foreground text-sm font-semibold">Sin evidencias configuradas para este periodo.</p>
           <p className="text-muted-foreground/60 text-xs mt-1 max-w-xs mx-auto">
             El coordinador debe crear las evidencias para este grado y materia desde el panel de administración.
           </p>
         </div>
-      )}
+      ) : null}
 
-      {/* PLANILLA */}
-      {students.length > 0 && evidencias.length > 0 && (
-        <div className={`bg-card border border-border rounded-2xl overflow-hidden shadow-xs ${
-          isExpandedWindow || isFullscreen ? 'flex-1 flex flex-col min-h-0' : ''
-        }`}>
-          <div className={`custom-scrollbar ${
-            isExpandedWindow || isFullscreen ? 'flex-1 overflow-auto' : 'overflow-x-auto'
-          }`}>
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                {/* Fila 1: Evidencias activas y Consolidado */}
-                <tr className="border-b border-border bg-secondary/30">
-                  <th
-                    className="py-3 px-4 text-xs font-bold text-muted-foreground uppercase tracking-wider border-r border-border w-64"
-                    rowSpan={2}
-                  >
-                    Estudiante
-                  </th>
-
-                  {activasEvidencias.length > 0 && (
-                    <th
-                      className="py-2 px-3 text-center text-[10px] font-bold text-primary bg-primary/5 uppercase tracking-widest border-r border-border"
-                      colSpan={activasEvidencias.length}
-                    >
-                      Evidencias del Periodo
-                    </th>
-                  )}
-
-                  <th
-                    className="py-3 px-4 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider"
-                    colSpan={2}
-                    rowSpan={1}
-                  >
-                    Consolidado
-                  </th>
-                </tr>
-
-                {/* Fila 2: Nombres y pesos de cada evidencia */}
-                <tr className="border-b border-border bg-secondary/50 text-[10px] font-bold text-muted-foreground tracking-wider">
-                  {activasEvidencias.map((ev) => {
-                    const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
-                    const isFew = activasEvidencias.length <= 2;
-                    return (
-                      <th
-                        key={`h-${ev.id_evidencia}`}
-                        className={`py-2 px-3 text-center border-r border-border font-semibold ${
-                          isFew ? 'min-w-[180px] sm:min-w-[260px]' : 'min-w-[110px] max-w-[180px]'
-                        }`}
-                      >
-                        <span
-                          className={`block text-xs font-bold text-foreground ${
-                            isFew ? 'whitespace-normal leading-snug px-1' : 'truncate max-w-full'
-                          }`}
-                          title={ev.nombre}
-                        >
-                          {ev.nombre}
-                        </span>
-                        {isPendiente ? (
-                          <span className="block text-[9px] text-amber-500 font-bold mt-0.5" title="Pendiente de aprobación por coordinación">
-                            [Pendiente]
-                          </span>
-                        ) : (
-                          <span className="block text-[9px] text-primary/80 font-normal mt-0.5">
-                            {Math.round(ev.peso * 100)}%
-                          </span>
-                        )}
-                      </th>
-                    );
-                  })}
-                  <th className="py-2 px-4 text-center border-r border-border w-24">Definitiva</th>
-                  <th className="py-2 px-4 text-center w-24">Desempeño</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-border text-xs">
-                {students.map((student, studentIdx) => {
-                  const definitiva = calculateDefinitiva(student);
-                  const desempeno = getDesempenoLabel(definitiva);
-
-                  return (
-                    <tr key={student.id_estudiante} className="hover:bg-secondary/40 transition-colors">
-                      {/* Info Estudiante */}
-                      <td className="py-3 px-4 border-r border-border font-semibold text-foreground">
-                        <div className="truncate max-w-[240px]">{student.nombre_completo}</div>
-                        <span className="block text-[10px] text-muted-foreground font-normal truncate max-w-[240px]">
-                          {student.email}
-                        </span>
-                      </td>
-
-                      {activasEvidencias.map((ev, evIdx) => {
-                        const isPendiente = ev.estado_aprobacion === 'PENDIENTE';
-                        const grade = student.grades[ev.id_evidencia];
-                        const notaVal = grade?.nota ?? null;
-                        const cellKey = `${student.id_matricula}-${ev.id_evidencia}`;
-                        const displayVal = localValues[cellKey] !== undefined ? localValues[cellKey] : (notaVal !== null ? notaVal.toString() : '');
-                        const hasPending = pendingChanges[cellKey] !== undefined;
-
-                        return (
-                          <td
-                            key={`cell-${student.id_estudiante}-${ev.id_evidencia}`}
-                            className="py-2 px-1 text-center border-r border-border relative group"
-                          >
-                            {isPendiente ? (
-                              <div
-                                className="inline-flex items-center justify-center w-14 py-1 border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 rounded-lg text-[10px] font-semibold cursor-not-allowed mx-auto"
-                                title="Pendiente de aprobación por coordinación"
-                              >
-                                Pendiente
-                              </div>
-                            ) : (
-                              <div className="inline-flex flex-col items-center">
-                                <input
-                                  id={`grade-${studentIdx}-${evIdx}`}
-                                  type="text"
-                                  disabled={isPeriodoClosed}
-                                  value={displayVal}
-                                  onChange={(e) => {
-                                    const rawStr = e.target.value;
-                                    if (rawStr !== '' && !/^[0-5]([.,]\d?)?$/.test(rawStr)) {
-                                      return;
-                                    }
-
-                                    const valStr = rawStr.replace(',', '.');
-                                    setLocalValues((prev) => ({ ...prev, [cellKey]: rawStr }));
-
-                                    handleGradeChange(
-                                      studentIdx,
-                                      student.id_estudiante,
-                                      student.id_matricula,
-                                      ev.id_evidencia,
-                                      valStr
-                                    );
-                                  }}
-                                  onKeyDown={(e) => handleKeyDown(e, studentIdx, evIdx)}
-                                  className={`w-14 px-1.5 py-1 text-center font-bold text-xs bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                                    hasPending
-                                      ? 'border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300'
-                                      : notaVal !== null && notaVal >= 3.0
-                                      ? 'border-border text-teal-600 dark:text-teal-400 font-bold'
-                                      : notaVal !== null
-                                      ? 'border-border text-rose-500 font-bold'
-                                      : 'border-border text-muted-foreground'
-                                  }`}
-                                />
-                                {hasPending && (
-                                  <span className="absolute bottom-0 text-[8px] text-amber-500 font-extrabold scale-75 animate-pulse">*</span>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-
-                      {/* Definitiva */}
-                      <td className="py-3 px-4 text-center border-r border-border">
-                        <span
-                          className={`text-sm font-extrabold px-2.5 py-1 rounded-lg border ${
-                            definitiva >= 3.0
-                              ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20'
-                              : definitiva > 0
-                              ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                              : 'bg-secondary text-muted-foreground border-border'
-                          }`}
-                        >
-                          {definitiva > 0 ? definitiva.toFixed(1) : '-.-'}
-                        </span>
-                      </td>
-
-                      {/* Desempeño */}
-                      <td className="py-3 px-4 text-center">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            desempeno === 'SUPERIOR'
-                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                              : desempeno === 'ALTO'
-                              ? 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
-                              : desempeno === 'BASICO'
-                              ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20'
-                              : definitiva > 0
-                              ? 'bg-rose-500/15 text-rose-500 border border-rose-500/20'
-                              : 'text-muted-foreground bg-secondary'
-                          }`}
-                        >
-                          {desempeno}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* FOOTER */}
-          <div className="p-4 bg-secondary/30 border-t border-border text-left text-[10px] text-muted-foreground font-medium">
-            Usa las flechas del teclado (▲ ▼ ◀ ▶) para moverte entre celdas.
-          </div>
-        </div>
-      )}
+      {/* PLANILLA TABLE */}
+      <GradebookTable
+        students={students}
+        evidencias={evidencias}
+        localValues={localValues}
+        pendingChanges={pendingChanges}
+        isPeriodoClosed={isPeriodoClosed}
+        isExpandedWindow={isExpandedWindow}
+        isFullscreen={isFullscreen}
+        onGradeChange={handleGradeChange}
+        onLocalValueUpdate={(cellKey, val) => setLocalValues((prev) => ({ ...prev, [cellKey]: val }))}
+        onKeyDown={handleKeyDown}
+        calculateDefinitiva={calculateDefinitiva}
+        getDesempenoLabel={getDesempenoLabel}
+      />
 
       {/* MODALES */}
       {showEvidenciasModal && selectedPeriodo && (
@@ -729,7 +425,10 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
           idAsignacion={idAsignacion}
           idPeriodo={selectedPeriodo.id_periodo}
           onClose={() => setShowEvidenciasModal(false)}
-          onSaved={() => setRefreshTrigger((prev) => prev + 1)}
+          onSaved={() => {
+            setShowEvidenciasModal(false);
+            setRefreshTrigger((prev) => prev + 1);
+          }}
         />
       )}
 
@@ -738,21 +437,28 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
           idAsignacion={idAsignacion}
           idPeriodo={selectedPeriodo.id_periodo}
           onClose={() => setShowBulkModal(false)}
-          onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+          onSuccess={() => {
+            setShowBulkModal(false);
+            setRefreshTrigger((prev) => prev + 1);
+          }}
         />
       )}
 
       {/* MODAL DIALOG OVERRIDE FOR ALERTS & CONFIRMS */}
       {modalConfig?.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs bg-black/60 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-sm bg-card border border-border p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4 text-foreground">
+          <div className="relative w-full max-w-sm bg-card border border-border p-6 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md transition-all duration-300 space-y-4 text-left text-foreground">
             {/* Header / Icon */}
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                modalConfig.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500' :
-                modalConfig.type === 'error' ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500' :
-                'bg-amber-500/10 border border-amber-500/30 text-amber-500'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  modalConfig.type === 'success'
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500'
+                    : modalConfig.type === 'error'
+                    ? 'bg-rose-500/10 border border-rose-500/30 text-rose-500'
+                    : 'bg-amber-500/10 border border-amber-500/30 text-amber-500'
+                }`}
+              >
                 {modalConfig.type === 'success' ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -769,10 +475,10 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
               </div>
               <h3 className="text-base font-bold text-foreground leading-none">{modalConfig.title}</h3>
             </div>
-            
+
             {/* Body Message */}
             <p className="text-xs text-muted-foreground leading-relaxed">{modalConfig.message}</p>
-            
+
             {/* Footer Buttons */}
             <div className="flex justify-end gap-3 pt-2">
               {modalConfig.type === 'confirm' ? (
@@ -780,19 +486,19 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
                   <button
                     type="button"
                     onClick={() => setModalConfig(null)}
-                    className="px-4 py-2 rounded-xl bg-secondary border border-border text-xs font-semibold text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-xs font-semibold text-foreground transition-all cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (modalConfig.onConfirm) modalConfig.onConfirm();
+                      modalConfig.onConfirm?.();
                       setModalConfig(null);
                     }}
                     className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 transition-all shadow-md cursor-pointer"
                   >
-                    Confirmar
+                    Descartar Cambios
                   </button>
                 </>
               ) : (

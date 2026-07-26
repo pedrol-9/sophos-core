@@ -16,20 +16,36 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
-    // Leer preferencia de localStorage o fallback a 'dark'
-    const stored = localStorage.getItem('theme') as Theme | null;
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored);
-      if (stored === 'dark') {
+    const applyTheme = (targetTheme: Theme) => {
+      setThemeState(targetTheme);
+      if (targetTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
         document.documentElement.classList.remove('dark');
       }
-    } else {
-      // Default: dark mode
-      document.documentElement.classList.add('dark');
-      setThemeState('dark');
+    };
+
+    // Leer preferencia manual guardada en localStorage
+    const stored = localStorage.getItem('theme') as Theme | null;
+    if (stored === 'light' || stored === 'dark') {
+      applyTheme(stored);
+      return;
     }
+
+    // Si no hay preferencia guardada, usar el tema predeterminado del navegador/sistema
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const systemTheme: Theme = mediaQuery.matches ? 'dark' : 'light';
+    applyTheme(systemTheme);
+
+    // Escuchar cambios en la preferencia del navegador si el usuario no ha fijado un tema en localStorage
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const setTheme = (newTheme: Theme) => {
