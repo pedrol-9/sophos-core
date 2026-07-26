@@ -1,6 +1,6 @@
 'use client';
 
-import { KidProfile } from './types';
+import { KidProfile } from '../types';
 
 interface AcudienteHeaderProps {
   kids: KidProfile[];

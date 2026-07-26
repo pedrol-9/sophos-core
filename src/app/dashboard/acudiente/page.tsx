@@ -6,13 +6,19 @@ import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { IconUser } from '@/components/icons';
 import { signObservacion } from '@/app/actions/observador-actions';
-import { SubjectGrade, StudentSubject, AbsenceRecord, ObservadorRecord, KidProfile } from '@/components/dashboard/acudiente/types';
-import { AcudienteSidebar } from '@/components/dashboard/acudiente/AcudienteSidebar';
-import { AcudienteHeader } from '@/components/dashboard/acudiente/AcudienteHeader';
-import { AcudienteStatsHeader } from '@/components/dashboard/acudiente/AcudienteStatsHeader';
-import { AcudienteGradesTab } from '@/components/dashboard/acudiente/AcudienteGradesTab';
-import { AcudienteAbsencesTab } from '@/components/dashboard/acudiente/AcudienteAbsencesTab';
-import { AcudienteObservadorTab } from '@/components/dashboard/acudiente/AcudienteObservadorTab';
+import {
+  SubjectGrade,
+  StudentSubject,
+  AbsenceRecord,
+  ObservadorRecord,
+  KidProfile,
+  AcudienteSidebar,
+  AcudienteHeader,
+  AcudienteStatsHeader,
+  AcudienteGradesTab,
+  AcudienteAbsencesTab,
+  AcudienteObservadorTab,
+} from '@/components/dashboard/acudiente';
 
 export default function AcudienteDashboard() {
   const router = useRouter();

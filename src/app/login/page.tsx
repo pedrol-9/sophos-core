@@ -4,7 +4,7 @@ import { useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 // ─── ICONS ───────────────────────────────────────────────────────────────────
 function IconEye({ open }: { open: boolean }) {

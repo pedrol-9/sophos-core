@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { IconNotebook, IconChecklist, IconLogout, IconSparkles } from '@/components/icons';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 interface SubjectGrade {
   id_calificacion: string;

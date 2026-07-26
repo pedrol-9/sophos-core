@@ -2,7 +2,7 @@
 
 import { useState, useActionState } from 'react';
 import { changeUserPassword } from '@/app/actions/auth-actions';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ThemeToggle } from '@/components/theme';
 
 function IconEye({ open }: { open: boolean }) {
   return open ? (

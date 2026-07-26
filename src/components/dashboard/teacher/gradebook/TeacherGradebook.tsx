@@ -14,11 +14,11 @@ import {
   EvidenciaConConfig,
   GradesheetStudentEvidencias,
 } from '@/app/actions/evidenciasActions';
-import { EvidenciasPeriodoModal } from '@/components/dashboard/teacher/EvidenciasPeriodoModal';
-import { UploadGradebookModal } from '@/components/dashboard/teacher/UploadGradebookModal';
-import { GradebookToolbar } from './gradebook/GradebookToolbar';
-import { GradebookSkeleton } from './gradebook/GradebookSkeleton';
-import { GradebookTable } from './gradebook/GradebookTable';
+import { EvidenciasPeriodoModal } from '../modals/EvidenciasPeriodoModal';
+import { UploadGradebookModal } from '../modals/UploadGradebookModal';
+import { GradebookToolbar } from './GradebookToolbar';
+import { GradebookSkeleton } from './GradebookSkeleton';
+import { GradebookTable } from './GradebookTable';
 
 interface TeacherGradebookProps {
   idAsignacion: string;
@@ -324,20 +324,26 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
     });
 
     if (totalWeight === 0) return 0;
-    return weightedSum / totalWeight;
+    const rawAvg = weightedSum / totalWeight;
+    return Math.round(rawAvg * 10) / 10;
   };
 
   const getDesempenoLabel = (definitiva: number): string => {
     if (definitiva === 0 || isNaN(definitiva)) return 'SIN NOTA';
-    if (escalas.length === 0) {
-      if (definitiva >= 4.6) return 'SUPERIOR';
-      if (definitiva >= 4.0) return 'ALTO';
-      if (definitiva >= 3.0) return 'BASICO';
-      return 'BAJO';
+
+    const roundedDef = Math.round(definitiva * 10) / 10;
+
+    if (escalas.length > 0) {
+      const match = escalas.find(
+        (es) => roundedDef >= es.nota_minima && roundedDef <= es.nota_maxima
+      );
+      if (match) return match.nombre_desempeno.toUpperCase();
     }
 
-    const match = escalas.find((es) => definitiva >= es.nota_minima && definitiva <= es.nota_maxima);
-    return match ? match.nombre_desempeno.toUpperCase() : 'DESCONOCIDO';
+    if (roundedDef >= 4.6) return 'SUPERIOR';
+    if (roundedDef >= 4.0) return 'ALTO';
+    if (roundedDef >= 3.0) return 'BASICO';
+    return 'BAJO';
   };
 
   if (loading) {

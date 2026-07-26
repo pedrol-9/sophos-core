@@ -23,7 +23,34 @@ async function seedInstitution() {
   const idInstitucion = FIXED_INST_ID;
   console.log(`Institución "IE Jose María Carbonell" configurada: ${idInstitucion}`);
 
-  // Crear administrador en Auth
+  // Crear SuperAdmin en Auth y tabla pública
+  const { data: superAdminAuth, error: superAuthErr } = await supabase.auth.admin.createUser({
+    email: 'superadmin@sophos.com',
+    password: 'Sophos2026!',
+    email_confirm: true,
+    app_metadata: {
+      id_institucion: idInstitucion,
+      rol: 'SUPER_ADMIN',
+    },
+    user_metadata: {
+      nombre_completo: 'Super Administrador Sophos',
+    },
+  });
+
+  if (!superAuthErr && superAdminAuth?.user) {
+    await supabase.from('usuarios').insert({
+      id_usuario: superAdminAuth.user.id,
+      email: 'superadmin@sophos.com',
+      nombre_completo: 'Super Administrador Sophos',
+      rol: 'SUPER_ADMIN',
+      id_institucion: idInstitucion,
+    });
+    console.log('SuperAdmin superadmin@sophos.com registrado correctamente.');
+  } else if (superAuthErr) {
+    console.error('Error registrando SuperAdmin:', superAuthErr.message);
+  }
+
+  // Crear administrador de la institución en Auth y tabla pública
   const { data: adminAuth, error: adminAuthErr } = await supabase.auth.admin.createUser({
     email: 'contacto@jm-carbonell.edu.co',
     password: 'Sophos2026!',
