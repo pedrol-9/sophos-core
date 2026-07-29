@@ -48,11 +48,24 @@ export function BoletinesTable({
             <option value="" disabled className="bg-card text-foreground">
               Selecciona período
             </option>
-            {periodos.map((p) => (
-              <option key={p.id_periodo} value={p.id_periodo} className="bg-card text-foreground">
-                Período {p.numero_periodo} {p.cerrado ? '(Cerrado)' : p.activo ? '(Activo)' : '(Pendiente)'}
-              </option>
-            ))}
+            {periodos.map((p) => {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const fechaFin = new Date(p.fecha_fin);
+              const isPastUnclosed = !p.activo && !p.cerrado && fechaFin < today;
+              const label = p.cerrado
+                ? '(Cerrado)'
+                : p.activo
+                ? '(Activo)'
+                : isPastUnclosed
+                ? '(Sin Cerrar)'
+                : '(Pendiente)';
+              return (
+                <option key={p.id_periodo} value={p.id_periodo} className="bg-card text-foreground">
+                  Período {p.numero_periodo} {label}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
