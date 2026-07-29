@@ -9,6 +9,8 @@ interface PeriodosGridProps {
 }
 
 export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGridProps) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   return (
     <div className="bg-card border border-border rounded-2xl p-6 backdrop-blur-md relative overflow-hidden shadow-xs">
       <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-primary/5 blur-[50px] pointer-events-none" />
@@ -28,6 +30,9 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {periodos.map((p) => {
           const isClosing = closingId === p.id_periodo;
+          const fechaFin = new Date(p.fecha_fin);
+          // Periodo pasado que nunca fue cerrado formalmente
+          const isPastUnclosed = !p.activo && !p.cerrado && fechaFin < today;
 
           return (
             <div
@@ -37,6 +42,8 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
                   ? 'bg-primary/10 border-primary/40 shadow-md'
                   : p.cerrado
                   ? 'bg-teal-500/5 border-teal-500/25'
+                  : isPastUnclosed
+                  ? 'bg-amber-500/5 border-amber-500/30'
                   : 'bg-background border-border opacity-70'
               }`}
             >
@@ -52,7 +59,12 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
                     Cerrado
                   </span>
                 )}
-                {!p.activo && !p.cerrado && (
+                {isPastUnclosed && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    Sin Cerrar
+                  </span>
+                )}
+                {!p.activo && !p.cerrado && !isPastUnclosed && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-secondary text-muted-foreground">
                     Pendiente
                   </span>
@@ -99,6 +111,29 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
                       </>
                     ) : (
                       'Cerrar Período'
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Botón de cierre para periodos pasados sin cerrar */}
+              {isPastUnclosed && (
+                <div className="mt-5 space-y-2">
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                    Este período finalizó sin cierre formal. Genera los boletines para consolidar las calificaciones.
+                  </p>
+                  <button
+                    onClick={() => onClosePeriod(p.id_periodo, p.numero_periodo)}
+                    disabled={isClosing !== false && closingId !== null}
+                    className="w-full mt-2 flex items-center justify-center py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
+                  >
+                    {isClosing ? (
+                      <>
+                        <div className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        Cerrando...
+                      </>
+                    ) : (
+                      'Cerrar y Generar Boletines'
                     )}
                   </button>
                 </div>

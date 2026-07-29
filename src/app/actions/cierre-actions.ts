@@ -187,9 +187,8 @@ export async function closePeriod(periodId: string): Promise<{ success: boolean;
       return { success: false, error: 'El periodo seleccionado no existe o no pertenece a tu institución.' };
     }
 
-    if (!periodToClose.activo) {
-      return { success: false, error: 'Solo se puede cerrar el periodo actualmente activo.' };
-    }
+    // Permitir cerrar periodos pasados que nunca fueron cerrados formalmente
+    // (activo: false pero sin boletines generados)
 
     // Verificar si ya hay boletines para este periodo para evitar duplicados
     const { count: existingCount } = await supabase
@@ -367,17 +366,19 @@ export async function closePeriod(periodId: string): Promise<{ success: boolean;
       return { success: false, error: `Error al desactivar el período cerrado: ${updError.message}` };
     }
 
-    // 11. Activar el siguiente periodo
-    const siguientePeriodoNum = periodToClose.numero_periodo + 1;
-    if (siguientePeriodoNum <= 4) {
-      const { error: nextError } = await supabase
-        .from('periodos_academicos')
-        .update({ activo: true })
-        .eq('id_institucion', idInstitucion)
-        .eq('numero_periodo', siguientePeriodoNum);
+    // 11. Activar el siguiente periodo SOLO si el que se cerró era el activo
+    if (periodToClose.activo) {
+      const siguientePeriodoNum = periodToClose.numero_periodo + 1;
+      if (siguientePeriodoNum <= 4) {
+        const { error: nextError } = await supabase
+          .from('periodos_academicos')
+          .update({ activo: true })
+          .eq('id_institucion', idInstitucion)
+          .eq('numero_periodo', siguientePeriodoNum);
 
-      if (nextError) {
-        console.warn(`Advertencia: No se pudo activar automáticamente el período ${siguientePeriodoNum}: ${nextError.message}`);
+        if (nextError) {
+          console.warn(`Advertencia: No se pudo activar automáticamente el período ${siguientePeriodoNum}: ${nextError.message}`);
+        }
       }
     }
 
