@@ -23,10 +23,12 @@ export function useCierrePeriodo({ students = [] }: UseCierrePeriodoProps = {}) 
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeriodForBulletins, setSelectedPeriodForBulletins] = useState<string>('');
-  const [confirmModal, setConfirmModal] = useState<{ periodId: string; numero: number } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ periodId: string; numero: number; avanceNotas: number } | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (isInitial: boolean = false) => {
+    if (isInitial) {
+      setLoading(true);
+    }
     setErrorMsg(null);
     try {
       const resP = await getPeriodosStatus();
@@ -49,16 +51,18 @@ export function useCierrePeriodo({ students = [] }: UseCierrePeriodoProps = {}) 
       const error = err as Error;
       setErrorMsg(error.message || 'Error de conexión.');
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [loadData]);
 
-  const handleClosePeriod = (periodId: string, numero: number) => {
-    setConfirmModal({ periodId, numero });
+  const handleClosePeriod = (periodId: string, numero: number, avanceNotas: number = 0) => {
+    setConfirmModal({ periodId, numero, avanceNotas });
   };
 
   const executeClosePeriod = async () => {

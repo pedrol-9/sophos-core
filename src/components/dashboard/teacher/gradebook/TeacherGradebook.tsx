@@ -407,23 +407,23 @@ export function TeacherGradebook({ idAsignacion, idCurso }: TeacherGradebookProp
             El coordinador debe crear las evidencias para este grado y materia desde el panel de administración.
           </p>
         </div>
-      ) : null}
-
-      {/* PLANILLA TABLE */}
-      <GradebookTable
-        students={students}
-        evidencias={evidencias}
-        localValues={localValues}
-        pendingChanges={pendingChanges}
-        isPeriodoClosed={isPeriodoClosed}
-        isExpandedWindow={isExpandedWindow}
-        isFullscreen={isFullscreen}
-        onGradeChange={handleGradeChange}
-        onLocalValueUpdate={(cellKey, val) => setLocalValues((prev) => ({ ...prev, [cellKey]: val }))}
-        onKeyDown={handleKeyDown}
-        calculateDefinitiva={calculateDefinitiva}
-        getDesempenoLabel={getDesempenoLabel}
-      />
+      ) : (
+        /* PLANILLA TABLE */
+        <GradebookTable
+          students={students}
+          evidencias={evidencias}
+          localValues={localValues}
+          pendingChanges={pendingChanges}
+          isPeriodoClosed={isPeriodoClosed}
+          isExpandedWindow={isExpandedWindow}
+          isFullscreen={isFullscreen}
+          onGradeChange={handleGradeChange}
+          onLocalValueUpdate={(cellKey, val) => setLocalValues((prev) => ({ ...prev, [cellKey]: val }))}
+          onKeyDown={handleKeyDown}
+          calculateDefinitiva={calculateDefinitiva}
+          getDesempenoLabel={getDesempenoLabel}
+        />
+      )}
 
       {/* MODALES */}
       {showEvidenciasModal && selectedPeriodo && (

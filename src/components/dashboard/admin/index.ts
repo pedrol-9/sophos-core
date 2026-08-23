@@ -12,5 +12,6 @@ export { AjustesAcademicos } from './ajustes/AjustesAcademicos';
 export { BulkImportModal } from './ajustes/BulkImportModal';
 
 export { CierrePeriodoManager } from './cierre/CierrePeriodoManager';
+export { SyncSheetsModal } from './cierre/SyncSheetsModal';
 export { SubscriptionManager } from './subscription/SubscriptionManager';
 export { OnboardingWizard } from './onboarding/OnboardingWizard';

@@ -104,30 +104,25 @@ export async function getPeriodosStatus(): Promise<{ success: boolean; data?: Pe
             .eq('id_periodo', p.id_periodo)
             .eq('id_institucion', idInstitucion);
 
-          // Calcular total esperado: para cada config activa de evidencia, esperamos (estudiantes en ese curso) calificaciones.
-          // Para simplificar y hacerlo rápido en base de datos:
-          // totalEsperado = sum_{config} (estudiantes del curso asociado a config.id_asignacion)
+          // Calcular total esperado: para cada asignación, esperamos (estudiantes en ese curso) * (evidencias configuradas o 3 estándar)
+          const { data: studPerCourse } = await supabase
+            .from('estudiantes_matriculados')
+            .select('id_curso')
+            .eq('id_institucion', idInstitucion)
+            .eq('ano_lectivo', 2026);
+
+          const courseCounts: Record<string, number> = {};
+          (studPerCourse || []).forEach(s => {
+            courseCounts[s.id_curso] = (courseCounts[s.id_curso] || 0) + 1;
+          });
+
           let totalEsperado = 0;
-          if (configs && configs.length > 0) {
-            // Contar estudiantes por curso
-            const { data: studPerCourse } = await supabase
-              .from('estudiantes_matriculados')
-              .select('id_curso')
-              .eq('id_institucion', idInstitucion)
-              .eq('ano_lectivo', 2026);
-
-            const courseCounts: Record<string, number> = {};
-            (studPerCourse || []).forEach(s => {
-              courseCounts[s.id_curso] = (courseCounts[s.id_curso] || 0) + 1;
-            });
-
-            configs.forEach(c => {
-              const asig = assignments.find(a => a.id_asignacion === c.id_asignacion);
-              if (asig) {
-                totalEsperado += courseCounts[asig.id_curso] || 0;
-              }
-            });
-          }
+          assignments.forEach(asig => {
+            const numStudents = courseCounts[asig.id_curso] || 0;
+            const asigConfigs = (configs || []).filter(c => c.id_asignacion === asig.id_asignacion);
+            const numEvidencias = asigConfigs.length > 0 ? asigConfigs.length : 3;
+            totalEsperado += (numStudents * numEvidencias);
+          });
 
           const ingresadas = gradesCount || 0;
           avanceNotas = totalEsperado > 0 ? Math.min(100, Math.round((ingresadas / totalEsperado) * 100)) : 0;
@@ -679,3 +674,35 @@ export async function getStudentHistorialBoletines(matriculaId: string): Promise
     return { success: false, error: err.message || 'Error al obtener historial.' };
   }
 }
+
+/**
+ * Elimina todas las calificaciones de un periodo específico para pruebas de sincronización.
+ */
+export async function resetPeriodoGrades(periodoNum: number = 3): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const idInstitucion = user?.app_metadata?.id_institucion;
+
+    // Buscar el periodo activo o por número
+    const { data: periodos } = await supabase
+      .from('periodos_academicos')
+      .select('id_periodo, numero_periodo')
+      .eq('id_institucion', idInstitucion)
+      .eq('numero_periodo', periodoNum)
+      .limit(1);
+
+    const idPeriodo = periodos?.[0]?.id_periodo;
+
+    if (idPeriodo) {
+      await supabase.from('calificaciones').delete().eq('id_periodo', idPeriodo);
+    }
+    await supabase.from('calificaciones').delete().eq('periodo', periodoNum);
+
+    revalidatePath('/dashboard/admin');
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Error al reiniciar calificaciones.' };
+  }
+}
+

@@ -1,0 +1,28 @@
+Resumen de Sophos Core (SaaS Académico Inteligente)
+
+1. Arquitectura y Seguridad:
+
+* Multi-tenant (SaaS): Aislamiento riguroso de datos por institución educativa.
+* Control de Acceso (Dashboard Hub): Sistema de roles estrictos (Super Admin, Admin, Docente, Estudiante, Acudiente) que redirige tras el login a paneles dedicados y cerrados.
+* Políticas RLS Activas (Producción): Row Level Security habilitado en todas las tablas del esquema público en Supabase, limitando el acceso según el `id_institucion` del JWT.
+* Control de Colisión Multi-tenant: Verificación en carga para detectar cruces de correos institucionales.
+* Sesión y Cron: Cierre automático por inactividad física/red de 30 minutos. Mantenimiento automático de base de datos activa mediante un Cron Job `/api/cron/keep-alive`.
+
+2. Flujos Académicos Actuales:
+
+* Onboarding Institucional (Admin): Asistente de configuración inicial (Wizard) que permite al administrador definir periodos académicos y ajustar detalles al primer inicio de sesión.
+* Carga Masiva Optimizada (Admin): Procesamiento de CSV/TXT de alto rendimiento con creación concurrente controlada en Supabase Auth y rollback manual. Panel de resultados interactivo.
+* Evaluación (Docente): Libreta de calificaciones con escala decimal de 0.0 a 5.0 para 4 periodos académicos.
+* Asistencia (Docente): Sistema de reporte por excepción (Falta Justificada/Injustificada).
+* Observador Digital (Docente): Registro de observaciones (disciplinarias, pedagógicas y logros) vinculadas al expediente del estudiante.
+* Generación de Boletines (Admin): Creación y visualización de boletines definitivos.
+* Portal Estudiantil / Familiar (Estudiante/Acudiente): Paneles de solo lectura para ver notas, asistencia, observaciones del docente y descargar los boletines. Los acudientes cuentan con un selector de estudiantes a su cargo.
+
+3. Motor de IA Académica (Gemini):
+
+* Feedback Automatizado: Análisis predictivo de rendimiento y alertas al guardar una nota, considerando histórico de notas, inasistencias y observaciones cualitativas del docente.
+* Auditoría: Registro unificado (Logs) en el panel del administrador sobre el uso y tokens consumidos por las consultas de IA.
+
+4. Utilidades de Desarrollo y Diagnóstico:
+
+* Consolidación de Scripts (db-util.js): Herramienta CLI unificada para auditorías paginadas, reseteos de DB y limpieza de perfiles huérfanos.

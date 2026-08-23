@@ -30,6 +30,7 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
     handleClosePeriod,
     executeClosePeriod,
     handleOpenBulletin,
+    loadData,
   } = useCierrePeriodo({ students });
 
   if (loading) {
@@ -60,6 +61,7 @@ export function CierrePeriodoManager({ students = [] }: CierrePeriodoManagerProp
         periodos={periodos}
         closingId={closingId}
         onClosePeriod={handleClosePeriod}
+        onRefresh={loadData}
       />
 
       {/* SECCIÓN 2: INDICADORES E HISTORIAL */}

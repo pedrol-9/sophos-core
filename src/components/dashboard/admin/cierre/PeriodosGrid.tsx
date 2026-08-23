@@ -1,30 +1,71 @@
 'use client';
 
+import { useState } from 'react';
 import { PeriodoStatus } from '@/app/actions/cierre-actions';
+import { SyncSheetsModal } from './SyncSheetsModal';
 
 interface PeriodosGridProps {
   periodos: PeriodoStatus[];
   closingId: string | null;
-  onClosePeriod: (periodId: string, numero: number) => void;
+  onClosePeriod: (periodId: string, numero: number, avanceNotas?: number) => void;
+  onRefresh?: () => void;
 }
 
-export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGridProps) {
+export function PeriodosGrid({ periodos, closingId, onClosePeriod, onRefresh }: PeriodosGridProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 400);
+      }
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-2xl p-6 backdrop-blur-md relative overflow-hidden shadow-xs">
       <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-primary/5 blur-[50px] pointer-events-none" />
 
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Cronograma y Cierre de Período Académico
-        </h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Supervisión del avance académico institucional y cierre de períodos lectivos.
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Cronograma y Cierre de Período Académico
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Supervisión del avance académico institucional y recolección de calificaciones.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold rounded-xl border border-border transition-all cursor-pointer disabled:opacity-50"
+            title="Recalcular y refrescar avance de notas en la base de datos"
+          >
+            <svg
+              className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : 'text-muted-foreground'}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            <span>{isRefreshing ? 'Actualizando...' : 'Actualizar Avance'}</span>
+          </button>
+
+          <SyncSheetsModal onSyncCompleted={onRefresh} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -33,6 +74,7 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
           const fechaFin = new Date(p.fecha_fin);
           // Periodo pasado que nunca fue cerrado formalmente
           const isPastUnclosed = !p.activo && !p.cerrado && fechaFin < today;
+          const isComplete = p.avanceNotas >= 100;
 
           return (
             <div
@@ -90,27 +132,42 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
                 <div className="mt-5 space-y-2">
                   <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
                     <span>Planilla Notas</span>
-                    <span>{p.avanceNotas}%</span>
+                    <span className={isComplete ? 'text-emerald-500 font-extrabold' : 'text-foreground'}>
+                      {p.avanceNotas}%
+                    </span>
                   </div>
                   <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-300"
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isComplete
+                          ? 'bg-emerald-500'
+                          : 'bg-gradient-to-r from-indigo-500 to-cyan-400'
+                      }`}
                       style={{ width: `${p.avanceNotas}%` }}
                     />
                   </div>
 
                   <button
-                    onClick={() => onClosePeriod(p.id_periodo, p.numero_periodo)}
+                    type="button"
+                    onClick={() => onClosePeriod(p.id_periodo, p.numero_periodo, p.avanceNotas)}
                     disabled={isClosing}
-                    className="w-full mt-4 flex items-center justify-center py-2 px-3 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-xs font-bold text-primary-foreground transition-all shadow-md cursor-pointer"
+                    className={`w-full mt-4 flex items-center justify-center py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-md cursor-pointer ${
+                      isComplete
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        : p.avanceNotas >= 90
+                        ? 'bg-amber-500 hover:bg-amber-400 text-white'
+                        : 'bg-primary/80 hover:bg-primary text-primary-foreground'
+                    }`}
                   >
                     {isClosing ? (
                       <>
-                        <div className="animate-spin w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
+                        <div className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full mr-2" />
                         Cerrando...
                       </>
+                    ) : isComplete ? (
+                      '✅ Cerrar Período (100%)'
                     ) : (
-                      'Cerrar Período'
+                      `Cerrar Período (${p.avanceNotas}%)`
                     )}
                   </button>
                 </div>
@@ -123,7 +180,8 @@ export function PeriodosGrid({ periodos, closingId, onClosePeriod }: PeriodosGri
                     Este período finalizó sin cierre formal. Genera los boletines para consolidar las calificaciones.
                   </p>
                   <button
-                    onClick={() => onClosePeriod(p.id_periodo, p.numero_periodo)}
+                    type="button"
+                    onClick={() => onClosePeriod(p.id_periodo, p.numero_periodo, p.avanceNotas)}
                     disabled={isClosing !== false && closingId !== null}
                     className="w-full mt-2 flex items-center justify-center py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-xs font-bold text-white transition-all shadow-md cursor-pointer"
                   >
