@@ -49,6 +49,51 @@ function IconArrow() {
   );
 }
 
+function IconZap() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+
+function IconSheets() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="16" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-emerald-500">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconCross() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-muted-foreground/60">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function IconRefresh() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+    </svg>
+  );
+}
+
 // ─── DASHBOARD MOCKUP ─────────────────────────────────────────────────────────
 function DashboardMockup() {
   const grades = [
@@ -171,8 +216,9 @@ export default function LandingPage() {
           {/* Nav links */}
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground font-medium">
             <a href="#features" className="hover:text-foreground transition-colors">Características</a>
+            <a href="#automatizacion" className="hover:text-foreground transition-colors">Automatización Sheets</a>
+            <a href="#comparativa" className="hover:text-foreground transition-colors">Comparativa</a>
             <a href="#ai" className="hover:text-foreground transition-colors">IA Académica</a>
-            <a href="#institutions" className="hover:text-foreground transition-colors">Instituciones</a>
           </div>
 
           {/* Actions: Theme Toggle & CTA */}
@@ -300,6 +346,229 @@ export default function LandingPage() {
             description="Cada institución tiene su propio espacio aislado y seguro. Gestiona múltiples sedes desde un solo panel."
             accent="bg-emerald-500/15 text-emerald-500"
           />
+        </div>
+      </section>
+
+      {/* ── AUTOMATION WITH N8N & SHEETS ── */}
+      <section id="automatizacion" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 border-t border-border/60">
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 text-xs font-semibold mb-4">
+            <IconZap />
+            <span>Motor de Automatización Integrado</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight mb-4 text-foreground">
+            Dile adiós a la digitación{" "}
+            <span className="bg-gradient-to-r from-cyan-500 via-indigo-500 to-violet-500 bg-clip-text text-transparent">
+              manual de notas
+            </span>
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+            Tus docentes continúan trabajando en sus hojas de cálculo habituales. Nuestro motor en la nube normaliza, audita y consolida miles de calificaciones en segundos.
+          </p>
+        </div>
+
+        {/* Pipeline / Flow Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative mb-16">
+          {/* Step 1 */}
+          <div className="relative bg-card border border-border rounded-2xl p-6 shadow-sm hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4 font-bold">
+                1
+              </div>
+              <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
+                <IconSheets />
+                Google Sheets / Excel
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Tus profesores registran actividades y evidencias en su planilla compartida o formato habitual.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/50 text-[11px] text-emerald-500 font-medium">
+              ✓ Cero curva de aprendizaje
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="relative bg-card border border-border rounded-2xl p-6 shadow-sm hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center mb-4 font-bold">
+                2
+              </div>
+              <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
+                <IconRefresh />
+                Parser Inteligente n8n
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Reconoce variaciones de nombres de pestañas, limpia espacios y mapea evidencias automáticamente.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/50 text-[11px] text-cyan-500 font-medium">
+              ✓ Flexibilidad en formatos
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="relative bg-card border border-border rounded-2xl p-6 shadow-sm hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4 font-bold">
+                3
+              </div>
+              <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
+                <IconBrain />
+                Auditoría en Base de Datos
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Valida matrículas, detecta alumnos no registrados y procesa calificaciones de forma atómica y segura.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/50 text-[11px] text-indigo-500 font-medium">
+              ✓ Seguridad RLS por Colegio
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="relative bg-card border border-border rounded-2xl p-6 shadow-sm hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center mb-4 font-bold">
+                4
+              </div>
+              <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
+                <IconBook />
+                Boletines & Cuadros de Honor
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Generación automática de boletines oficiales PDF, cálculo de puestos y estadísticas de reprobación.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/50 text-[11px] text-violet-500 font-medium">
+              ✓ Cierre de período al instante
+            </div>
+          </div>
+        </div>
+
+        {/* ── CONCIERGE ONBOARDING CARD ── */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900/30 via-card to-cyan-900/20 border border-primary/20 rounded-3xl p-8 sm:p-10 shadow-xl mb-20">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="max-w-2xl text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary/20 text-primary text-xs font-semibold mb-3">
+                🤝 Onboarding Asistido Cero Fricción
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
+                ¿Tu colegio ya tiene planillas propias o necesita una plantilla a la medida?
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Te entregamos la <strong>Plantilla Oficial Sophos Core</strong> lista para usar o, si tu institución ya cuenta con un formato estructurado en Excel, <strong>nuestro equipo técnico lo audita y calibra el motor de sincronización</strong> sin traumatismos para tus docentes.
+              </p>
+            </div>
+
+            <div className="shrink-0 flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all shadow-md hover:shadow-lg w-full sm:w-auto"
+              >
+                Comenzar Onboarding
+                <IconArrow />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ── COMPARISON TABLE ── */}
+        <div id="comparativa" className="pt-6">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-2">Comparativa de Servicio</p>
+            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              ¿Por qué elegir Sophos Core frente al software tradicional?
+            </h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse border border-border rounded-2xl overflow-hidden bg-card shadow-sm">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="py-4 px-6 text-sm font-bold text-foreground w-1/3">Aspecto</th>
+                  <th className="py-4 px-6 text-sm font-semibold text-muted-foreground w-1/3">Software Escolar Tradicional</th>
+                  <th className="py-4 px-6 text-sm font-bold bg-primary/10 text-primary w-1/3">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                      Sophos Core + n8n
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-sm">
+                <tr className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-4 px-6 font-medium text-foreground">Ingreso de Calificaciones</td>
+                  <td className="py-4 px-6 text-muted-foreground flex items-center gap-2">
+                    <IconCross />
+                    Digitación lenta nota por nota en formularios web.
+                  </td>
+                  <td className="py-4 px-6 bg-primary/5 font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <IconCheck />
+                      <span>Sincronización masiva instantánea desde Google Sheets / Excel.</span>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-4 px-6 font-medium text-foreground">Flexibilidad y Nombres de Hojas</td>
+                  <td className="py-4 px-6 text-muted-foreground flex items-center gap-2">
+                    <IconCross />
+                    Estructuras rígidas que fallan ante cualquier variación mínima.
+                  </td>
+                  <td className="py-4 px-6 bg-primary/5 font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <IconCheck />
+                      <span>Parser inteligente tolerante a variaciones de cursos y materias.</span>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-4 px-6 font-medium text-foreground">Acompañamiento & Plantillas</td>
+                  <td className="py-4 px-6 text-muted-foreground flex items-center gap-2">
+                    <IconCross />
+                    Manuales en PDF y tú debes adaptarte solo al software.
+                  </td>
+                  <td className="py-4 px-6 bg-primary/5 font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <IconCheck />
+                      <span>Onboarding asistido: te entregamos o adaptamos tu plantilla.</span>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-4 px-6 font-medium text-foreground">Auditoría Previa al Cierre</td>
+                  <td className="py-4 px-6 text-muted-foreground flex items-center gap-2">
+                    <IconCross />
+                    Errores detectados tarde al imprimir los boletines.
+                  </td>
+                  <td className="py-4 px-6 bg-primary/5 font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <IconCheck />
+                      <span>Reporte en tiempo real de alumnos o asignaturas pendientes.</span>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-4 px-6 font-medium text-foreground">Retroalimentación al Estudiante</td>
+                  <td className="py-4 px-6 text-muted-foreground flex items-center gap-2">
+                    <IconCross />
+                    Frases genéricas repetitivas e impersonales.
+                  </td>
+                  <td className="py-4 px-6 bg-primary/5 font-semibold text-foreground">
+                    <div className="flex items-center gap-2">
+                      <IconCheck />
+                      <span>Comentarios cualitativos asistidos por Inteligencia Artificial.</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
