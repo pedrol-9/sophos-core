@@ -69,10 +69,14 @@ export function SubdomainSection({ currentSubdomain, isLocked, onSubdomainAssign
     return () => clearTimeout(timer);
   }, [inputVal, isLocked]);
 
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const targetUrl = currentSubdomain 
+    ? (isLocal ? `http://localhost:3000/${currentSubdomain}/dashboard` : `https://${currentSubdomain}.sophoscore.com`)
+    : '';
+
   const handleCopyUrl = () => {
-    if (!currentSubdomain) return;
-    const url = `https://${currentSubdomain}.sophoscore.com`;
-    navigator.clipboard.writeText(url);
+    if (!targetUrl) return;
+    navigator.clipboard.writeText(targetUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -125,7 +129,11 @@ export function SubdomainSection({ currentSubdomain, isLocked, onSubdomainAssign
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-mono font-bold text-foreground truncate">
-                  https://<span className="text-emerald-500">{currentSubdomain}</span>.sophoscore.com
+                  {isLocal ? (
+                    <>http://localhost:3000/<span className="text-emerald-500">{currentSubdomain}</span>/dashboard</>
+                  ) : (
+                    <>https://<span className="text-emerald-500">{currentSubdomain}</span>.sophoscore.com</>
+                  )}
                 </p>
                 <p className="text-[11px] text-muted-foreground">Portal oficial fijado y protegido</p>
               </div>
@@ -155,7 +163,7 @@ export function SubdomainSection({ currentSubdomain, isLocked, onSubdomainAssign
               </button>
 
               <a
-                href={`https://${currentSubdomain}.sophoscore.com`}
+                href={targetUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
