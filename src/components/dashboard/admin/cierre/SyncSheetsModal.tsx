@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { triggerN8nSyncSheets, SyncSheetsResult } from '@/app/actions/n8n-sync-actions';
+import { triggerSyncSheets, SyncSheetsResult } from '@/app/actions/sync-sheets-actions';
 import { resetPeriodoGrades } from '@/app/actions/cierre-actions';
 
 interface SyncSheetsModalProps {
@@ -27,7 +27,7 @@ export function SyncSheetsModal({ onSyncCompleted }: SyncSheetsModalProps) {
     setShowPendingList(false);
 
     try {
-      const res = await triggerN8nSyncSheets();
+      const res = await triggerSyncSheets();
       setResult(res);
       if (res.success && onSyncCompleted) {
         onSyncCompleted();
@@ -82,7 +82,7 @@ export function SyncSheetsModal({ onSyncCompleted }: SyncSheetsModalProps) {
         <svg className="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
         </svg>
-        <span>Sincronizar Google Sheets (n8n)</span>
+        <span>Sincronizar Google Sheets</span>
       </button>
 
       {mounted && isOpen && createPortal(
@@ -99,7 +99,7 @@ export function SyncSheetsModal({ onSyncCompleted }: SyncSheetsModalProps) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-foreground">Sincronización de Calificaciones</h3>
-                  <p className="text-[11px] text-muted-foreground">Google Sheets vía n8n</p>
+                  <p className="text-[11px] text-muted-foreground">Google Sheets Cloud Sync</p>
                 </div>
               </div>
 

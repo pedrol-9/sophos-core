@@ -349,7 +349,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── AUTOMATION WITH N8N & SHEETS ── */}
+      {/* ── AUTOMATION WITH SERVERLESS & SHEETS ── */}
       <section id="automatizacion" className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-24 border-t border-border/60">
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 text-xs font-semibold mb-4">
@@ -396,7 +396,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
                 <IconRefresh />
-                Parser Inteligente n8n
+                Motor Cloud Inteligente
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Reconoce variaciones de nombres de pestañas, limpia espacios y mapea evidencias automáticamente.
@@ -491,7 +491,7 @@ export default function LandingPage() {
                   <th className="py-4 px-6 text-sm font-bold bg-primary/10 text-primary w-1/3">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                      Sophos Core + n8n
+                      Sophos Core + Automatización Cloud
                     </span>
                   </th>
                 </tr>

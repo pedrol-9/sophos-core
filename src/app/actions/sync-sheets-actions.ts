@@ -16,15 +16,25 @@ export interface SyncSheetsResult {
   error?: string;
 }
 
-export async function triggerN8nSyncSheets(options?: { periodoNum?: number; spreadsheetId?: string }): Promise<SyncSheetsResult> {
-  const webhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/sync-sheets';
+export async function triggerSyncSheets(options?: { periodoNum?: number; spreadsheetId?: string }): Promise<SyncSheetsResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const targetUrl = `${supabaseUrl}/functions/v1/sync-grades-sheet`;
 
   try {
-    const response = await fetch(webhookUrl, {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (anonKey) {
+      headers['Authorization'] = `Bearer ${anonKey}`;
+      headers['apikey'] = anonKey;
+    }
+
+    const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         periodo_num: options?.periodoNum || null,
         spreadsheet_id: options?.spreadsheetId || null,
@@ -38,13 +48,13 @@ export async function triggerN8nSyncSheets(options?: { periodoNum?: number; spre
       const errorText = await response.text();
       return {
         success: false,
-        error: `El servidor de n8n respondió con error ${response.status}: ${errorText || response.statusText}`,
+        error: `El servicio respondió con error ${response.status}: ${errorText || response.statusText}`,
       };
     }
 
     const data = await response.json();
 
-    // Si n8n devolvió un array (por ejemplo [ { status: 'success', ... } ]), tomamos el primer elemento
+    // Si la respuesta es un array, tomar el primer elemento
     const result = Array.isArray(data) ? data[0] : data;
 
     return {
@@ -65,13 +75,13 @@ export async function triggerN8nSyncSheets(options?: { periodoNum?: number; spre
     if (err.name === 'TimeoutError') {
       return {
         success: false,
-        error: 'La sincronización tardó más de 60 segundos. Verifica que n8n esté corriendo y conectado a Google Sheets.',
+        error: 'La sincronización tardó más de 60 segundos. Verifica la conexión a Google Sheets.',
       };
     }
 
     return {
       success: false,
-      error: `No se pudo conectar con n8n en ${webhookUrl}. Asegúrate de que el flujo en n8n esté en estado 'Active' y el contenedor Docker encendido. (${err.message})`,
+      error: `No se pudo conectar con el servicio de sincronización en ${targetUrl}. (${err.message})`,
     };
   }
 }
