@@ -232,6 +232,136 @@ export async function updateInstitutionInfo(nombreLegal: string, nit: string, do
   return { success: true, data };
 }
 
+const RESERVED_SUBDOMAINS = [
+  'admin',
+  'api',
+  'app',
+  'www',
+  'soporte',
+  'support',
+  'dashboard',
+  'auth',
+  'mail',
+  'email',
+  'billing',
+  'pagos',
+  'root',
+  'login',
+  'signup',
+  'registro',
+  'portal',
+  'test',
+  'demo',
+  'staging',
+  'dev',
+  'sophos',
+  'sophoscore',
+];
+
+/**
+ * Valida si un subdominio está disponible y cumple las reglas de formato.
+ */
+export async function checkSubdomainAvailability(subdominio: string): Promise<{ available: boolean; error?: string }> {
+  const clean = subdominio.trim().toLowerCase();
+
+  if (!clean || clean.length < 3) {
+    return { available: false, error: 'El subdominio debe tener al menos 3 caracteres.' };
+  }
+
+  if (clean.length > 30) {
+    return { available: false, error: 'El subdominio no puede superar los 30 caracteres.' };
+  }
+
+  if (!/^[a-z0-9-]+$/.test(clean)) {
+    return { available: false, error: 'Solo se permiten letras minúsculas, números y guiones.' };
+  }
+
+  if (clean.startsWith('-') || clean.endsWith('-')) {
+    return { available: false, error: 'El subdominio no puede comenzar ni terminar con un guión.' };
+  }
+
+  if (RESERVED_SUBDOMAINS.includes(clean)) {
+    return { available: false, error: 'Este subdominio está reservado por el sistema.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('instituciones')
+    .select('id_institucion')
+    .eq('subdominio', clean)
+    .maybeSingle();
+
+  if (error) {
+    return { available: false, error: 'Error al consultar disponibilidad.' };
+  }
+
+  if (data) {
+    return { available: false, error: 'Este subdominio ya está en uso por otra institución.' };
+  }
+
+  return { available: true };
+}
+
+/**
+ * Asigna de forma PERMANENTE e IRREVERSIBLE el subdominio a la institución (One-Time Setup).
+ */
+export async function assignInstitutionSubdomain(subdominio: string): Promise<{ success: boolean; error?: string; subdominio?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata?.rol !== 'ADMIN') {
+    return { success: false, error: 'Acceso denegado. Se requieren permisos de Administrador.' };
+  }
+
+  const idInstitucion = user.app_metadata.id_institucion;
+  if (!idInstitucion) {
+    return { success: false, error: 'La cuenta no tiene una institución vinculada.' };
+  }
+
+  // 1. Verificar si la institución ya tiene bloqueado su subdominio
+  const { data: inst, error: fetchError } = await supabase
+    .from('instituciones')
+    .select('subdominio, subdominio_bloqueado')
+    .eq('id_institucion', idInstitucion)
+    .single();
+
+  if (fetchError || !inst) {
+    return { success: false, error: 'No se pudo cargar la información de la institución.' };
+  }
+
+  if (inst.subdominio_bloqueado && inst.subdominio) {
+    return {
+      success: false,
+      error: `El subdominio ya fue asignado previamente (${inst.subdominio}.sophoscore.com) y no puede ser modificado.`,
+    };
+  }
+
+  // 2. Validar disponibilidad
+  const check = await checkSubdomainAvailability(subdominio);
+  if (!check.available) {
+    return { success: false, error: check.error || 'Subdominio no válido.' };
+  }
+
+  const clean = subdominio.trim().toLowerCase();
+
+  // 3. Asignar y bloquear
+  const { error: updateError } = await supabase
+    .from('instituciones')
+    .update({
+      subdominio: clean,
+      subdominio_bloqueado: true,
+    })
+    .eq('id_institucion', idInstitucion);
+
+  if (updateError) {
+    return { success: false, error: `Error al guardar subdominio: ${updateError.message}` };
+  }
+
+  return { success: true, subdominio: clean };
+}
+
 /**
  * Obtiene la lista de administradores institucionales.
  */

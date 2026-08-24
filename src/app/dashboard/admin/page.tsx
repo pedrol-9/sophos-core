@@ -25,6 +25,7 @@ import {
   getInstitutionAdmins,
   createAdditionalAdmin
 } from '@/app/actions/admin-actions';
+import { SubdomainSection } from '@/components/dashboard/admin/settings/SubdomainSection';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -639,23 +640,19 @@ export default function DashboardPage() {
                     setActionError(res.error || 'Error al actualizar información.');
                   }
                 }} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-white/40 mb-1">Nombre Legal de la Institución</label>
-                    <input name="nombre" type="text" defaultValue={institution.nombre_legal} required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-white/40 mb-1">Nombre Legal de la Institución</label>
+                      <input name="nombre" type="text" defaultValue={institution.nombre_legal} required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                    </div>
                     <div>
                       <label className="block text-xs font-semibold text-white/40 mb-1">NIT / Identificación Fiscal</label>
                       <input name="nit" type="text" defaultValue={institution.nit} required className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-white/40 mb-1">Dominio Personalizado (DNS)</label>
-                      <input name="dominio" type="text" defaultValue={institution.dominio_personalizado || ''} placeholder="Ej: micolegio.edu.co" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
-                    </div>
                   </div>
                   <div className="pt-2">
                     <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all cursor-pointer">
-                      {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                      {isSubmitting ? 'Guardando...' : 'Guardar Datos Básicos'}
                     </button>
                   </div>
                 </form>
@@ -672,6 +669,15 @@ export default function DashboardPage() {
                   {actionSuccess && <div className="p-3 bg-teal-500/10 border border-teal-500/25 rounded-xl text-teal-400 text-xs font-semibold">{actionSuccess}</div>}
                 </div>
               )}
+            </div>
+
+            {/* SECCIÓN DE SUBDOMINIO PERSONALIZADO (ONE-TIME SETUP) */}
+            <div className="lg:col-span-3">
+              <SubdomainSection
+                currentSubdomain={institution?.subdominio || null}
+                isLocked={institution?.subdominio_bloqueado || false}
+                onSubdomainAssigned={loadInstitutionInfo}
+              />
             </div>
           </div>
         )}
