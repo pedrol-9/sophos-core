@@ -346,9 +346,12 @@ export type Database = {
           fecha_registro: string | null
           id_institucion: string
           id_suscripcion: number | null
+          logo_url: string | null
           nit: string
           nomenclatura_cursos: string | null
           nombre_legal: string
+          subdominio: string | null
+          subdominio_bloqueado: boolean | null
         }
         Insert: {
           dominio_personalizado?: string | null
@@ -356,9 +359,12 @@ export type Database = {
           fecha_registro?: string | null
           id_institucion?: string
           id_suscripcion?: number | null
+          logo_url?: string | null
           nit: string
           nomenclatura_cursos?: string | null
           nombre_legal: string
+          subdominio?: string | null
+          subdominio_bloqueado?: boolean | null
         }
         Update: {
           dominio_personalizado?: string | null
@@ -366,9 +372,12 @@ export type Database = {
           fecha_registro?: string | null
           id_institucion?: string
           id_suscripcion?: number | null
+          logo_url?: string | null
           nit?: string
           nomenclatura_cursos?: string | null
           nombre_legal?: string
+          subdominio?: string | null
+          subdominio_bloqueado?: boolean | null
         }
         Relationships: [
           {

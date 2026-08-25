@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
 import { ThemeToggle } from '@/components/theme';
+import { getInstitutionLogoUrl } from '@/utils/institution-logo';
 import {
   IconHome, IconBuilding, IconNotebook, IconSparkles, 
   IconSettings, IconLogout, IconUser, IconCreditCard,
@@ -221,7 +222,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
       <div className="md:hidden flex items-center justify-between p-4 bg-card border-b border-border w-full shrink-0 z-30">
         <Link href="/" className="flex items-center gap-2">
           <img 
-            src={user?.app_metadata?.id_institucion ? `https://gxtuarqsfqrdvksmuioe.supabase.co/storage/v1/object/public/logos/${user.app_metadata.id_institucion}/logo.png` : "/favicon.png"} 
+            src={getInstitutionLogoUrl(user?.app_metadata?.id_institucion)} 
             onError={(e) => {
               e.currentTarget.src = "/favicon.png";
             }}
@@ -286,7 +287,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
           <div className="p-6 border-b border-border shrink-0">
             <Link href="/" className="flex items-center gap-2.5 group">
               <img 
-                src={user?.app_metadata?.id_institucion ? `https://gxtuarqsfqrdvksmuioe.supabase.co/storage/v1/object/public/logos/${user.app_metadata.id_institucion}/logo.png` : "/favicon.png"} 
+                src={getInstitutionLogoUrl(user?.app_metadata?.id_institucion)} 
                 onError={(e) => {
                   e.currentTarget.src = "/favicon.png";
                 }}

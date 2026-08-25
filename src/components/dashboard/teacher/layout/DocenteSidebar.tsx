@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { type AcademicAssignment } from '@/app/actions/teacher-actions';
 import { IconNotebook, IconChecklist, IconLogout } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme';
+import { getInstitutionLogoUrl } from '@/utils/institution-logo';
 
 interface DocenteSidebarProps {
   user: User | null;
@@ -26,6 +27,8 @@ export function DocenteSidebar({
   setMobileMenuOpen,
   onLogout,
 }: DocenteSidebarProps) {
+  const institutionLogo = getInstitutionLogoUrl(user?.app_metadata?.id_institucion);
+
   const renderSidebarNav = (isMobile = false) => (
     <nav className="p-4 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
       <div className="space-y-1.5">
@@ -78,9 +81,10 @@ export function DocenteSidebar({
               : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
           }`}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg> Observador Digital
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Observador del Estudiante
         </button>
       </div>
     </nav>
@@ -95,7 +99,12 @@ export function DocenteSidebar({
           <div className="p-6 border-b border-border shrink-0">
             <div className="flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+              <img 
+                src={institutionLogo} 
+                onError={(e) => { e.currentTarget.src = "/favicon.png"; }}
+                alt="Escudo Institucional" 
+                className="w-8 h-8 object-contain rounded-lg shadow-sm" 
+              />
               <span className="text-lg font-bold tracking-tight text-foreground">
                 Portal<span className="text-primary"> Docente</span>
               </span>
@@ -147,7 +156,12 @@ export function DocenteSidebar({
               <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/favicon.png" alt="Sophos Core Logo" className="w-7 h-7 object-contain rounded-lg" />
+                  <img 
+                    src={institutionLogo} 
+                    onError={(e) => { e.currentTarget.src = "/favicon.png"; }}
+                    alt="Escudo Institucional" 
+                    className="w-7 h-7 object-contain rounded-lg" 
+                  />
                   <span className="text-base font-bold tracking-tight text-foreground">
                     Portal<span className="text-primary"> Docente</span>
                   </span>

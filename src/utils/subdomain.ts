@@ -7,6 +7,7 @@ export interface InstitutionContext {
   subdominio: string;
   subdominio_bloqueado: boolean;
   dominio_personalizado: string | null;
+  logo_url: string | null;
 }
 
 /**
@@ -33,7 +34,7 @@ export async function getActiveInstitution(): Promise<InstitutionContext | null>
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('instituciones')
-      .select('id_institucion, nombre_legal, subdominio, subdominio_bloqueado, dominio_personalizado')
+      .select('id_institucion, nombre_legal, subdominio, subdominio_bloqueado, dominio_personalizado, logo_url')
       .eq('subdominio', subdominio)
       .maybeSingle();
 

@@ -194,7 +194,19 @@ export async function uploadInstitutionLogo(idInstitucion: string, base64Data: s
     .from('logos')
     .getPublicUrl(fileName);
 
-  return { success: true, logoUrl: urlData.publicUrl };
+  const logoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+  // Persistir la URL del logotipo en la tabla instituciones
+  const { error: dbError } = await adminClient
+    .from('instituciones')
+    .update({ logo_url: logoUrl })
+    .eq('id_institucion', idInstitucion);
+
+  if (dbError) {
+    console.error('[uploadInstitutionLogo] Error al actualizar logo_url en BD:', dbError);
+  }
+
+  return { success: true, logoUrl };
 }
 
 /**

@@ -26,6 +26,7 @@ import {
   createAdditionalAdmin
 } from '@/app/actions/admin-actions';
 import { SubdomainSection } from '@/components/dashboard/admin/settings/SubdomainSection';
+import { getInstitutionLogoUrl } from '@/utils/institution-logo';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -290,7 +291,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 flex items-center justify-center overflow-hidden shrink-0 relative">
                         <img 
-                          src={`https://gxtuarqsfqrdvksmuioe.supabase.co/storage/v1/object/public/logos/${idInstitucion}/logo.png`} 
+                          src={institution?.logo_url || getInstitutionLogoUrl(idInstitucion)} 
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           alt="Escudo" 
                           className="w-12 h-12 object-contain" 
@@ -443,7 +444,7 @@ export default function DashboardPage() {
               
               <div className="relative group w-40 h-40 rounded-2xl bg-indigo-600/5 border-2 border-dashed border-white/20 hover:border-indigo-500/50 flex flex-col items-center justify-center overflow-hidden transition-all shrink-0">
                 <img 
-                  src={`https://gxtuarqsfqrdvksmuioe.supabase.co/storage/v1/object/public/logos/${idInstitucion}/logo.png?t=${logoTimestamp}`} 
+                  src={`${getInstitutionLogoUrl(idInstitucion, institution?.logo_url)}?t=${logoTimestamp}`} 
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   alt="Escudo Oficial" 
                   className="w-32 h-32 object-contain" 

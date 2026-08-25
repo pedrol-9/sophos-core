@@ -3,6 +3,7 @@
 import { User } from '@supabase/supabase-js';
 import { IconNotebook, IconChecklist, IconLogout, IconUser } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme';
+import { getInstitutionLogoUrl } from '@/utils/institution-logo';
 
 interface AcudienteSidebarProps {
   user: User | null;
@@ -24,7 +25,12 @@ export function AcudienteSidebar({
         <div className="p-6 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.png" alt="Sophos Core Logo" className="w-8 h-8 object-contain rounded-lg shadow-sm" />
+            <img 
+              src={getInstitutionLogoUrl(user?.app_metadata?.id_institucion)} 
+              onError={(e) => { e.currentTarget.src = "/favicon.png"; }}
+              alt="Escudo Institucional" 
+              className="w-8 h-8 object-contain rounded-lg shadow-sm" 
+            />
             <span className="text-lg font-bold tracking-tight text-foreground">
               Portal<span className="text-primary"> Acudiente</span>
             </span>
