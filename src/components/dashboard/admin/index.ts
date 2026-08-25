@@ -9,6 +9,7 @@ export { EvidenciaFormModal } from './evidencias/EvidenciaFormModal';
 export { EvidenciaRow } from './evidencias/EvidenciaRow';
 
 export { AjustesAcademicos } from './ajustes/AjustesAcademicos';
+export { CursosMateriasSection } from './ajustes/CursosMateriasSection';
 export { BulkImportModal } from './ajustes/BulkImportModal';
 
 export { CierrePeriodoManager } from './cierre/CierrePeriodoManager';

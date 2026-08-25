@@ -5,6 +5,7 @@ import { useAjustesAcademicos } from '@/hooks/useAjustesAcademicos';
 import { PeriodosSection } from './PeriodosSection';
 import { EscalaSection } from './EscalaSection';
 import { NomenclaturaSection } from './NomenclaturaSection';
+import { CursosMateriasSection } from './CursosMateriasSection';
 import { SectionCard } from './SectionCard';
 import { EvidenciasManager } from '@/components/dashboard/admin';
 
@@ -14,7 +15,7 @@ interface AjustesAcademicosProps {
   onOpenBulkImport?: () => void;
 }
 
-export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAcademicosProps) {
+export function AjustesAcademicos({ idInstitucion, onConfigSaved, onOpenBulkImport }: AjustesAcademicosProps) {
   const [showVideo, setShowVideo] = useState(false);
 
   const {
@@ -68,7 +69,7 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
         <button
           type="button"
           onClick={() => setShowVideo(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border hover:bg-secondary text-muted-foreground hover:text-foreground text-xs font-medium transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border hover:bg-secondary text-muted-foreground hover:text-foreground text-xs font-medium transition-all cursor-pointer"
         >
           <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -104,15 +105,7 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
         />
       </div>
 
-      {/* ── FILA 2: BANCO DE EVIDENCIAS (Ancho completo) ─────────────────────── */}
-      <SectionCard
-        title="Gestión Evidencias de Aprendizaje"
-        description="Catálogo máster de evidencias por grado y materia. Revisa solicitudes de docentes y consulta la selección por periodo."
-      >
-        <EvidenciasManager />
-      </SectionCard>
-
-      {/* ── FILA 3: Nomenclatura de Cursos & Carga Masiva (2 Columnas) ─── */}
+      {/* ── FILA 2: Nomenclatura de Cursos + Gestión de Cursos y Materias (2 Columnas) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <NomenclaturaSection
           nomenclaturaOption={nomenclaturaOption}
@@ -127,31 +120,45 @@ export function AjustesAcademicos({ onConfigSaved, onOpenBulkImport }: AjustesAc
           onCancelNom={handleCancelNom}
         />
 
-        {/* Carga Masiva (CSV) */}
-        <SectionCard
-          title="Carga Masiva (CSV)"
-          description="Importación y migración masiva de listas de estudiantes, docentes y usuarios del sistema desde archivos CSV o TXT."
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-foreground">Asistente de Importación de Datos</h4>
-              <p className="text-xs text-muted-foreground">
-                Sube tus listados masivos en formato CSV para matricular o registrar usuarios en lote.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenBulkImport}
-              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Abrir Carga Masiva (CSV)
-            </button>
-          </div>
-        </SectionCard>
+        <CursosMateriasSection
+          idInstitucion={idInstitucion}
+          nomenclaturaOption={nomenclaturaOption}
+          customNom={customNom}
+        />
       </div>
+
+      {/* ── FILA 3: GESTIÓN DE EVIDENCIAS DE APRENDIZAJE (Ancho completo) ───────── */}
+      <SectionCard
+        title="Gestión Evidencias de Aprendizaje"
+        description="Catálogo máster de evidencias por grado y materia. Revisa solicitudes de docentes y consulta la selección por periodo."
+      >
+        <EvidenciasManager />
+      </SectionCard>
+
+      {/* ── FILA 4: Carga Masiva (CSV) (Ancho completo) ────────────────────────── */}
+      <SectionCard
+        title="Carga Masiva (CSV)"
+        description="Importación y migración masiva de listas de estudiantes, docentes y usuarios del sistema desde archivos CSV o TXT."
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border">
+          <div className="space-y-1">
+            <h4 className="text-xs font-bold text-foreground">Asistente de Importación de Datos</h4>
+            <p className="text-xs text-muted-foreground">
+              Sube tus listados masivos en formato CSV para matricular o registrar usuarios en lote.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenBulkImport}
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Abrir Carga Masiva (CSV)
+          </button>
+        </div>
+      </SectionCard>
 
       {/* ── MODAL: Videotutorial ──────────────────────────────────────────── */}
       {showVideo && (

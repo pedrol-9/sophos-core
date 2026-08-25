@@ -123,16 +123,6 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
             </div>
           </button>
           <button
-            onClick={() => handleTabClick('courses')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'courses'
-                ? 'bg-primary/15 border-l-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
-            }`}
-          >
-            <IconNotebook /> Cursos y Materias
-          </button>
-          <button
             onClick={() => handleTabClick('ai')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
               activeTab === 'ai'
