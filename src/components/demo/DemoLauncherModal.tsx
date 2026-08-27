@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
 import { DEMO_ACCOUNTS, DemoAccount } from '@/config/demo-accounts';
+import { loginAsDemo } from '@/app/actions/demo-actions';
 
 interface DemoLauncherModalProps {
   isOpen: boolean;
@@ -23,29 +23,15 @@ export function DemoLauncherModal({ isOpen, onClose }: DemoLauncherModalProps) {
     setErrorMessage(null);
 
     try {
-      const supabase = createClient();
-      // Cerrar sesión anterior para evitar conflictos de cookies
-      await supabase.auth.signOut();
+      const res = await loginAsDemo(account.id);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: account.email,
-        password: account.password,
-      });
-
-      if (error) {
-        setErrorMessage(`No se pudo iniciar sesión con la cuenta de prueba: ${error.message}`);
+      if (!res.success) {
+        setErrorMessage(res.error || 'No se pudo iniciar sesión con la cuenta de prueba.');
         setLoadingRole(null);
         return;
       }
 
-      // Redirigir según el rol de la cuenta
-      let targetPath = '/dashboard/admin';
-      if (account.role === 'DOCENTE') targetPath = '/dashboard/docente';
-      else if (account.role === 'ESTUDIANTE') targetPath = '/dashboard/estudiante';
-      else if (account.role === 'ACUDIENTE') targetPath = '/dashboard/acudiente';
-      else if (account.role === 'SUPER_ADMIN') targetPath = '/dashboard/super-admin';
-
-      router.push(targetPath);
+      router.push(res.redirectPath || '/dashboard/admin');
       router.refresh();
     } catch (err: any) {
       setErrorMessage(err?.message || 'Error inesperado al conectar con el servidor.');
@@ -104,7 +90,7 @@ export function DemoLauncherModal({ isOpen, onClose }: DemoLauncherModalProps) {
           )}
 
           {/* Role selector pills */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {DEMO_ACCOUNTS.map((acc) => {
               const isSelected = selectedRole === acc.id;
               return (

@@ -1,6 +1,6 @@
 export interface DemoAccount {
   id: string;
-  role: 'ADMIN' | 'DOCENTE' | 'ESTUDIANTE' | 'ACUDIENTE' | 'SUPER_ADMIN';
+  role: 'ADMIN' | 'DOCENTE' | 'ESTUDIANTE' | 'ACUDIENTE';
   title: string;
   subtitle: string;
   email: string;
@@ -71,20 +71,6 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     description: 'Seguimiento integral del rendimiento y comportamiento escolar con selector multi-hijo.',
     features: ['Selector Familiar Multi-Hijo', 'Alertas de Asistencia', 'Anotaciones de Observador', 'Boletín de Notas'],
-  },
-  {
-    id: 'superadmin',
-    role: 'SUPER_ADMIN',
-    title: 'Super Administrador SaaS',
-    subtitle: 'Sophos Platform Global',
-    email: 'superadmin@sophos.com',
-    password: DEMO_PASSWORD_DEFAULT,
-    institutionName: 'Sophos Core Global',
-    avatarIcon: '🌐',
-    badge: 'Multitenant',
-    badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    description: 'Visión panorámica de todas las instituciones registradas, planes y salud del sistema.',
-    features: ['Gestión de Instituciones', 'Planes y Subdominios', 'Logs Globales', 'Métricas de Red'],
   },
 ];
 
