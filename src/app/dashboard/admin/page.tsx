@@ -24,7 +24,7 @@ import {
   updateInstitutionInfo,
   getInstitutionAdmins,
   createAdditionalAdmin
-} from '@/app/actions/admin-actions';
+} from '@/app/actions/admin/admin-actions';
 import { SubdomainSection } from '@/components/dashboard/admin/settings/SubdomainSection';
 import { getInstitutionLogoUrl } from '@/utils/institution-logo';
 import { DemoFloatingBadge } from '@/components/demo';

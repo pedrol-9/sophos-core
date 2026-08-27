@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getSubscriptionStatus, generateMercadoPagoPreference } from '@/app/actions/mercadopago-actions';
+import { getSubscriptionStatus, generateMercadoPagoPreference } from '@/app/actions/billing/mercadopago-actions';
 
 // Tipos del estado de suscripción
 type SubscriptionStatus = {

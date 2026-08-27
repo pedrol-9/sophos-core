@@ -1,6 +1,6 @@
 'use client';
 
-import { PeriodoInfo } from '@/app/actions/gradeActions';
+import { PeriodoInfo } from '@/app/actions/academic/grades-actions';
 
 interface GradebookToolbarProps {
   isExpandedWindow: boolean;

@@ -25,7 +25,7 @@ export function Sidebar({ user, activeTab, setActiveTab, onLogout }: SidebarProp
   useEffect(() => {
     if (user?.app_metadata?.rol !== 'ADMIN') return;
     async function fetchSub() {
-      const { getSubscriptionInfo } = await import('@/app/actions/config-actions');
+      const { getSubscriptionInfo } = await import('@/app/actions/admin/config-actions');
       const res = await getSubscriptionInfo();
       if (res.success && res.data) {
         setSubInfo({

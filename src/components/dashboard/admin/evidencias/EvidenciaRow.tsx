@@ -1,6 +1,6 @@
 'use client';
 
-import { EvidenciaAdminDetail } from '@/app/actions/evidenciasActions';
+import { EvidenciaAdminDetail } from '@/app/actions/academic/evidencias';
 
 interface EvidenciaRowProps {
   ev: EvidenciaAdminDetail;

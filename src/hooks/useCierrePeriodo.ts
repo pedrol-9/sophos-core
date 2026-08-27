@@ -6,7 +6,7 @@ import {
   closePeriod,
   getDashboardStats,
   PeriodoStatus,
-} from '@/app/actions/cierre-actions';
+} from '@/app/actions/academic/cierre-actions';
 
 interface UseCierrePeriodoProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

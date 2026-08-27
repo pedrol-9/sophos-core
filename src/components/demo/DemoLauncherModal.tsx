@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DEMO_ACCOUNTS, DemoAccount } from '@/config/demo-accounts';
-import { loginAsDemo } from '@/app/actions/demo-actions';
+import { loginAsDemo } from '@/app/actions/auth/demo-actions';
 
 interface DemoLauncherModalProps {
   isOpen: boolean;

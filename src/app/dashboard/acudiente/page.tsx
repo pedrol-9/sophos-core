@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { IconUser } from '@/components/icons';
-import { signObservacion } from '@/app/actions/observador-actions';
+import { signObservacion } from '@/app/actions/academic/observador-actions';
 import {
   SubjectGrade,
   StudentSubject,

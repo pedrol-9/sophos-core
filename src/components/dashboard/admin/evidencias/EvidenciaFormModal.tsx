@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { EvidenciaAdminDetail } from '@/app/actions/evidenciasActions';
+import { EvidenciaAdminDetail } from '@/app/actions/academic/evidencias';
 
 interface EvidenciaFormModalProps {
   showForm: boolean;

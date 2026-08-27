@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { createCourse, createSubject } from '@/app/actions/admin-actions';
+import { createCourse, createSubject } from '@/app/actions/admin/admin-actions';
 import { SectionCard } from './SectionCard';
 
 interface CursosMateriasSectionProps {

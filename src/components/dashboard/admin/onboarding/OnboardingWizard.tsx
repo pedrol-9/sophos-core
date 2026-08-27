@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { saveOnboardingParametrizacion, OnboardingData, PeriodoParam, EscalaParam, LogroParam, ExistingOnboardingConfig } from '@/app/actions/config-actions';
+import { saveOnboardingParametrizacion, OnboardingData, PeriodoParam, EscalaParam, LogroParam, ExistingOnboardingConfig } from '@/app/actions/admin/config-actions';
 
 interface OnboardingWizardProps {
   idInstitucion: string;

@@ -1,4 +1,4 @@
-import { getStudentBulletin } from '@/app/actions/cierre-actions';
+import { getStudentBulletin } from '@/app/actions/academic/cierre-actions';
 import { PrintButton, CloseButton } from '@/components/dashboard/admin';
 
 interface BoletinPageProps {

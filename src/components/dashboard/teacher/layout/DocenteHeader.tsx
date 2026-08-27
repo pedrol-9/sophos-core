@@ -1,7 +1,7 @@
 'use client';
 
 import { User } from '@supabase/supabase-js';
-import { type AcademicAssignment } from '@/app/actions/teacher-actions';
+import { type AcademicAssignment } from '@/app/actions/academic/teacher-actions';
 
 function extractGrado(nombreCurso: string): string {
   if (!nombreCurso) return '';

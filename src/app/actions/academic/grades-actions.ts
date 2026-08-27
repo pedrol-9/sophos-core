@@ -3,7 +3,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { Database } from '@/types/supabase';
-import { getEvidenciasForAsignacion, getGradesheetByEvidencias } from '@/app/actions/evidenciasActions';
+import { getEvidenciasForAsignacion, getGradesheetByEvidencias } from './evidencias';
 
 export type GradesheetCalificacion = {
   id_calificacion: string;
@@ -39,7 +39,7 @@ export type PeriodoInfo = {
 
 /**
  * Guarda o actualiza atómicamente la calificación diaria de una actividad específica para un estudiante.
- * @deprecated en favor de upsertCalificacionEvidencia de evidenciasActions
+ * @deprecated en favor de upsertCalificacionEvidencia de evidencias
  */
 export async function upsertCalificacionDiaria(
   idAsignacion: string,
@@ -530,14 +530,12 @@ export async function importPlanillaDocente(
     }
 
     // Mapear cada columna a su correspondiente id_evidencia
-    // Columna idx -> id_evidencia
     const columnToEvidenciaMap = new Map<number, string>();
     
     headers.forEach((header, idx) => {
       if (idx === emailIdx || idx === obsIdx || header.toLowerCase() === 'nombre_estudiante') {
         return;
       }
-      // Buscar evidencia cuyo nombre coincida
       const ev = activeEvidencias.find((e) => e.nombre.toLowerCase().trim() === header.toLowerCase().trim());
       if (ev) {
         columnToEvidenciaMap.set(idx, ev.id_evidencia);

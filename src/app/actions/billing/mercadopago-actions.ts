@@ -5,8 +5,6 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { headers } from 'next/headers';
 
-
-
 // Precios en COP por plan (valores unitarios por mes)
 const PLAN_PRECIOS_COP: Record<number, number> = {
   1: 0,

@@ -30,10 +30,8 @@ export type OnboardingData = {
   nomenclaturaCursos: string;
 };
 
-export type ActionResponse = {
-  success: boolean;
-  error?: string;
-};
+import { ActionResponse } from '../shared/types';
+export type { ActionResponse };
 
 /**
  * Guarda en bloque y de forma secuencial la parametrización inicial del Onboarding (Fase 1.5).
@@ -246,7 +244,6 @@ export async function saveNomenclaturaConfig(nomenclatura: string): Promise<Acti
     return { success: false, error: err instanceof Error ? err.message : 'Error al guardar nomenclatura.' };
   }
 }
-
 
 export type ExistingOnboardingConfig = {
   periodos: PeriodoParam[];

@@ -222,7 +222,7 @@ export function BulkImportModal({ onClose, onSuccess }: BulkImportModalProps) {
             processingRef.current = true;
             setIsGenerating(true);
             try {
-              const { bulkImportUsers } = await import('@/app/actions/admin-actions');
+              const { bulkImportUsers } = await import('@/app/actions/admin/admin-actions');
               const result = await bulkImportUsers(formData);
               
               if (result.error) {

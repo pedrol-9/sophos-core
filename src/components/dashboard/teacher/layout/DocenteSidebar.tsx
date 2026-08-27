@@ -1,7 +1,7 @@
 'use client';
 
 import { User } from '@supabase/supabase-js';
-import { type AcademicAssignment } from '@/app/actions/teacher-actions';
+import { type AcademicAssignment } from '@/app/actions/academic/teacher-actions';
 import { IconNotebook, IconChecklist, IconLogout } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme';
 import { getInstitutionLogoUrl } from '@/utils/institution-logo';

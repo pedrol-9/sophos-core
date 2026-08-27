@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { GradesheetStudentEvidencias, EvidenciaConConfig } from '@/app/actions/evidenciasActions';
+import { GradesheetStudentEvidencias, EvidenciaConConfig } from '@/app/actions/academic/evidencias';
 
 interface GradebookTableProps {
   students: GradesheetStudentEvidencias[];

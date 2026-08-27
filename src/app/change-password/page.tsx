@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useActionState } from 'react';
-import { changeUserPassword } from '@/app/actions/auth-actions';
+import { changeUserPassword } from '@/app/actions/auth/auth-actions';
 import { ThemeToggle } from '@/components/theme';
 
 function IconEye({ open }: { open: boolean }) {

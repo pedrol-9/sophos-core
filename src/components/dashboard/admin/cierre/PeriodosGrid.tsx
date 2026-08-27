@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PeriodoStatus } from '@/app/actions/cierre-actions';
+import { PeriodoStatus } from '@/app/actions/academic/cierre-actions';
 import { SyncSheetsModal } from './SyncSheetsModal';
 
 interface PeriodosGridProps {

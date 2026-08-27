@@ -182,9 +182,6 @@ export async function closePeriod(periodId: string): Promise<{ success: boolean;
       return { success: false, error: 'El periodo seleccionado no existe o no pertenece a tu institución.' };
     }
 
-    // Permitir cerrar periodos pasados que nunca fueron cerrados formalmente
-    // (activo: false pero sin boletines generados)
-
     // Verificar si ya hay boletines para este periodo para evitar duplicados
     const { count: existingCount } = await supabase
       .from('boletines_historicos')
@@ -322,7 +319,7 @@ export async function closePeriod(periodId: string): Promise<{ success: boolean;
           notaDefinitiva: notaDefinitivaRounded,
           nivelDesempeno,
           fallas: matAbsences.length,
-          comentarios: comentarios.slice(0, 3), // Limitar a los 3 comentarios principales
+          comentarios: comentarios.slice(0, 3),
         });
 
         sumDefinitives += notaDefinitivaRounded;
@@ -336,7 +333,7 @@ export async function closePeriod(periodId: string): Promise<{ success: boolean;
         id_periodo: periodId,
         id_institucion: idInstitucion,
         promedio_general: promedioGeneral,
-        datos_materias: datosMaterias, // Almacenado como JSONB
+        datos_materias: datosMaterias,
       });
     }
 
@@ -393,7 +390,7 @@ export async function getDashboardStats(): Promise<{
   data?: {
     cuadroHonor: { id_matricula: string; nombre: string; promedio: number }[];
     reprobacionMaterias: { materia: string; porcentajeReprobacion: number }[];
-    promedioAsistencia: number; // Porcentaje promedio de asistencia (ej. 94)
+    promedioAsistencia: number;
   };
   error?: string;
 }> {
@@ -469,8 +466,7 @@ export async function getDashboardStats(): Promise<{
         };
       });
 
-      // 3. Promedio Asistencia:
-      // total de materias * alumnos vs fallas
+      // 3. Promedio Asistencia
       let totalMaterias = 0;
       let totalFallas = 0;
       listadoBoletines.forEach((b: any) => {
@@ -480,7 +476,6 @@ export async function getDashboardStats(): Promise<{
           totalFallas += m.fallas || 0;
         });
       });
-      // Supongamos 40 días hábiles de clase por periodo académico promedio, por lo tanto 40 clases por materia
       const clasesTotales = totalMaterias * 40;
       const promedioAsistencia = clasesTotales > 0 ? Math.max(70, Math.round(((clasesTotales - totalFallas) / clasesTotales) * 100)) : 95;
 
@@ -494,7 +489,6 @@ export async function getDashboardStats(): Promise<{
       };
     } else {
       // Fallback: calcular estimaciones rápidas basadas en el periodo ACTIVO actual
-      // 1. Obtener periodo activo
       const { data: activePer } = await supabase
         .from('periodos_academicos')
         .select('id_periodo')
@@ -580,7 +574,7 @@ export async function getDashboardStats(): Promise<{
         data: {
           cuadroHonor,
           reprobacionMaterias,
-          promedioAsistencia: 96 // estimación fija si no hay cierres
+          promedioAsistencia: 96
         }
       };
     }
@@ -705,4 +699,3 @@ export async function resetPeriodoGrades(periodoNum: number = 3): Promise<{ succ
     return { success: false, error: err.message || 'Error al reiniciar calificaciones.' };
   }
 }
-

@@ -7,7 +7,7 @@ import {
   sugerirEvidenciaDocente,
   EvidenciaConConfig,
   ConfigEvidenciaPeriodo,
-} from '@/app/actions/evidenciasActions';
+} from '@/app/actions/academic/evidencias';
 
 interface EvidenciasPeriodoModalProps {
   idAsignacion: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { exportPlantillaDocente, importPlanillaDocente, BulkImportError } from '@/app/actions/gradeActions';
+import { exportPlantillaDocente, importPlanillaDocente, BulkImportError } from '@/app/actions/academic/grades-actions';
 
 interface UploadGradebookModalProps {
   idAsignacion: string;

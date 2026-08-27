@@ -10,7 +10,7 @@ import {
   rechazarEvidenciaAdmin,
   syncEvidencias11A11BData,
   EvidenciaAdminDetail,
-} from '@/app/actions/evidenciasActions';
+} from '@/app/actions/academic/evidencias';
 
 export type MateriaOption = { id_materia: string; nombre: string };
 export type CursoOption = { id_curso: string; nombre: string };

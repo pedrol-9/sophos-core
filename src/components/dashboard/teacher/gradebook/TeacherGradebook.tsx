@@ -5,7 +5,7 @@ import {
   getParametrizacionDocente,
   PeriodoInfo,
   EscalaInfo,
-} from '@/app/actions/gradeActions';
+} from '@/app/actions/academic/grades-actions';
 import {
   getEvidenciasForAsignacion,
   getGradesheetByEvidencias,
@@ -13,7 +13,7 @@ import {
   CalificacionBatchItem,
   EvidenciaConConfig,
   GradesheetStudentEvidencias,
-} from '@/app/actions/evidenciasActions';
+} from '@/app/actions/academic/evidencias';
 import { EvidenciasPeriodoModal } from '../modals/EvidenciasPeriodoModal';
 import { UploadGradebookModal } from '../modals/UploadGradebookModal';
 import { GradebookToolbar } from './GradebookToolbar';

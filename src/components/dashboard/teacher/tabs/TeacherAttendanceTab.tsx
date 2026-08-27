@@ -1,6 +1,6 @@
 'use client';
 
-import { type CourseStudent } from '@/app/actions/teacher-actions';
+import { type CourseStudent } from '@/app/actions/academic/teacher-actions';
 
 interface TeacherAttendanceTabProps {
   attendanceDate: string;

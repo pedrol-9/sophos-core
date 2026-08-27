@@ -8,7 +8,7 @@ import {
   saveNomenclaturaConfig,
   PeriodoParam,
   EscalaParam,
-} from '@/app/actions/config-actions';
+} from '@/app/actions/admin/config-actions';
 
 export const DEFAULT_PERIODOS_4: PeriodoParam[] = [
   { numero_periodo: 1, fecha_inicio: '', fecha_fin: '', activo: true },

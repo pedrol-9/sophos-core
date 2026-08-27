@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @file src/app/actions/admin-actions.ts
+ * @file src/app/actions/admin/admin-actions.ts
  * @description Server Actions exclusivas del rol ADMIN de Sophos Core.
  */
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { PeriodoStatus } from '@/app/actions/cierre-actions';
+import { PeriodoStatus } from '@/app/actions/academic/cierre-actions';
 
 interface BoletinesTableProps {
   periodos: PeriodoStatus[];

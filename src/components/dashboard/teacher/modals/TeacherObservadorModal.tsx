@@ -1,7 +1,7 @@
 'use client';
 
-import { type CourseStudent } from '@/app/actions/teacher-actions';
-import { type ObservadorRecord } from '@/app/actions/observador-actions';
+import { type CourseStudent } from '@/app/actions/academic/teacher-actions';
+import { type ObservadorRecord } from '@/app/actions/academic/observador-actions';
 
 interface TeacherObservadorModalProps {
   selectedStudent: CourseStudent;

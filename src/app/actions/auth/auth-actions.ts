@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * @file src/app/actions/auth-actions.ts
+ * @file src/app/actions/auth/auth-actions.ts
  * @description Server Actions para el flujo de autenticación y registro de Sophos Core.
  */
 
@@ -10,14 +10,10 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { createInstitutionAndAdmin, removeMustChangePasswordFlag } from '@/services/authService';
 
-// ─── TYPES ───────────────────────────────────────────────────────────────────
-
 export type RegisterState = {
   error?: string;
   success?: boolean;
 };
-
-// ─── ACTION ──────────────────────────────────────────────────────────────────
 
 export async function registerInstitution(
   prevState: RegisterState,
@@ -39,14 +35,12 @@ export async function registerInstitution(
   }
 
   try {
-    // ── Delegar a la capa de servicios ───────────────────────────────────────
     await createInstitutionAndAdmin(nombreLegal, nit, dominio, nombreAdmin, emailAdmin, password);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
     return { error: message };
   }
 
-  // ── Redirigir al workspace de Admin ───────────────────────────────────────
   redirect('/dashboard/admin');
 }
 
@@ -85,9 +79,7 @@ export async function changeUserPassword(
       return { error: `Error al actualizar la contraseña: ${updateError.message}` };
     }
 
-    // ── Delegar actualización de metadatos administrativos ────────────────────
     await removeMustChangePasswordFlag(user.id);
-
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
     return { error: message };

@@ -2,7 +2,7 @@
 
 import { useState, useActionState } from 'react';
 import Link from 'next/link';
-import { registerInstitution, type RegisterState } from '@/app/actions/auth-actions';
+import { registerInstitution, type RegisterState } from '@/app/actions/auth/auth-actions';
 import { ThemeToggle } from '@/components/theme';
 
 // ─── ICONS ───────────────────────────────────────────────────────────────────

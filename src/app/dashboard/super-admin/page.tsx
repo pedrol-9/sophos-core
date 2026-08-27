@@ -12,7 +12,7 @@ import {
   getAILogs,
   SaaSMetrics,
   InstitutionSaaSInfo
-} from '@/app/actions/superadmin-actions';
+} from '@/app/actions/superadmin/superadmin-actions';
 import { ThemeToggle } from '@/components/theme';
 import { User } from '@supabase/supabase-js';
 import { DemoFloatingBadge } from '@/components/demo';

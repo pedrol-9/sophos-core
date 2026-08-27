@@ -1,6 +1,6 @@
 'use client';
 
-import { EscalaParam } from '@/app/actions/config-actions';
+import { EscalaParam } from '@/app/actions/admin/config-actions';
 import { SectionCard } from './SectionCard';
 import { SaveBar } from './SaveBar';
 

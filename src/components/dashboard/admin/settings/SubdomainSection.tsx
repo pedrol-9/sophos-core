@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { createPortal } from 'react-dom';
-import { checkSubdomainAvailability, assignInstitutionSubdomain } from '@/app/actions/admin-actions';
+import { checkSubdomainAvailability, assignInstitutionSubdomain } from '@/app/actions/admin/admin-actions';
 
 interface SubdomainSectionProps {
   currentSubdomain: string | null;

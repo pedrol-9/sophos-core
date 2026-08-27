@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { triggerSyncSheets, SyncSheetsResult } from '@/app/actions/sync-sheets-actions';
-import { resetPeriodoGrades } from '@/app/actions/cierre-actions';
+import { triggerSyncSheets, SyncSheetsResult } from '@/app/actions/admin/sync-sheets-actions';
+import { resetPeriodoGrades } from '@/app/actions/academic/cierre-actions';
 
 interface SyncSheetsModalProps {
   onSyncCompleted?: () => void;

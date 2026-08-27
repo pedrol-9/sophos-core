@@ -11,7 +11,7 @@ import {
   saveAttendance,
   type AcademicAssignment,
   type CourseStudent,
-} from '@/app/actions/teacher-actions';
+} from '@/app/actions/academic/teacher-actions';
 import {
   TeacherGradebook,
   DocenteHeader,
@@ -26,7 +26,7 @@ import {
   createObservacion,
   getStudentObservations,
   type ObservadorRecord,
-} from '@/app/actions/observador-actions';
+} from '@/app/actions/academic/observador-actions';
 
 export default function DocenteDashboard() {
   const router = useRouter();
