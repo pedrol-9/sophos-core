@@ -23,89 +23,69 @@ export async function loginAsDemo(roleId: string): Promise<{
     const supabase = await createClient();
 
     // 1. Intento directo de autenticación estándar
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    let { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: account.email,
       password: account.password,
     });
 
-    if (!signInError && signInData.user) {
-      return { success: true, redirectPath };
-    }
-
-    // 2. Si las credenciales fallan o el usuario no existe, intentar auto-aprovisionar con adminClient
-    try {
-      const { createAdminClient } = await import('@/utils/supabase/admin');
-      const adminClient = createAdminClient();
-      const FIXED_INST_ID = '00000000-0000-0000-0000-000000000001';
-
-      // Asegurar que la institución demo exista
-      await adminClient.from('instituciones').upsert({
-        id_institucion: FIXED_INST_ID,
-        nombre_legal: 'IE Jose María Carbonell',
-        nit: '900.123.456-7',
-        dominio_personalizado: 'jm-carbonell.edu.co',
-        estado_suscripcion: 'PRUEBA',
+    // 2. Si las credenciales fallan o el usuario no existe, crearlo con signUp estándar
+    if (signInError || !signInData.user) {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: account.email,
+        password: account.password,
+        options: {
+          data: {
+            nombre_completo: account.subtitle,
+            rol: account.role,
+            id_institucion: '00000000-0000-0000-0000-000000000001',
+          },
+        },
       });
 
-      // Crear usuario vía admin
-      const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+      if (!signUpError) {
+        // Reintentar login inmediatamente tras el registro
+        const retry = await supabase.auth.signInWithPassword({
+          email: account.email,
+          password: account.password,
+        });
+        signInData = retry.data;
+        signInError = retry.error;
+      }
+    }
+
+    if (signInError || !signInData?.user) {
+      // Si la contraseña remota difiere, intentar contraseña alternativa por defecto
+      const fallback = await supabase.auth.signInWithPassword({
         email: account.email,
         password: DEMO_PASSWORD_DEFAULT,
-        email_confirm: true,
-        app_metadata: {
-          id_institucion: FIXED_INST_ID,
-          rol: account.role,
-          must_change_password: false,
-        },
-        user_metadata: {
-          nombre_completo: account.subtitle,
-        },
       });
 
-      if (!createError && newUser?.user) {
-        await adminClient.from('usuarios').upsert({
-          id_usuario: newUser.user.id,
-          email: account.email,
-          nombre_completo: account.subtitle,
-          rol: account.role,
-          id_institucion: FIXED_INST_ID,
-        });
+      if (!fallback.error && fallback.data.user) {
+        return { success: true, redirectPath };
       }
-    } catch (adminErr: any) {
-      console.warn('[loginAsDemo] Admin provisioning skipped:', adminErr?.message);
 
-      // Si falla adminClient (por ejemplo, legacy key policy), intentar registro directo
-      try {
-        await supabase.auth.signUp({
-          email: account.email,
-          password: DEMO_PASSWORD_DEFAULT,
-          options: {
-            data: {
-              nombre_completo: account.subtitle,
-            },
-          },
-        });
-      } catch (signUpErr) {
-        console.warn('[loginAsDemo] SignUp fallback failed:', signUpErr);
-      }
-    }
-
-    // 3. Re-intentar inicio de sesión
-    const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-      email: account.email,
-      password: account.password,
-    });
-
-    if (retryError || !retryData.user) {
       return {
         success: false,
-        error: `No se pudo iniciar sesión con la cuenta de ${account.title} (${account.email}). Verifica que el usuario exista en tu proyecto de Supabase.`,
+        error: `No se pudo autenticar con ${account.email}. Por favor verifica que el usuario exista en tu proyecto de Supabase.`,
       };
+    }
+
+    // 3. Asegurar que el registro exista en la tabla pública 'usuarios'
+    try {
+      await supabase.from('usuarios').upsert({
+        id_usuario: signInData.user.id,
+        email: account.email,
+        nombre_completo: account.subtitle,
+        rol: account.role,
+        id_institucion: '00000000-0000-0000-0000-000000000001',
+      });
+    } catch {
+      // No bloqueante si las políticas RLS restringen inserción directa
     }
 
     return { success: true, redirectPath };
   } catch (err: any) {
-    console.error('[loginAsDemo] Unexpected error:', err);
+    console.error('[loginAsDemo] Error:', err);
     return { success: false, error: err?.message || 'Error inesperado al autenticar cuenta demo.' };
   }
 }

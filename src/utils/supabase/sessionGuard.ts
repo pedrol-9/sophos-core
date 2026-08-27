@@ -237,7 +237,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Extraer metadatos de rol del JWT
-  const rol = (user?.app_metadata?.rol as string | undefined)?.toUpperCase();
+  const rol = ((user?.app_metadata?.rol || user?.user_metadata?.rol) as string | undefined)?.toUpperCase();
   const targetWorkspace = rol ? (ROL_WORKSPACE[rol] ?? '/dashboard/admin') : '/dashboard/admin';
 
   // ─── CONTROL DE EXPIRACIÓN DE SUSCRIPCIÓN ────────────────────────────────
