@@ -1,4 +1,4 @@
-export * from './types';
+export type * from './types';
 export * from './admin-actions';
 export * from './docente-actions';
 export * from './grades-actions';

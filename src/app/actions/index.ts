@@ -1,4 +1,4 @@
-export * from './shared/types';
+export type * from './shared/types';
 export * from './auth';
 export * from './academic';
 export * from './admin';

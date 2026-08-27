@@ -30,8 +30,7 @@ export type OnboardingData = {
   nomenclaturaCursos: string;
 };
 
-import { ActionResponse } from '../shared/types';
-export type { ActionResponse };
+import type { ActionResponse } from '../shared/types';
 
 /**
  * Guarda en bloque y de forma secuencial la parametrización inicial del Onboarding (Fase 1.5).
