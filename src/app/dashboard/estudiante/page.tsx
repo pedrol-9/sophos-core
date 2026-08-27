@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js';
 import { IconNotebook, IconChecklist, IconLogout, IconSparkles } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme';
 import { getInstitutionLogoUrl } from '@/utils/institution-logo';
+import { DemoFloatingBadge } from '@/components/demo';
 
 interface SubjectGrade {
   id_calificacion: string;
@@ -550,6 +551,9 @@ export default function EstudianteDashboard() {
 
         </div>
       </main>
+
+      {/* Badge Flotante para alternar roles en Modo Demo */}
+      <DemoFloatingBadge user={user} roleName="Estudiante" />
     </div>
   );
 }

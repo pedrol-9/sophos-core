@@ -19,6 +19,7 @@ import {
   AcudienteAbsencesTab,
   AcudienteObservadorTab,
 } from '@/components/dashboard/acudiente';
+import { DemoFloatingBadge } from '@/components/demo';
 
 export default function AcudienteDashboard() {
   const router = useRouter();
@@ -446,6 +447,9 @@ export default function AcudienteDashboard() {
           </div>
         </div>
       )}
+
+      {/* Badge Flotante para alternar roles en Modo Demo */}
+      <DemoFloatingBadge user={user} roleName="Acudiente" />
     </div>
   );
 }

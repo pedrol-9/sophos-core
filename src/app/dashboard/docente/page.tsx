@@ -21,6 +21,7 @@ import {
   TeacherGradeModal,
   TeacherObservadorModal,
 } from '@/components/dashboard/teacher';
+import { DemoFloatingBadge } from '@/components/demo';
 import {
   createObservacion,
   getStudentObservations,
@@ -530,6 +531,9 @@ export default function DocenteDashboard() {
           </div>
         </div>
       )}
+
+      {/* Badge Flotante para alternar roles en Modo Demo */}
+      <DemoFloatingBadge user={user} roleName="Docente" />
     </div>
   );
 }

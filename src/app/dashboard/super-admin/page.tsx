@@ -14,10 +14,13 @@ import {
   InstitutionSaaSInfo
 } from '@/app/actions/superadmin-actions';
 import { ThemeToggle } from '@/components/theme';
+import { User } from '@supabase/supabase-js';
+import { DemoFloatingBadge } from '@/components/demo';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'metrics' | 'instituciones' | 'planes' | 'ia'>('metrics');
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<SaaSMetrics | null>(null);
@@ -74,8 +77,9 @@ export default function SuperAdminDashboard() {
   }, [router]);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
     loadAllData();
-  }, [loadAllData]);
+  }, [loadAllData, supabase.auth]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -686,6 +690,9 @@ export default function SuperAdminDashboard() {
         )}
 
       </main>
+
+      {/* Badge Flotante para alternar roles en Modo Demo */}
+      <DemoFloatingBadge user={user} roleName="Super Admin" />
     </div>
   );
 }

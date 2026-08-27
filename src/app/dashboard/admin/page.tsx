@@ -27,6 +27,7 @@ import {
 } from '@/app/actions/admin-actions';
 import { SubdomainSection } from '@/components/dashboard/admin/settings/SubdomainSection';
 import { getInstitutionLogoUrl } from '@/utils/institution-logo';
+import { DemoFloatingBadge } from '@/components/demo';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -688,6 +689,9 @@ export default function DashboardPage() {
           />
         )}
       </main>
+
+      {/* Badge Flotante para cambiar de rol en Modo Demo */}
+      <DemoFloatingBadge user={user} roleName="Rector / Admin" />
     </div>
   );
 }

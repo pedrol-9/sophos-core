@@ -1,5 +1,9 @@
+'use client';
+
+import { useState } from "react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
+import { DemoLauncherModal } from "@/components/demo";
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────
 function IconBrain() {
@@ -192,6 +196,8 @@ function FeatureCard({
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
@@ -224,6 +230,16 @@ export default function LandingPage() {
           {/* Actions: Theme Toggle & CTA */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            <button
+              onClick={() => setDemoModalOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary text-xs font-bold transition-all duration-200 cursor-pointer"
+            >
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+              </span>
+              Probar Demo
+            </button>
             <Link
               href="/login"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
@@ -262,21 +278,22 @@ export default function LandingPage() {
 
             {/* CTA buttons */}
             <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
+              <button
+                onClick={() => setDemoModalOpen(true)}
+                id="cta-demo"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5 w-full sm:w-auto justify-center cursor-pointer"
+              >
+                <span className="text-base">✨</span>
+                Probar Demo en Vivo
+                <IconArrow />
+              </button>
               <Link
                 href="/signup"
                 id="cta-register"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5 w-full sm:w-auto justify-center"
-              >
-                Registrar Institución
-                <IconArrow />
-              </Link>
-              <a
-                href="#features"
-                id="cta-explore"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-card hover:bg-secondary border border-border text-foreground text-sm font-semibold transition-all duration-200 w-full sm:w-auto justify-center"
               >
-                Ver Características
-              </a>
+                Registrar Institución
+              </Link>
             </div>
 
             {/* Social proof */}
@@ -602,20 +619,28 @@ export default function LandingPage() {
               Crea tu cuenta institucional y comienza a centralizar la gestión académica con el respaldo de datos seguros e inteligencia artificial.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => setDemoModalOpen(true)}
+                id="cta-demo-footer"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5 justify-center cursor-pointer"
+              >
+                <span>✨</span>
+                Probar Demo en Vivo
+                <IconArrow />
+              </button>
               <Link
                 href="/signup"
                 id="cta-register-footer"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:-translate-y-0.5 justify-center"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-card hover:bg-secondary border border-border text-foreground text-sm font-semibold transition-all duration-200 justify-center"
               >
                 Crear cuenta institucional
-                <IconArrow />
               </Link>
               <Link
                 href="/login"
                 id="cta-login-footer"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-sm font-semibold transition-all duration-200 justify-center"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-secondary/60 hover:bg-secondary border border-border text-foreground text-sm font-semibold transition-all duration-200 justify-center"
               >
-                Ya tengo cuenta
+                Acceso Portal
               </Link>
             </div>
           </div>
@@ -636,6 +661,9 @@ export default function LandingPage() {
           <p>© 2025 Sophos Core · Plataforma de gestión académica inteligente</p>
         </div>
       </footer>
+
+      {/* ── MODAL DEMO LAUNCHER ── */}
+      <DemoLauncherModal isOpen={demoModalOpen} onClose={() => setDemoModalOpen(false)} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { ThemeToggle } from '@/components/theme';
+import { DemoLauncherModal } from '@/components/demo';
 
 // ─── ICONS ───────────────────────────────────────────────────────────────────
 function IconEye({ open }: { open: boolean }) {
@@ -53,6 +54,7 @@ export default function LoginPage({
   const [showPwd, setShowPwd]   = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(resolvedSearchParams.error ?? '');
+  const [demoOpen, setDemoOpen] = useState(false);
 
   const isExpired = resolvedSearchParams.message === 'session_expired';
 
@@ -199,13 +201,36 @@ export default function LoginPage({
           </form>
         </div>
 
+        {/* Demo fast access */}
+        <div className="mt-5 p-4 rounded-2xl bg-primary/10 border border-primary/20 backdrop-blur-xs text-center space-y-2.5">
+          <div className="flex items-center justify-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+            </span>
+            <p className="text-xs font-bold text-foreground">¿Quieres probar la plataforma sin registrarte?</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDemoOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-card hover:bg-secondary border border-border text-xs font-bold text-foreground transition-all cursor-pointer shadow-sm hover:shadow"
+          >
+            <span>✨</span>
+            <span>Explorar Demo en Vivo (1 Clic)</span>
+            <IconArrow />
+          </button>
+        </div>
+
         {/* Sign up link */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-5">
           ¿Tu institución aún no está en Sophos Core?{' '}
           <Link href="/signup" id="link-signup" className="text-primary hover:underline font-medium transition-colors">
             Regístrala aquí
           </Link>
         </p>
+
+        {/* Modal Demo Launcher */}
+        <DemoLauncherModal isOpen={demoOpen} onClose={() => setDemoOpen(false)} />
       </div>
     </div>
   );
