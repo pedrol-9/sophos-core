@@ -8,10 +8,17 @@ export const dynamic = 'force-dynamic';
  * el proyecto en el plan gratuito de Supabase (evitar que se pause por inactividad).
  */
 export async function GET(request: Request) {
-  // 1. Validar la clave secreta enviada por Vercel Cron (si existe CRON_SECRET en Vercel)
+  const { searchParams } = new URL(request.url);
   const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new NextResponse('Unauthorized', { status: 401 });
+  const queryKey = searchParams.get('key');
+
+  // Validar secreto si CRON_SECRET está configurado en el entorno
+  if (process.env.CRON_SECRET) {
+    const isHeaderValid = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+    const isQueryValid = queryKey === process.env.CRON_SECRET;
+    if (!isHeaderValid && !isQueryValid) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
   }
 
   try {
