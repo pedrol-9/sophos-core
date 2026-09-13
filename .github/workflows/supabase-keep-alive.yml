@@ -2,8 +2,8 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # Se ejecuta cada 3 días a las 12:00 UTC (para evitar que Supabase se pause a los 7 días de inactividad)
-    - cron: '0 12 */3 * *'
+    # Se ejecuta cada 4 días a las 12:00 UTC (para evitar que Supabase se pause a los 7 días de inactividad)
+    - cron: '0 12 */4 * *'
   # Permite ejecutarlo manualmente desde la pestaña "Actions" en GitHub
   workflow_dispatch:
 
