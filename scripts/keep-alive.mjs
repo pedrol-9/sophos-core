@@ -12,7 +12,7 @@
  *  3. Opcionalmente enviando un correo de confirmación (usando Resend si se configura RESEND_API_KEY).
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, appendFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -53,10 +53,36 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const NOTIFICATION_EMAIL = process.env.NOTIFICATION_EMAIL || process.env.ALERT_EMAIL;
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Sophos Core Monitor <onboarding@resend.dev>';
+
+function appendStepSummary(markdown) {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) {
+    try {
+      appendFileSync(summaryPath, markdown + '\n\n', 'utf-8');
+    } catch {
+      // Ignorar fallos al escribir en summary
+    }
+  }
+}
 
 async function sendEmailNotification(status, details) {
   if (!RESEND_API_KEY || !NOTIFICATION_EMAIL) {
-    console.log('[Keep-Alive] Notificación por email omitida (RESEND_API_KEY o NOTIFICATION_EMAIL no configurados).');
+    console.log('\n⚠️ [Keep-Alive] Notificación por email OMITIDA:');
+    if (!RESEND_API_KEY) {
+      console.log('   - Falta el secreto RESEND_API_KEY en GitHub Actions.');
+    }
+    if (!NOTIFICATION_EMAIL) {
+      console.log('   - Falta el secreto NOTIFICATION_EMAIL en GitHub Actions.');
+    }
+    console.log('   👉 Configúralos en GitHub: Repo > Settings > Secrets and variables > Actions > Repository secrets.\n');
+
+    appendStepSummary(
+      `### ⚠️ Notificación por Email Omitida\n` +
+      `- **Causa**: Variables de entorno de correo no configuradas.\n` +
+      `- \`RESEND_API_KEY\`: ${RESEND_API_KEY ? '✅ Configurado' : '❌ Falta configurar en GitHub Secrets'}\n` +
+      `- \`NOTIFICATION_EMAIL\`: ${NOTIFICATION_EMAIL ? '✅ Configurado' : '❌ Falta configurar en GitHub Secrets'}`
+    );
     return;
   }
 
@@ -107,7 +133,7 @@ async function sendEmailNotification(status, details) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Sophos Core Monitor <onboarding@resend.dev>',
+        from: RESEND_FROM_EMAIL,
         to: [NOTIFICATION_EMAIL],
         subject,
         html,
@@ -115,13 +141,34 @@ async function sendEmailNotification(status, details) {
     });
 
     if (res.ok) {
-      console.log(`[Keep-Alive] ✉️ Notificación enviada a ${NOTIFICATION_EMAIL}`);
+      console.log(`[Keep-Alive] ✉️ Notificación enviada con éxito a ${NOTIFICATION_EMAIL}`);
+      appendStepSummary(
+        `### ✅ Correo de Notificación Enviado con Éxito\n` +
+        `- **Destinatario**: \`${NOTIFICATION_EMAIL}\`\n` +
+        `- **Remitente**: \`${RESEND_FROM_EMAIL}\``
+      );
     } else {
       const errText = await res.text();
-      console.warn('[Keep-Alive] No se pudo enviar el correo vía Resend:', errText);
+      console.error(`\n❌ [Keep-Alive] Error al enviar el correo vía Resend (HTTP ${res.status}):\n${errText}\n`);
+      if (res.status === 403 && RESEND_FROM_EMAIL.includes('onboarding@resend.dev')) {
+        console.error('💡 Causa frecuente en Resend (HTTP 403):');
+        console.error('   Cuando usas el remitente por defecto "onboarding@resend.dev", Resend SOLO permite');
+        console.error('   enviar correos a la MISMA dirección con la que te registraste en Resend.');
+        console.error(`   Si NOTIFICATION_EMAIL (${NOTIFICATION_EMAIL}) es distinta a tu cuenta de Resend, será rechazada.`);
+        console.error('   Para enviar a cualquier dirección: verifica un dominio en https://resend.com/domains y define RESEND_FROM_EMAIL.\n');
+      }
+
+      appendStepSummary(
+        `### ❌ Error al Enviar Notificación por Correo (Resend HTTP ${res.status})\n` +
+        `\`\`\`json\n${errText}\n\`\`\`\n` +
+        (res.status === 403 && RESEND_FROM_EMAIL.includes('onboarding@resend.dev')
+          ? `> ⚠️ **Importante**: Con \`onboarding@resend.dev\`, Resend solo autoriza enviar a tu propia dirección registrada en Resend.`
+          : '')
+      );
     }
   } catch (err) {
-    console.warn('[Keep-Alive] Error al contactar servicio de correo:', err.message);
+    console.error('[Keep-Alive] Error de conexión al contactar servicio de correo Resend:', err.message);
+    appendStepSummary(`### ❌ Error de Conexión con Resend\n- ${err.message}`);
   }
 }
 
@@ -133,6 +180,10 @@ async function pingSupabase() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     const errorMsg = 'Error: NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no están definidas en las variables de entorno.';
     console.error(`❌ ${errorMsg}`);
+    appendStepSummary(
+      `## 🚨 Supabase Keep-Alive: Fallo de Configuración\n` +
+      `- **Error**: Faltan variables de Supabase (\`NEXT_PUBLIC_SUPABASE_URL\` o \`SUPABASE_SERVICE_ROLE_KEY\`).`
+    );
     await sendEmailNotification('FAILURE', { error: errorMsg });
     process.exitCode = 1;
     return;
@@ -155,6 +206,12 @@ async function pingSupabase() {
     if (!response.ok && response.status !== 206) {
       const errorText = `Supabase respondió con status HTTP ${response.status}: ${response.statusText}`;
       console.error(`❌ ${errorText}`);
+      appendStepSummary(
+        `## 🚨 Supabase Keep-Alive: Error HTTP\n` +
+        `| Proyecto | Status HTTP | Detalle |\n` +
+        `| :--- | :--- | :--- |\n` +
+        `| \`${SUPABASE_URL}\` | **${response.status}** | ${response.statusText} |`
+      );
       await sendEmailNotification('FAILURE', { status: response.status, statusText: response.statusText });
       process.exitCode = 1;
       return;
@@ -166,6 +223,17 @@ async function pingSupabase() {
     console.log('✨ La base de datos ha registrado actividad y su temporizador de inactividad se ha renovado.');
     console.log('----------------------------------------------------');
 
+    appendStepSummary(
+      `## 🚀 Supabase Keep-Alive: Éxito\n` +
+      `| Propiedad | Valor |\n` +
+      `| :--- | :--- |\n` +
+      `| **Fecha / Hora** | ${new Date().toISOString()} |\n` +
+      `| **Proyecto Supabase** | \`${SUPABASE_URL}\` |\n` +
+      `| **Status HTTP** | ✅ ${response.status} |\n` +
+      `| **Content-Range** | \`${contentRange}\` |\n` +
+      `| **Estado** | Actividad registrada (temporizador renovado) |`
+    );
+
     await sendEmailNotification('SUCCESS', {
       status: response.status,
       contentRange,
@@ -175,6 +243,10 @@ async function pingSupabase() {
     process.exitCode = 0;
   } catch (error) {
     console.error('❌ Error de red o conexión al consultar Supabase:', error.message);
+    appendStepSummary(
+      `## 🚨 Supabase Keep-Alive: Error de Red\n` +
+      `- **Mensaje**: ${error.message}`
+    );
     await sendEmailNotification('FAILURE', { error: error.message });
     process.exitCode = 1;
   }
