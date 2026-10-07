@@ -135,7 +135,7 @@ async function parseAndSeedCSV(idInstitucion) {
       app_metadata: {
         id_institucion: idInstitucion,
         rol: u.rol,
-        must_change_password: true,
+        must_change_password: ['contacto@jm-carbonell.edu.co', 'mariana.fuentes@edu.co', 'mateo.silva@edu.co', 'rodrigo.silva@parent.co'].includes(u.email?.toLowerCase()?.trim()) ? false : true,
       },
       user_metadata: {
         nombre_completo: u.nombreCompleto,

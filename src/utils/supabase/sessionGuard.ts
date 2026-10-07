@@ -9,6 +9,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isDemoEmail } from '@/config/demo-accounts';
 
 // Mapping de rol a workspace de destino
 const ROL_WORKSPACE: Record<string, string> = {
@@ -218,7 +219,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // ─── CONTROL DE CAMBIO DE CONTRASEÑA OBLIGATORIO ─────────────────────────
-  const mustChangePassword = user?.app_metadata?.must_change_password === true;
+  const isDemo = isDemoEmail(user?.email);
+  const mustChangePassword = user?.app_metadata?.must_change_password === true && !isDemo;
   const isChangePasswordRoute = pathname === '/change-password';
 
   if (!user && isChangePasswordRoute) {

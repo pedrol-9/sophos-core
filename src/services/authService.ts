@@ -82,24 +82,28 @@ export async function createInstitutionAndAdmin(
   return { success: true, idInstitucion };
 }
 
-export async function removeMustChangePasswordFlag(userId: string) {
+export async function removeMustChangePasswordFlag(userId: string, currentMetadata?: Record<string, any>) {
   const adminClient = createAdminClient();
-  const { data: { user }, error: getUserError } = await adminClient.auth.admin.getUserById(userId);
   
-  if (getUserError || !user) {
-    throw new Error('No se pudo encontrar el usuario para actualizar sus metadatos.');
+  let metadata = currentMetadata;
+  if (!metadata) {
+    const { data, error: getUserError } = await adminClient.auth.admin.getUserById(userId);
+    if (getUserError || !data?.user) {
+      console.error('[removeMustChangePasswordFlag] Error fetching user:', getUserError);
+      throw new Error(getUserError?.message || 'No se pudo encontrar el usuario para actualizar sus metadatos.');
+    }
+    metadata = data.user.app_metadata;
   }
 
-  const currentMetadata = user.app_metadata || {};
-  
   const { error: adminError } = await adminClient.auth.admin.updateUserById(userId, {
     app_metadata: {
-      ...currentMetadata,
+      ...(metadata || {}),
       must_change_password: false,
     },
   });
 
   if (adminError) {
+    console.error('[removeMustChangePasswordFlag] Error updating user:', adminError);
     throw new Error(`Falló la actualización del perfil administrativo: ${adminError.message}`);
   }
 }

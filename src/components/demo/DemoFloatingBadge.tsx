@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 import { isDemoEmail } from '@/config/demo-accounts';
 import { DemoLauncherModal } from './DemoLauncherModal';
 import { createClient } from '@/utils/supabase/client';
+import { exitDemoMode } from '@/app/actions/auth/demo-actions';
 
 interface DemoFloatingBadgeProps {
   user: User | null;
@@ -16,13 +17,26 @@ export function DemoFloatingBadge({ user, roleName }: DemoFloatingBadgeProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
-  if (!user || !isDemoEmail(user.email)) {
+  useEffect(() => {
+    // Solo mostrar los controles si la sesión actual proviene del lanzador de Demo
+    const hasDemoCookie = typeof document !== 'undefined' && document.cookie
+      .split(';')
+      .some((item) => item.trim() === 'sophos_demo_mode=true');
+    setIsDemoMode(hasDemoCookie);
+  }, []);
+
+  if (!user || !isDemoEmail(user.email) || !isDemoMode) {
     return null;
   }
 
   const handleExitDemo = async () => {
     setIsExiting(true);
+    if (typeof document !== 'undefined') {
+      document.cookie = 'sophos_demo_mode=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    }
+    await exitDemoMode();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/');

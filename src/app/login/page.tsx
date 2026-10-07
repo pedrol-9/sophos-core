@@ -63,6 +63,11 @@ export default function LoginPage({
     setLoading(true);
     setError('');
 
+    // Limpiar rastro de demo si existía previamente
+    if (typeof document !== 'undefined') {
+      document.cookie = 'sophos_demo_mode=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    }
+
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 

@@ -79,7 +79,8 @@ export async function changeUserPassword(
       return { error: `Error al actualizar la contraseña: ${updateError.message}` };
     }
 
-    await removeMustChangePasswordFlag(user.id);
+    await removeMustChangePasswordFlag(user.id, user.app_metadata);
+    await supabase.auth.refreshSession();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Ocurrió un error inesperado.';
     return { error: message };
